@@ -7,7 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4AC4891D30799203005E9A99 /* PlantKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4891C30799203005E9A99 /* PlantKit */; };
+		4AC4892001799203005E9A99 /* PlantShared in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892000799203005E9A99 /* PlantShared */; };
+		4AC4892003799203005E9A99 /* PlantMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892002799203005E9A99 /* PlantMonitor */; };
+		4AC4892005799203005E9A99 /* PlantMonitoriOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892004799203005E9A99 /* PlantMonitoriOS */; };
+		4AC4892007799203005E9A99 /* PlantDevice in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892006799203005E9A99 /* PlantDevice */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,7 +72,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4AC4891D30799203005E9A99 /* PlantKit in Frameworks */,
+				4AC4892001799203005E9A99 /* PlantShared in Frameworks */,
+				4AC4892003799203005E9A99 /* PlantMonitor in Frameworks */,
+				4AC4892005799203005E9A99 /* PlantMonitoriOS in Frameworks */,
+				4AC4892007799203005E9A99 /* PlantDevice in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -130,7 +136,10 @@
 			);
 			name = TalkingPlant;
 			packageProductDependencies = (
-				4AC4891C30799203005E9A99 /* PlantKit */,
+				4AC4892000799203005E9A99 /* PlantShared */,
+				4AC4892002799203005E9A99 /* PlantMonitor */,
+				4AC4892004799203005E9A99 /* PlantMonitoriOS */,
+				4AC4892006799203005E9A99 /* PlantDevice */,
 			);
 			productName = TalkingPlant;
 			productReference = 4A69B560307973AF00235D0E /* TalkingPlant.app */;
@@ -623,9 +632,21 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		4AC4891C30799203005E9A99 /* PlantKit */ = {
+		4AC4892000799203005E9A99 /* PlantShared */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = PlantKit;
+			productName = PlantShared;
+		};
+		4AC4892002799203005E9A99 /* PlantMonitor */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlantMonitor;
+		};
+		4AC4892004799203005E9A99 /* PlantMonitoriOS */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlantMonitoriOS;
+		};
+		4AC4892006799203005E9A99 /* PlantDevice */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlantDevice;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

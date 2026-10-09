@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4AC4891D30799203005E9A99 /* PlantKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4891C30799203005E9A99 /* PlantKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		4A69B56E307973B100235D0E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -65,6 +69,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4AC4891D30799203005E9A99 /* PlantKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,6 +130,7 @@
 			);
 			name = TalkingPlant;
 			packageProductDependencies = (
+				4AC4891C30799203005E9A99 /* PlantKit */,
 			);
 			productName = TalkingPlant;
 			productReference = 4A69B560307973AF00235D0E /* TalkingPlant.app */;
@@ -208,6 +214,9 @@
 			);
 			mainGroup = 4A69B557307973AF00235D0E;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4AC4891B30799203005E9A99 /* XCLocalSwiftPackageReference "../PlantKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4A69B561307973AF00235D0E /* Products */;
 			projectDirPath = "";
@@ -605,6 +614,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		4AC4891B30799203005E9A99 /* XCLocalSwiftPackageReference "../PlantKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../PlantKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4AC4891C30799203005E9A99 /* PlantKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlantKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4A69B558307973AF00235D0E /* Project object */;
 }

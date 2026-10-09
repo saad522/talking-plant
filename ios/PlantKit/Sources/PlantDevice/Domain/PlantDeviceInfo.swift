@@ -1,7 +1,7 @@
 import Foundation
 
-/// Decoded 8-byte Device Info characteristic.
-public struct DeviceInfo: Equatable, Sendable {
+/// Device Info characteristic in domain form.
+public struct PlantDeviceInfo: Equatable, Sendable {
     public struct Capabilities: OptionSet, Equatable, Sendable {
         public let rawValue: UInt8
         public init(rawValue: UInt8) { self.rawValue = rawValue }
@@ -20,17 +20,19 @@ public struct DeviceInfo: Equatable, Sendable {
 
     public var firmwareVersion: String { "\(firmwareMajor).\(firmwareMinor).\(firmwarePatch)" }
 
-    /// Throws `PlantContractError.wrongLength` when the length is not 8.
-    public init(data: Data) throws {
-        let bytes = [UInt8](data)
-        guard bytes.count == PlantContract.deviceInfoLength else {
-            throw PlantContractError.wrongLength(expected: PlantContract.deviceInfoLength, actual: bytes.count)
-        }
-        protocolVersion = bytes[0]
-        firmwareMajor = bytes[1]
-        firmwareMinor = bytes[2]
-        firmwarePatch = bytes[3]
-        capabilities = Capabilities(rawValue: bytes[4])
-        intervalSeconds = bytes.uint16LE(at: 6)
+    public init(
+        protocolVersion: UInt8,
+        firmwareMajor: UInt8,
+        firmwareMinor: UInt8,
+        firmwarePatch: UInt8,
+        capabilities: Capabilities,
+        intervalSeconds: UInt16
+    ) {
+        self.protocolVersion = protocolVersion
+        self.firmwareMajor = firmwareMajor
+        self.firmwareMinor = firmwareMinor
+        self.firmwarePatch = firmwarePatch
+        self.capabilities = capabilities
+        self.intervalSeconds = intervalSeconds
     }
 }

@@ -38,4 +38,5 @@ If the Serial Monitor shows nothing, enable "USB CDC On Boot" for the board.
       (e.g. "Talking Plant connects to your plant sensor over Bluetooth.").
 - [ ] Commit, then start Claude Code in `talking-plant/`.
 - [ ] After Claude Code creates `ios/PlantKit` in M1: in Xcode, File → Add Package
-      Dependencies → Add Local → select `ios/PlantKit`, and link it to the app target.
+      Dependencies → Add Local → select `ios/PlantKit`, and link the `PlantShared`,
+      `PlantMonitor`, `PlantMonitoriOS`, and `PlantDevice` products to the app target.

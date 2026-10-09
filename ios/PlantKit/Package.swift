@@ -3,15 +3,28 @@ import PackageDescription
 
 let package = Package(
     name: "PlantKit",
-    platforms: [
-        .iOS(.v26),
-        .macOS(.v15),
-    ],
+    defaultLocalization: "en",
+    platforms: [.iOS(.v26), .macOS(.v15)],
     products: [
-        .library(name: "PlantKit", targets: ["PlantKit"]),
+        .library(name: "PlantShared", targets: ["PlantShared"]),
+        .library(name: "PlantMonitor", targets: ["PlantMonitor"]),
+        .library(name: "PlantMonitoriOS", targets: ["PlantMonitoriOS"]),
+        .library(name: "PlantDevice", targets: ["PlantDevice"])
+    ],
+    dependencies: [
+        .package(url: "https://github.com/nalexn/ViewInspector", from: "0.10.0")
     ],
     targets: [
-        .target(name: "PlantKit"),
-        .testTarget(name: "PlantKitTests", dependencies: ["PlantKit"]),
+        .target(name: "PlantShared"),
+        .target(name: "PlantMonitor", dependencies: ["PlantShared"], resources: [.process("Resources")]),
+        .target(name: "PlantMonitoriOS", dependencies: ["PlantMonitor", "PlantShared"]),
+        .target(name: "PlantDevice", dependencies: ["PlantShared"]),
+        .testTarget(name: "PlantSharedTests", dependencies: ["PlantShared"]),
+        .testTarget(name: "PlantMonitorTests", dependencies: ["PlantMonitor", "PlantShared"]),
+        .testTarget(
+            name: "PlantMonitoriOSTests",
+            dependencies: ["PlantMonitoriOS", "PlantMonitor", "PlantShared", "ViewInspector"]
+        ),
+        .testTarget(name: "PlantDeviceTests", dependencies: ["PlantDevice", "PlantShared"])
     ]
 )

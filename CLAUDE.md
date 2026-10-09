@@ -27,13 +27,16 @@ talking-plant/
 ├── docs/
 ├── firmware/talking_plant/talking_plant.ino   # Arduino sketch (XIAO ESP32-C3)
 └── ios/
-    ├── TalkingPlant.xcodeproj                  # created manually in Xcode
-    ├── TalkingPlant/                           # app target
-    │   ├── App/                                # app entry, dependency setup
-    │   ├── Bluetooth/                          # CoreBluetooth SensorSource
-    │   ├── Persistence/                        # SwiftData models
-    │   ├── Brain/                              # Foundation Models: voice, chat, tools
-    │   └── Features/                           # Dashboard, History, Chat, Settings
+    ├── TalkingPlant/                           # created manually in Xcode
+    │   ├── TalkingPlant.xcodeproj
+    │   ├── TalkingPlant/                       # app target sources
+    │   │   ├── App/                            # app entry, dependency setup
+    │   │   ├── Bluetooth/                      # CoreBluetooth SensorSource
+    │   │   ├── Persistence/                    # SwiftData models
+    │   │   ├── Brain/                          # Foundation Models: voice, chat, tools
+    │   │   └── Features/                       # Dashboard, History, Chat, Settings
+    │   ├── TalkingPlantTests/
+    │   └── TalkingPlantUITests/
     └── PlantKit/                               # local Swift package, pure logic
         ├── Package.swift
         ├── Sources/PlantKit/
@@ -77,7 +80,7 @@ talking-plant/
 cd ios/PlantKit && swift test
 
 # App build (list simulators with: xcrun simctl list devices available)
-cd ios && xcodebuild -scheme TalkingPlant \
+cd ios/TalkingPlant && xcodebuild -project TalkingPlant.xcodeproj -scheme TalkingPlant \
   -destination 'platform=iOS Simulator,name=<available iPhone simulator>' build
 
 # Firmware compile (see docs/SETUP.md for arduino-cli setup)

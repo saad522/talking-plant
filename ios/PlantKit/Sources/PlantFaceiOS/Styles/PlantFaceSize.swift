@@ -1,29 +1,22 @@
-import PlantFace
 import SwiftUI
 
 enum PlantFaceSize {
-    static let face: CGFloat = 160
-    static let eyeWidth: CGFloat = 24
-    static let eyeHeight: CGFloat = 32
-    /// Fixed slot so eyes stay centred while their height changes.
-    static let eyeSlotHeight: CGFloat = 48
-    static let eyeSpacing: CGFloat = 44
-    static let eyesOffset: CGFloat = -16
-    static let mouthWidth: CGFloat = 64
-    static let mouthHeight: CGFloat = 28
-    static let mouthOffset: CGFloat = 36
-    static let breathingScale: CGFloat = 1.03
+    /// The drawing is laid out in this viewBox, then scaled uniformly to `face`.
+    static let viewBox = CGSize(width: 240, height: 280)
+    static let face = CGSize(width: 270, height: 315)
+    static let faceScale: CGFloat = face.width / viewBox.width
 
-    /// Share of `eyeHeight` each expression shows.
-    static func eyeHeightRatio(for eyes: PlantFaceEyes) -> CGFloat {
-        switch eyes {
-        case .open: 1
-        case .wide: 1.3
-        case .droopy: 0.5
-        case .squint: 0.25
-        case .closed: 0.08
-        }
-    }
+    static let headCenter = CGPoint(x: 120, y: 128)
+    static let headRadius: CGFloat = 56
+    /// The head group tilts and breathes around the base of the stem.
+    static let headPivot = UnitPoint(x: 120 / viewBox.width, y: 206 / viewBox.height)
+    static let armOrigin = CGPoint(x: 120, y: 192)
+    static let topLeafX: CGFloat = 120
 
-    static let blinkHeightRatio: CGFloat = 0.08
+    static let eyeRx: CGFloat = 7
+    static let blinkRy: CGFloat = 1
+    static let breathingScale: CGFloat = 1
+    static let breathingScaleIn: CGFloat = 1.02
+    static let swayDegrees: Double = 3
+    static let dropSize = CGSize(width: 10, height: 14)
 }

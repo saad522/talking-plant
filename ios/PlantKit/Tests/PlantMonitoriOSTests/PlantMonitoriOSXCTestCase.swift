@@ -16,6 +16,8 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         let sut = PlantMonitorUIComposer.composed(
             with: loader,
             healthLoader: healthLoader,
+            plantName: "Sprout",
+            room: "Living room",
             face: { FaceStub(mood: $0) },
             actionHandler: actionHandler
         )

@@ -12,26 +12,31 @@ public struct PlantMonitorView<Face: View>: View {
 
     public var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
-                store.mood
-
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                    store.moisture
-                    store.light
-                    store.temperature
-                    store.humidity
-                }
-
-                Button(action: viewModel.historyTap) {
-                    Text(viewModel.historyLabel)
-                        .font(PlantMonitorFont.button)
-                        .frame(maxWidth: .infinity)
-                }
+            VStack(spacing: PlantMonitorSize.screenSpacing) {
+                PlantMonitorHeaderView(title: store.title, subtitle: store.subtitle)
+                PlantMonitorSceneView(store: store)
+                actions
             }
-            .padding(16)
+            .padding(.bottom, PlantMonitorSize.screenSpacing)
         }
-        .overlay { store.loading }
+        .background { store.palette.background.ignoresSafeArea() }
+        .environment(\.plantMonitorPalette, store.palette)
+        .preferredColorScheme(store.palette.colorScheme)
         .overlay { store.error }
         .onAppear(perform: viewModel.appear)
+    }
+
+    private var actions: some View {
+        VStack(spacing: PlantMonitorSize.actionsSpacing) {
+            if let primary = store.primaryButton {
+                primary
+            }
+            HStack(spacing: PlantMonitorSize.actionsSpacing) {
+                ForEach(store.secondaryButtons.indices, id: \.self) { index in
+                    store.secondaryButtons[index]
+                }
+            }
+        }
+        .padding(.horizontal, PlantMonitorSize.actionsPadding)
     }
 }

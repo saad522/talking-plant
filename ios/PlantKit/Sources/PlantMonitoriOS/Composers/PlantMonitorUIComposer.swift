@@ -7,23 +7,42 @@ public enum PlantMonitorUIComposer {
     public static func composed<Face: View>(
         with loader: PlantReadingLoader,
         healthLoader: PlantHealthLoader,
+        plantName: String,
+        room: String,
         face: @escaping (PlantMood) -> Face,
         actionHandler: @escaping (PlantMonitorAction) -> Void
     ) -> PlantMonitorView<Face> {
         let store = PlantMonitorStore<Face>()
-        let viewModel = PlantMonitorViewModel(loader: loader, healthLoader: healthLoader, actionHandler: actionHandler)
+        let viewModel = PlantMonitorViewModel(
+            loader: loader,
+            healthLoader: healthLoader,
+            plantName: plantName,
+            actionHandler: actionHandler
+        )
 
-        viewModel.loadedReading = { [weak store] reading in
+        let header = PlantMonitorHeaderViewModel(name: plantName, room: room, mood: nil)
+        store.title = header.title
+        store.subtitle = header.subtitle
+
+        viewModel.loadedReading = { [weak store] _ in
             store?.loading = nil
             store?.error = nil
-            store?.moisture = makeCard(.moisture, reading: reading)
-            store?.light = makeCard(.light, reading: reading)
-            store?.temperature = makeCard(.temperature, reading: reading)
-            store?.humidity = makeCard(.humidity, reading: reading)
         }
 
         viewModel.loadedMood = { [weak store] mood in
-            store?.mood = PlantMoodView(viewModel: PlantMoodViewModel(mood: mood), face: face(mood))
+            let header = PlantMonitorHeaderViewModel(name: plantName, room: room, mood: mood)
+            store?.subtitle = header.subtitle
+            store?.face = face(mood)
+            store?.bubble = PlantSpeechBubbleView(text: PlantMoodViewModel(mood: mood).speech)
+        }
+
+        viewModel.loadedScene = { [weak store, weak viewModel] scene in
+            store?.palette = palette(for: scene.scene)
+            store?.window = PlantMonitorWindowView(celestial: scene.scene == .night ? .moon : .sun)
+            store?.chips = makeChips(for: scene)
+            let buttons = makeButtons(for: scene.scene, viewModel: viewModel)
+            store?.primaryButton = buttons.primary
+            store?.secondaryButtons = buttons.secondary
         }
 
         viewModel.loadedError = { [weak store] error in
@@ -34,8 +53,58 @@ public enum PlantMonitorUIComposer {
         return PlantMonitorView(store: store, viewModel: viewModel)
     }
 
-    private static func makeCard(_ kind: PlantSensorKind, reading: PlantReading) -> PlantSensorCardView {
-        PlantSensorCardView(viewModel: PlantSensorCardViewModel(kind: kind, reading: reading))
+    private static func palette(for scene: PlantMonitorScene) -> PlantMonitorPalette {
+        switch scene {
+        case .day: .day
+        case .thirsty: .thirsty
+        case .night: .night
+        }
+    }
+
+    private static func makeChips(for scene: PlantMonitorSceneViewModel) -> [PlantSensorChipView] {
+        guard let reading = scene.reading else { return [] }
+        return scene.sensors.map { kind in
+            PlantSensorChipView(
+                kind: kind,
+                viewModel: PlantSensorCardViewModel(kind: kind, reading: reading),
+                isWarning: scene.warnings.contains(kind)
+            )
+        }
+    }
+
+    /// Water leads in the thirsty scene, Talk otherwise. History is always secondary.
+    private static func makeButtons(
+        for scene: PlantMonitorScene,
+        viewModel: PlantMonitorViewModel?
+    ) -> (primary: PlantMonitorButtonView, secondary: [PlantMonitorButtonView]) {
+        let talk = { (style: PlantMonitorButtonView.Style) in
+            PlantMonitorButtonView(
+                title: viewModel?.talkLabel ?? "",
+                systemImage: "mic.fill",
+                style: style,
+                accent: \.primary,
+                action: { [weak viewModel] in viewModel?.talkTap() }
+            )
+        }
+        let water = { (style: PlantMonitorButtonView.Style) in
+            PlantMonitorButtonView(
+                title: viewModel?.waterLabel ?? "",
+                systemImage: "drop.fill",
+                style: style,
+                accent: \.water,
+                action: { [weak viewModel] in viewModel?.waterTap() }
+            )
+        }
+        let history = PlantMonitorButtonView(
+            title: viewModel?.historyLabel ?? "",
+            systemImage: "chart.xyaxis.line",
+            style: .secondary,
+            accent: \.ink,
+            action: { [weak viewModel] in viewModel?.historyTap() }
+        )
+        return scene == .thirsty
+            ? (water(.primary), [talk(.secondary), history])
+            : (talk(.primary), [water(.secondary), history])
     }
 
     private static func makeError(

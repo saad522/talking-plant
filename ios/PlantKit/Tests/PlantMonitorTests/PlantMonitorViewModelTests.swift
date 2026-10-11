@@ -122,6 +122,7 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         var sut: PlantMonitorViewModel? = PlantMonitorViewModel(
             loader: LoaderStub(),
             healthLoader: healthLoader,
+            plantName: "Sprout",
             actionHandler: { _ in }
         )
         var received: [PlantMood] = []
@@ -143,9 +144,88 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         XCTAssertEqual(actions, [.historyTap])
     }
 
+    func test_talkTap_deliversTalkTapAction() {
+        var actions: [PlantMonitorAction] = []
+        let (sut, _, _) = makeSUT(actionHandler: { actions.append($0) })
+
+        sut.talkTap()
+
+        XCTAssertEqual(actions, [.talkTap])
+    }
+
+    func test_waterTap_deliversWaterTapAction() {
+        var actions: [PlantMonitorAction] = []
+        let (sut, _, _) = makeSUT(actionHandler: { actions.append($0) })
+
+        sut.waterTap()
+
+        XCTAssertEqual(actions, [.waterTap])
+    }
+
+    func test_init_hasLocalisedTalkAndWaterLabels() {
+        let (sut, _, _) = makeSUT()
+
+        XCTAssertEqual(sut.talkLabel, "Talk to Sprout")
+        XCTAssertEqual(sut.waterLabel, String.localised(key: "plant.monitor.water.label"))
+    }
+
+    func test_appear_doesNotDeliverSceneBeforeReadingOrMood() {
+        let (sut, _, _) = makeSUT()
+        var scenes: [PlantMonitorScene] = []
+        sut.loadedScene = { scenes.append($0.scene) }
+
+        sut.appear()
+
+        XCTAssertEqual(scenes, [])
+    }
+
+    func test_appear_deliversSceneOnReadingWithoutMood() {
+        let (sut, loader, _) = makeSUT()
+        var scenes: [PlantMonitorSceneViewModel] = []
+        sut.loadedScene = { scenes.append($0) }
+        let reading = makeReading(lux: 5)
+
+        sut.appear()
+        loader.completeSubscription(with: reading)
+
+        XCTAssertEqual(scenes.map(\.scene), [.night])
+        XCTAssertEqual(scenes.first?.reading, reading)
+    }
+
+    func test_appear_deliversSceneOnMoodWithoutReading() {
+        let (sut, _, healthLoader) = makeSUT()
+        var scenes: [PlantMonitorSceneViewModel] = []
+        sut.loadedScene = { scenes.append($0) }
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 40, issues: [.veryThirsty]))
+
+        XCTAssertEqual(scenes.map(\.scene), [.thirsty])
+        XCTAssertNil(scenes.first?.reading)
+    }
+
+    func test_sceneUsesLatestReadingAndMood() {
+        let (sut, loader, healthLoader) = makeSUT()
+        var scenes: [PlantMonitorSceneViewModel] = []
+        sut.loadedScene = { scenes.append($0) }
+        let bright = makeReading(lux: 1_000)
+        let dark = makeReading(lux: 2)
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        loader.completeSubscription(with: bright)
+        loader.completeSubscription(with: dark)
+        healthLoader.simulateUpdate()
+        healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []), at: 1)
+
+        XCTAssertEqual(scenes.map(\.scene), [.thirsty, .thirsty, .night, .night])
+        XCTAssertEqual(scenes.map(\.reading), [nil, bright, dark, dark])
+        XCTAssertEqual(scenes.last?.warnings, [])
+    }
+
     func test_appear_doesNotDeliverAfterSUTIsReleased() {
         let loader = LoaderStub()
-        var sut: PlantMonitorViewModel? = PlantMonitorViewModel(loader: loader, healthLoader: HealthLoaderStub(), actionHandler: { _ in })
+        var sut: PlantMonitorViewModel? = PlantMonitorViewModel(loader: loader, healthLoader: HealthLoaderStub(), plantName: "Sprout", actionHandler: { _ in })
         var received: [PlantReading] = []
         sut?.loadedReading = { received.append($0) }
 
@@ -165,7 +245,7 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
     ) -> (sut: PlantMonitorViewModel, loader: LoaderStub, healthLoader: HealthLoaderStub) {
         let loader = LoaderStub()
         let healthLoader = HealthLoaderStub()
-        let sut = PlantMonitorViewModel(loader: loader, healthLoader: healthLoader, actionHandler: actionHandler)
+        let sut = PlantMonitorViewModel(loader: loader, healthLoader: healthLoader, plantName: "Sprout", actionHandler: actionHandler)
         trackMemoryLeak(loader, file: file, line: line)
         trackMemoryLeak(healthLoader, file: file, line: line)
         trackMemoryLeak(sut, file: file, line: line)

@@ -7,20 +7,38 @@ extension PlantMonitorView where Face == FaceStub {
         (try? inspect().find(LoadingSkeletonView.self)) != nil
     }
 
-    var historyLabel: String? {
-        try? inspect().find(ViewType.Button.self).labelView().text().string()
+    var title: String? {
+        try? inspect().find(PlantMonitorHeaderView.self).actualView().title
+    }
+
+    var subtitle: String? {
+        try? inspect().find(PlantMonitorHeaderView.self).actualView().subtitle
+    }
+
+    var bubbleText: String? {
+        try? inspect().find(PlantSpeechBubbleView.self).actualView().text
+    }
+
+    var celestial: PlantMonitorWindowView.Celestial? {
+        try? inspect().find(PlantMonitorWindowView.self).actualView().celestial
     }
 
     func simulateAppear() {
         try? inspect().scrollView().callOnAppear()
     }
 
-    func simulateHistoryTap() {
-        try? inspect().find(ViewType.Button.self).tap()
+    func simulateTap(onButton title: String) {
+        let button = try? inspect().findAll(PlantMonitorButtonView.self)
+            .first { (try? $0.actualView().title) == title }
+        try? button?.find(ViewType.Button.self).tap()
     }
 
-    func renderedCards() -> [PlantSensorCardView] {
-        (try? inspect().findAll(PlantSensorCardView.self).map { try $0.actualView() }) ?? []
+    func renderedChips() -> [PlantSensorChipView] {
+        (try? inspect().findAll(PlantSensorChipView.self).map { try $0.actualView() }) ?? []
+    }
+
+    func renderedButtons() -> [PlantMonitorButtonView] {
+        (try? inspect().findAll(PlantMonitorButtonView.self).map { try $0.actualView() }) ?? []
     }
 
     func renderedError() -> PlantMonitorErrorView? {
@@ -29,9 +47,5 @@ extension PlantMonitorView where Face == FaceStub {
 
     func renderedFace() -> FaceStub? {
         try? inspect().find(FaceStub.self).actualView()
-    }
-
-    func renderedMoodLabel() -> String? {
-        try? inspect().find(PlantMoodView<FaceStub>.self).vStack().text(1).string()
     }
 }

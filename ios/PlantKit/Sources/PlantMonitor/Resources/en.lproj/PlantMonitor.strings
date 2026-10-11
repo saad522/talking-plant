@@ -20,3 +20,17 @@
 "plant.monitor.mood.tooCold.label" = "Too cold";
 "plant.monitor.mood.dryAir.label" = "Dry air";
 "plant.monitor.mood.offline.label" = "Offline";
+
+"plant.monitor.talk.label" = "Talk to %@";
+"plant.monitor.water.label" = "Water";
+"plant.monitor.header.subtitle" = "%@ · %@";
+
+"plant.monitor.mood.happy.speech" = "Feeling great today!";
+"plant.monitor.mood.thirsty.speech" = "I could use a drink soon.";
+"plant.monitor.mood.veryThirsty.speech" = "Water, please! I'm parched.";
+"plant.monitor.mood.drowning.speech" = "Too much water! Let me dry out.";
+"plant.monitor.mood.tooDark.speech" = "It's a bit dark in here.";
+"plant.monitor.mood.tooHot.speech" = "Phew, it's hot in here.";
+"plant.monitor.mood.tooCold.speech" = "Brr, I'm a little cold.";
+"plant.monitor.mood.dryAir.speech" = "The air feels so dry.";
+"plant.monitor.mood.offline.speech" = "Zzz… I can't feel my sensor.";

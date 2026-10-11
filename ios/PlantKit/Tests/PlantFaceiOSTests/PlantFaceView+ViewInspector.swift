@@ -1,15 +1,17 @@
-import PlantFace
 import PlantFaceiOS
 import SwiftUI
 import ViewInspector
 
 extension PlantFaceView {
-    func renderedEyes() -> [PlantFaceEyes] {
-        ((try? inspect().findAll(PlantFaceEyeView.self).map { try $0.actualView().eyes }) ?? [])
+    func renderedEyes() -> [PlantFaceEyeKind] {
+        (try? inspect().findAll(PlantFaceEyesView.self).map { try $0.actualView().kind }) ?? []
     }
 
-    func renderedMouth() -> (curve: Double, isOpen: Bool)? {
-        guard let mouth = try? inspect().find(PlantFaceMouthView.self).actualView() else { return nil }
-        return (mouth.curve, mouth.isOpen)
+    func renderedEffects() -> Set<PlantFaceEffect> {
+        Set((try? inspect().findAll(PlantFaceEffectView.self).map { try $0.actualView().effect }) ?? [])
+    }
+
+    func renderedSoil() -> [PlantFaceSoil] {
+        (try? inspect().findAll(PlantFaceSoilView.self).map { try $0.actualView().soil }) ?? []
     }
 }

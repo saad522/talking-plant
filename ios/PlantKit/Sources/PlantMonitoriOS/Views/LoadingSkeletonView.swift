@@ -1,17 +1,18 @@
 import SwiftUI
 
+/// Chip-shaped placeholders for the chip row.
 public struct LoadingSkeletonView: View {
+    @Environment(\.plantMonitorPalette) private var palette
+
     init() {}
 
     public var body: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-            ForEach(0..<4, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(PlantMonitorColor.cardBackground)
-                    .frame(height: 88)
+        HStack(spacing: PlantMonitorSize.chipSpacing) {
+            ForEach(0..<3, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: PlantMonitorSize.chipRadius)
+                    .fill(palette.card)
+                    .frame(height: PlantMonitorSize.chipHeight)
             }
         }
-        .padding(16)
-        .frame(maxHeight: .infinity, alignment: .top)
     }
 }

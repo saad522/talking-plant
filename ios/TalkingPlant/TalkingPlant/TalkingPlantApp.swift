@@ -50,8 +50,13 @@ struct TalkingPlantApp: App {
         monitor = PlantMonitorUIComposer.composed(
             with: readings,
             healthLoader: health,
+            plantName: "Sprout",
+            room: "Living room",
             face: PlantFaceUIComposer.composed,
             actionHandler: { [weak navigation] action in
+                #if DEBUG
+                if action == .waterTap { client.water() }
+                #endif
                 navigation?.handle(action)
             }
         )
@@ -115,7 +120,7 @@ final class AppNavigation: ObservableObject {
     func handle(_ action: PlantMonitorAction) {
         switch action {
         case .historyTap: path.append(.history)
-        case .dismissed: break
+        case .talkTap, .waterTap, .dismissed: break
         }
     }
 }

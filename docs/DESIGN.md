@@ -110,7 +110,9 @@ From top to bottom:
      20 / 20 / 20 / 6 (small corner bottom-left), 12 × 14 pt padding.
    - **Chips**: 3 equal columns, 8 pt gap, 12 pt from the scene edges and bottom,
      radius 16, `card` background. Each: icon + value on one row, label under it.
-     Moisture icon in `water`, light and temperature icons in `streak`.
+     Moisture icon in `water`, light and temperature icons in `streak`. With `dryAir`, the
+     third chip shows humidity in the warning style instead of temperature. Warning chips
+     (moisture when thirsty, humidity for dry air) use the warning tokens in every scene.
 3. **Actions** (20 pt side padding, 10 pt gap):
    - Primary pill button, 56 pt high: "Talk to <name>" with a mic icon (`primary`).
      In the thirsty scene the primary button becomes the water action (`water`) and
@@ -173,7 +175,8 @@ Default soil: `#6B4A35`. Top leaves for thirsty sit at `translate(120, 80)` inst
 
 **`PlantMood` → visual state:** happy → happy; thirsty, veryThirsty, dryAir → thirsty
 (veryThirsty may add 6° of extra tilt); tooHot → hot; tooCold → cold; tooDark, offline →
-asleep; drowning → overwatered. The mood label under the character still shows the exact
+asleep; drowning → overwatered. `dryAir` uses the thirsty pose with the default soil and
+no pot cracks, since it isn't a watering problem. The mood label under the character still shows the exact
 `PlantMood` text.
 
 ### 5.3 Effects

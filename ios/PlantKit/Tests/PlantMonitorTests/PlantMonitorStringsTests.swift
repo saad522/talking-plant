@@ -6,6 +6,9 @@ final class PlantMonitorStringsTests: PlantMonitorXCTestCase {
     func test_strings_haveValueForEveryKey() {
         let keys = [
             "plant.monitor.history.label",
+            "plant.monitor.talk.label",
+            "plant.monitor.water.label",
+            "plant.monitor.header.subtitle",
             "plant.monitor.moisture.title",
             "plant.monitor.light.title",
             "plant.monitor.temperature.title",
@@ -22,6 +25,15 @@ final class PlantMonitorStringsTests: PlantMonitorXCTestCase {
             "plant.monitor.mood.tooCold.label",
             "plant.monitor.mood.dryAir.label",
             "plant.monitor.mood.offline.label",
+            "plant.monitor.mood.happy.speech",
+            "plant.monitor.mood.thirsty.speech",
+            "plant.monitor.mood.veryThirsty.speech",
+            "plant.monitor.mood.drowning.speech",
+            "plant.monitor.mood.tooDark.speech",
+            "plant.monitor.mood.tooHot.speech",
+            "plant.monitor.mood.tooCold.speech",
+            "plant.monitor.mood.dryAir.speech",
+            "plant.monitor.mood.offline.speech",
         ]
 
         keys.forEach { key in

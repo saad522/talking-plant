@@ -830,7 +830,11 @@ enum PlantMonitorColor {
 }
 ```
 
-If a custom brand color is ever needed, propose how to add it first.
+**Fixed design colors are the exception** (DESIGN.md palettes). They are defined in code with
+`Color(hex:)` in the feature's style enums, never in an asset catalog. The palette is chosen
+by data (for example the monitor's scene), not by the system light / dark setting.
+
+If any other custom color is ever needed, propose how to add it first.
 
 ---
 

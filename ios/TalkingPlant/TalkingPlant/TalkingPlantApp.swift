@@ -21,7 +21,11 @@ struct TalkingPlantApp: App {
 
     init() {
         let store = Self.makeStore()
-        let client = SimulatedPeripheralClient(startDate: Self.simulatedStartDate(continuingFrom: store))
+        // The simulated clock continues from the last saved reading and the soil from its saved value.
+        let client = SimulatedPeripheralClient(
+            startDate: Self.simulatedStartDate(continuingFrom: store),
+            defaults: UserDefaultsClient()
+        )
         // Simulated mode: readings and the history range use the simulated clock.
         let currentDate = { client.currentDate }
 

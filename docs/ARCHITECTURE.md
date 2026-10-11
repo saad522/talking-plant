@@ -252,7 +252,7 @@ Implementations:
 |---|---|
 | `CoreBluetoothPeripheralClient` | The real sensor over Bluetooth (M6). |
 | `SimulatedPeripheralClient` | The fake plant used until the hardware arrives and as a demo mode. It produces **real 16-byte packets** per `BLE_CONTRACT.md`, so everything above it runs the exact production path. |
-| `DefaultsClient` (+ `UserDefaultsClient`) | Small key-value storage (calibration, preferences). |
+| `DefaultsClient` (+ `UserDefaultsClient`) | Small key-value storage (calibration, preferences, the simulated plant's soil value). |
 | `PlantReadingStore` (+ `SwiftDataPlantReadingStore`) | Reading history: insert, retrieve a date range, and notify subscribers after each insert. Keeps 30 days, measured from the newest reading (M3). |
 
 Because the simulated plant is a *client*, not a loader, there is one data path:

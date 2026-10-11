@@ -12,7 +12,7 @@ final class PlantHistoryChartViewModelTests: PlantHistoryXCTestCase {
         ]
 
         PlantHistoryMetric.allCases.forEach { metric in
-            XCTAssertEqual(PlantHistoryChartViewModel(metric: metric, samples: []).title, expected[metric], "\(metric)")
+            XCTAssertEqual(makeSUT(metric: metric, samples: []).title, expected[metric], "\(metric)")
         }
     }
 
@@ -23,8 +23,8 @@ final class PlantHistoryChartViewModelTests: PlantHistoryXCTestCase {
             makeSample(date: anyDate().addingTimeInterval(1_200), moisture: 44, lux: nil),
         ]
 
-        let moisture = PlantHistoryChartViewModel(metric: .moisture, samples: samples)
-        let light = PlantHistoryChartViewModel(metric: .light, samples: samples)
+        let moisture = makeSUT(metric: .moisture, samples: samples)
+        let light = makeSUT(metric: .light, samples: samples)
 
         XCTAssertEqual(moisture.points, [
             PlantHistoryChartPoint(date: anyDate(), value: 40),
@@ -42,7 +42,7 @@ final class PlantHistoryChartViewModelTests: PlantHistoryXCTestCase {
             makeSample(date: anyDate().addingTimeInterval(600), moisture: 42.4, lux: 1_199.6, temperature: 21.46, humidity: 60),
         ]
 
-        let values = PlantHistoryMetric.allCases.map { PlantHistoryChartViewModel(metric: $0, samples: samples).latestValue }
+        let values = PlantHistoryMetric.allCases.map { makeSUT(metric: $0, samples: samples).latestValue }
 
         XCTAssertEqual(values, ["42%", "1,200 lx", "21.5 °C", "60%"])
     }
@@ -50,9 +50,70 @@ final class PlantHistoryChartViewModelTests: PlantHistoryXCTestCase {
     func test_init_deliversPlaceholderWhenMetricHasNoValues() {
         let samples = [makeSample(moisture: nil, lux: nil, temperature: nil, humidity: nil)]
 
-        let values = PlantHistoryMetric.allCases.map { PlantHistoryChartViewModel(metric: $0, samples: samples).latestValue }
+        let values = PlantHistoryMetric.allCases.map { makeSUT(metric: $0, samples: samples).latestValue }
 
         XCTAssertEqual(values, ["–", "–", "–", "–"])
+    }
+
+    func test_yDomain_isFixedForMoistureFromZeroForLightAndFittedOtherwise() {
+        XCTAssertEqual(makeSUT(metric: .moisture).yDomain, .fixed(0...100))
+        XCTAssertEqual(makeSUT(metric: .light).yDomain, .automatic(includesZero: true))
+        XCTAssertEqual(makeSUT(metric: .temperature).yDomain, .automatic(includesZero: false))
+        XCTAssertEqual(makeSUT(metric: .humidity).yDomain, .automatic(includesZero: false))
+    }
+
+    func test_xDomain_coversWholeRangeEndingOneBucketAfterLatestSample() {
+        let samples = [makeSample(date: anyDate()), makeSample(date: anyDate().addingTimeInterval(600))]
+        let dayEnd = anyDate().addingTimeInterval(600 + 600)
+        let weekEnd = anyDate().addingTimeInterval(600 + 3_600)
+
+        XCTAssertEqual(makeSUT(samples: samples, range: .day).xDomain, dayEnd.addingTimeInterval(-24 * 3_600)...dayEnd)
+        XCTAssertEqual(makeSUT(samples: samples, range: .week).xDomain, weekEnd.addingTimeInterval(-7 * 24 * 3_600)...weekEnd)
+    }
+
+    func test_xDomain_isSameForMetricsWithMissingLatestValue() {
+        let samples = [makeSample(date: anyDate()), makeSample(date: anyDate().addingTimeInterval(600), moisture: nil)]
+
+        XCTAssertEqual(makeSUT(metric: .moisture, samples: samples).xDomain, makeSUT(metric: .light, samples: samples).xDomain)
+    }
+
+    func test_xDomain_isNilWithoutSamples() {
+        XCTAssertNil(makeSUT(samples: []).xDomain)
+    }
+
+    func test_xAxisStride_isSixHoursForDayAndOneDayForWeek() {
+        XCTAssertEqual(makeSUT(range: .day).xAxisStride, PlantHistoryAxisStride(component: .hour, count: 6))
+        XCTAssertEqual(makeSUT(range: .week).xAxisStride, PlantHistoryAxisStride(component: .day, count: 1))
+    }
+
+    func test_xAxisLabel_showsTwoDigitTwentyFourHourForDay() {
+        let sut = makeSUT(range: .day)
+
+        XCTAssertEqual(sut.xAxisLabel(for: anyDate()), "08")
+        XCTAssertEqual(sut.xAxisLabel(for: anyDate().addingTimeInterval(6 * 3_600)), "14")
+        XCTAssertEqual(sut.xAxisLabel(for: anyDate().addingTimeInterval(16 * 3_600)), "00")
+    }
+
+    func test_xAxisLabel_showsShortWeekdayForWeek() {
+        // 2026-01-01 is a Thursday.
+        let sut = makeSUT(range: .week)
+
+        XCTAssertEqual(sut.xAxisLabel(for: anyDate()), "Thu")
+        XCTAssertEqual(sut.xAxisLabel(for: anyDate().addingTimeInterval(24 * 3_600)), "Fri")
+    }
+
+    func test_xAxisLabel_usesCalendarTimeZone() {
+        var plusTwo = utcCalendar()
+        plusTwo.timeZone = TimeZone(secondsFromGMT: 2 * 3_600)!
+
+        XCTAssertEqual(makeSUT(range: .day, calendar: plusTwo).xAxisLabel(for: anyDate()), "10")
+    }
+
+    func test_yAxisLabel_usesFixedLocale() {
+        let sut = makeSUT(metric: .light)
+
+        XCTAssertEqual(sut.yAxisLabel(for: 2_000), "2,000")
+        XCTAssertEqual(sut.yAxisLabel(for: 22.5), "22.5")
     }
 
     func test_strings_haveValueForEveryKey() {
@@ -71,5 +132,22 @@ final class PlantHistoryChartViewModelTests: PlantHistoryXCTestCase {
         keys.forEach { key in
             XCTAssertNotEqual(String.localised(key: key), key, "Missing string for \(key)")
         }
+    }
+
+    // MARK: - Private helpers
+
+    private func makeSUT(
+        metric: PlantHistoryMetric = .moisture,
+        samples: [PlantHistorySample] = [],
+        range: PlantHistoryRange = .day,
+        calendar: Calendar? = nil
+    ) -> PlantHistoryChartViewModel {
+        PlantHistoryChartViewModel(metric: metric, samples: samples, range: range, calendar: calendar ?? utcCalendar())
+    }
+
+    private func utcCalendar() -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
     }
 }

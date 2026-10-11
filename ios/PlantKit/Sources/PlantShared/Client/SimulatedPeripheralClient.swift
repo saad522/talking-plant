@@ -4,6 +4,7 @@ import Foundation
 /// Soil slowly dries, light follows a day curve, temperature and humidity swing a little.
 /// Deterministic: the same ticks always produce the same packets.
 /// `currentDate` is the simulated clock; inject it as the loaders' `currentDate` in simulated mode.
+/// With `defaults`, the soil value is saved on every change and restored on the next launch.
 @MainActor
 public final class SimulatedPeripheralClient: PeripheralClient {
     /// Calls `tick` every `interval` seconds until `tick` returns `false`.
@@ -12,6 +13,8 @@ public final class SimulatedPeripheralClient: PeripheralClient {
     public enum Error: Swift.Error, Equatable {
         case unsupportedCharacteristic
     }
+
+    public static let soilMillivoltsKey = "simulated.soilMillivolts"
 
     static let wetMillivolts: Double = 1_100
     static let driestMillivolts: Double = 2_600
@@ -23,10 +26,16 @@ public final class SimulatedPeripheralClient: PeripheralClient {
     private let timeScale: Double
     private let schedule: Schedule
     private let calendar: Calendar
+    private let defaults: DefaultsClient?
 
     /// Simulated time of the latest reading. Advances by `tickInterval × timeScale` per tick.
     public private(set) var currentDate: Date
-    private var soilMillivolts = wetMillivolts
+    private var soilMillivolts: Double {
+        didSet {
+            guard soilMillivolts != oldValue else { return }
+            defaults?.set(soilMillivolts, forKey: Self.soilMillivoltsKey)
+        }
+    }
     private var sequence: UInt32 = 0
     private var subscriptions: [(PeripheralClient.Result) -> Void] = []
     private var isTicking = false
@@ -36,19 +45,24 @@ public final class SimulatedPeripheralClient: PeripheralClient {
     ///   - timeScale: Simulated seconds per real second. 720 = one simulated hour every 5 seconds.
     ///   - startDate: Simulated time of the first reading.
     ///   - calendar: Gives the local hour of day for the day curve.
+    ///   - defaults: Saves and restores the soil value. `nil` starts wet every time.
     ///   - schedule: Drives the ticks. Tests inject their own to tick without waiting.
     public init(
         tickInterval: TimeInterval = 2,
         timeScale: Double = 720,
         startDate: Date = SimulatedPeripheralClient.defaultStartDate(),
         calendar: Calendar = .current,
+        defaults: DefaultsClient? = nil,
         schedule: @escaping Schedule = SimulatedPeripheralClient.repeatingTimer
     ) {
         self.tickInterval = tickInterval
         self.timeScale = timeScale
         self.currentDate = startDate
         self.calendar = calendar
+        self.defaults = defaults
         self.schedule = schedule
+        let saved = defaults?.retrieve(forKey: Self.soilMillivoltsKey) ?? Self.wetMillivolts
+        self.soilMillivolts = min(max(saved, Self.wetMillivolts), Self.driestMillivolts)
     }
 
     public func read(_ characteristic: PlantCharacteristic, completion: @escaping (PeripheralClient.Result) -> Void) {

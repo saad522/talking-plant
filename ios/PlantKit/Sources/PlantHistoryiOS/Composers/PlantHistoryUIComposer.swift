@@ -12,12 +12,15 @@ public enum PlantHistoryUIComposer {
         }
 
         viewModel.loadedSamples = { [weak store] samples in
-            store?.loading = nil
-            store?.message = nil
-            store?.moisture = makeChart(.moisture, samples: samples)
-            store?.light = makeChart(.light, samples: samples)
-            store?.temperature = makeChart(.temperature, samples: samples)
-            store?.humidity = makeChart(.humidity, samples: samples)
+            guard let store else { return }
+            // loadedRange always arrives before the samples for that range.
+            let range = store.selectedRange
+            store.loading = nil
+            store.message = nil
+            store.moisture = makeChart(.moisture, samples: samples, range: range)
+            store.light = makeChart(.light, samples: samples, range: range)
+            store.temperature = makeChart(.temperature, samples: samples, range: range)
+            store.humidity = makeChart(.humidity, samples: samples, range: range)
         }
 
         viewModel.loadedEmpty = { [weak store] description in
@@ -34,8 +37,12 @@ public enum PlantHistoryUIComposer {
         return PlantHistoryView(store: store, viewModel: viewModel)
     }
 
-    private static func makeChart(_ metric: PlantHistoryMetric, samples: [PlantHistorySample]) -> PlantHistoryChartView {
-        PlantHistoryChartView(viewModel: PlantHistoryChartViewModel(metric: metric, samples: samples))
+    private static func makeChart(
+        _ metric: PlantHistoryMetric,
+        samples: [PlantHistorySample],
+        range: PlantHistoryRange
+    ) -> PlantHistoryChartView {
+        PlantHistoryChartView(viewModel: PlantHistoryChartViewModel(metric: metric, samples: samples, range: range))
     }
 }
 

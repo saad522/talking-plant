@@ -180,6 +180,75 @@ final class SimulatedPeripheralClientTests: PlantSharedXCTestCase {
         XCTAssertEqual(start, morningDate())
     }
 
+    func test_init_restoresSavedSoil() {
+        let defaults = DefaultsSpy()
+        defaults.stub(2_000, forKey: SimulatedPeripheralClient.soilMillivoltsKey)
+        let (sut, _) = makeSUT(defaults: defaults)
+
+        XCTAssertEqual(read(sut)?.soilMillivolts, 2_000)
+        XCTAssertEqual(defaults.messages, [.retrieve(forKey: SimulatedPeripheralClient.soilMillivoltsKey)])
+    }
+
+    func test_init_startsWetWithoutSavedSoil() {
+        let (sut, _) = makeSUT(defaults: DefaultsSpy())
+
+        XCTAssertEqual(read(sut)?.soilMillivolts, 1_100)
+    }
+
+    func test_init_clampsSavedSoilToSimulatedRange() {
+        let tooDry = DefaultsSpy()
+        tooDry.stub(9_999, forKey: SimulatedPeripheralClient.soilMillivoltsKey)
+        let tooWet = DefaultsSpy()
+        tooWet.stub(0, forKey: SimulatedPeripheralClient.soilMillivoltsKey)
+
+        XCTAssertEqual(read(makeSUT(defaults: tooDry).sut)?.soilMillivolts, 2_600)
+        XCTAssertEqual(read(makeSUT(defaults: tooWet).sut)?.soilMillivolts, 1_100)
+    }
+
+    func test_tick_savesSoilWhenItChanges() {
+        let defaults = DefaultsSpy()
+        let (sut, schedule) = makeSUT(defaults: defaults)
+        _ = subscribe(sut)
+
+        schedule.tick(times: 2)
+
+        XCTAssertEqual(defaults.messages, [
+            .retrieve(forKey: SimulatedPeripheralClient.soilMillivoltsKey),
+            .set(1_118, forKey: SimulatedPeripheralClient.soilMillivoltsKey),
+            .set(1_136, forKey: SimulatedPeripheralClient.soilMillivoltsKey),
+        ])
+    }
+
+    func test_tick_doesNotSaveSoilOnceAtDriestValue() {
+        let defaults = DefaultsSpy()
+        defaults.stub(2_600, forKey: SimulatedPeripheralClient.soilMillivoltsKey)
+        let (sut, schedule) = makeSUT(defaults: defaults)
+        _ = subscribe(sut)
+
+        schedule.tick(times: 3)
+
+        XCTAssertEqual(defaults.messages, [.retrieve(forKey: SimulatedPeripheralClient.soilMillivoltsKey)])
+    }
+
+    func test_water_savesWetSoil() {
+        let defaults = DefaultsSpy()
+        defaults.stub(2_000, forKey: SimulatedPeripheralClient.soilMillivoltsKey)
+        let (sut, _) = makeSUT(defaults: defaults)
+
+        sut.water()
+
+        XCTAssertEqual(defaults.messages.last, .set(1_100, forKey: SimulatedPeripheralClient.soilMillivoltsKey))
+    }
+
+    func test_read_doesNotSaveSoil() {
+        let defaults = DefaultsSpy()
+        let (sut, _) = makeSUT(defaults: defaults)
+
+        _ = read(sut)
+
+        XCTAssertEqual(defaults.messages, [.retrieve(forKey: SimulatedPeripheralClient.soilMillivoltsKey)])
+    }
+
     func test_write_deliversUnsupportedCharacteristicError() {
         let (sut, _) = makeSUT()
 
@@ -242,6 +311,7 @@ final class SimulatedPeripheralClientTests: PlantSharedXCTestCase {
         timeScale: Double = 3_600,
         startDate: Date? = nil,
         calendar: Calendar? = nil,
+        defaults: DefaultsClient? = nil,
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (sut: SimulatedPeripheralClient, schedule: ScheduleSpy) {
@@ -251,6 +321,7 @@ final class SimulatedPeripheralClientTests: PlantSharedXCTestCase {
             timeScale: timeScale,
             startDate: startDate ?? morningDate(),
             calendar: calendar ?? utcCalendar(),
+            defaults: defaults,
             schedule: schedule.schedule
         )
         trackMemoryLeak(schedule, file: file, line: line)

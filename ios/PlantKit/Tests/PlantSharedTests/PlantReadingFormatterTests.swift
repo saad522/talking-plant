@@ -22,6 +22,13 @@ final class PlantReadingFormatterTests: PlantSharedXCTestCase {
         XCTAssertEqual(PlantReadingFormatter.temperature(-10.5), "-10.5 °C")
     }
 
+    func test_number_usesFixedLocaleSeparators() {
+        XCTAssertEqual(PlantReadingFormatter.number(0), "0")
+        XCTAssertEqual(PlantReadingFormatter.number(2_000), "2,000")
+        XCTAssertEqual(PlantReadingFormatter.number(22.5), "22.5")
+        XCTAssertEqual(PlantReadingFormatter.number(-1.25), "-1.25")
+    }
+
     func test_formatters_deliverPlaceholderOnNil() {
         XCTAssertEqual(PlantReadingFormatter.percent(nil), "–")
         XCTAssertEqual(PlantReadingFormatter.lux(nil), "–")

@@ -76,6 +76,30 @@ class PlantSharedXCTestCase: XCTestCase {
     }
 
     @MainActor
+    final class DefaultsSpy: DefaultsClient {
+        enum Message: Equatable {
+            case set(Double, forKey: String)
+            case retrieve(forKey: String)
+        }
+
+        private(set) var messages: [Message] = []
+        private var stubbed: [String: Double] = [:]
+
+        func stub(_ value: Double, forKey key: String) {
+            stubbed[key] = value
+        }
+
+        func set(_ value: Double, forKey key: String) {
+            messages.append(.set(value, forKey: key))
+        }
+
+        func retrieve(forKey key: String) -> Double? {
+            messages.append(.retrieve(forKey: key))
+            return stubbed[key]
+        }
+    }
+
+    @MainActor
     final class ScheduleSpy {
         private(set) var intervals: [TimeInterval] = []
         private var ticks: [@MainActor @Sendable () -> Bool] = []

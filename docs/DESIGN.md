@@ -214,3 +214,28 @@ no pot cracks, since it isn't a watering problem. The mood label under the chara
 - The final character will be a **Rive** file with a state machine whose input is the
   visual state above; the SwiftUI drawing is the placeholder until then and must keep
   the same states.
+
+---
+
+## 6. Talk screen
+
+Opened by "Talk to <name>" on the home screen.
+
+- **Background:** day `background` in light mode, night tokens in dark mode.
+- **Header:** a 44 pt round back button (`card` color), the plant name (22, heavy), and
+  under it the mood label (14, bold, `inkSecondary`).
+- **Sprout:** large and centered at the top (about 180–230 pt wide), with no scene card.
+  The messages scroll below it.
+- **Plant bubbles:** left-aligned, `card` background, radius 20 / 20 / 20 / 6 (small corner
+  bottom-left), max width 290, text 16 bold with line height ~1.35, 12 × 14 pt padding,
+  10 pt between bubbles.
+- **Your bubbles:** right-aligned, radius 20 / 20 / 6 / 20 (small corner bottom-right),
+  max width 250. The background is the screen's `ink` color: in light mode `#1F2A24` with
+  white text, in dark mode `#EEF2F6` with `#1F2A24` text.
+- **Personality button:** a 44 pt round `card` button with the sliders icon on the right
+  of the header. It opens a menu of personalities with a checkmark on the current one.
+- **Unavailable notice:** when the on-device model is unavailable, a small `card` row under
+  the Sprout says the voice needs Apple Intelligence and replies are simple for now.
+- **Bottom (M5):** a text field with a round send button.
+- **Bottom (M5b):** the voice controls replace the text field: a 56 pt keyboard button, an
+  84 pt mic button (`primary`, 6 pt `#CFE6C8` border), and a 56 pt end button (`ink`).

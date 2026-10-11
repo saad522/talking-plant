@@ -247,4 +247,29 @@ class PlantMonitorXCTestCase: XCTestCase {
             ticks[index]()
         }
     }
+
+    @MainActor
+    final class SpeechLoaderStub: PlantSpeechLoader {
+        struct Message: Equatable {
+            let mood: PlantMood
+            let isSleeping: Bool
+            let reading: PlantReading?
+        }
+
+        var messages: [Message] = []
+
+        private var completions: [(PlantSpeechLoader.Result) -> Void] = []
+        func load(mood: PlantMood, isSleeping: Bool, reading: PlantReading?, completion: @escaping (PlantSpeechLoader.Result) -> Void) {
+            messages.append(Message(mood: mood, isSleeping: isSleeping, reading: reading))
+            completions.append(completion)
+        }
+
+        func completeLoad(with line: String, at index: Int = 0) {
+            completions[index](.success(line))
+        }
+
+        func completeLoad(with error: Error, at index: Int = 0) {
+            completions[index](.failure(error))
+        }
+    }
 }

@@ -80,13 +80,20 @@ class PlantSharedXCTestCase: XCTestCase {
         enum Message: Equatable {
             case set(Double, forKey: String)
             case retrieve(forKey: String)
+            case setString(String, forKey: String)
+            case retrieveString(forKey: String)
         }
 
         private(set) var messages: [Message] = []
         private var stubbed: [String: Double] = [:]
+        private var stubbedStrings: [String: String] = [:]
 
         func stub(_ value: Double, forKey key: String) {
             stubbed[key] = value
+        }
+
+        func stub(_ value: String, forKey key: String) {
+            stubbedStrings[key] = value
         }
 
         func set(_ value: Double, forKey key: String) {
@@ -96,6 +103,15 @@ class PlantSharedXCTestCase: XCTestCase {
         func retrieve(forKey key: String) -> Double? {
             messages.append(.retrieve(forKey: key))
             return stubbed[key]
+        }
+
+        func set(_ value: String, forKey key: String) {
+            messages.append(.setString(value, forKey: key))
+        }
+
+        func retrieveString(forKey key: String) -> String? {
+            messages.append(.retrieveString(forKey: key))
+            return stubbedStrings[key]
         }
     }
 

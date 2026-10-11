@@ -26,6 +26,37 @@ final class UserDefaultsClientTests: PlantSharedXCTestCase {
         XCTAssertEqual(UserDefaultsClient(defaults: defaults).retrieve(forKey: "soil"), 2_000)
     }
 
+    func test_retrieveString_deliversNilForMissingKey() {
+        let sut = makeSUT()
+
+        XCTAssertNil(sut.retrieveString(forKey: "missing"))
+    }
+
+    func test_retrieveString_deliversLastSetValue() {
+        let sut = makeSUT()
+
+        sut.set("cheerful", forKey: "personality")
+        sut.set("dramatic", forKey: "personality")
+
+        XCTAssertEqual(sut.retrieveString(forKey: "personality"), "dramatic")
+    }
+
+    func test_setString_persistsAcrossInstancesSharingDefaults() {
+        let defaults = makeDefaults()
+
+        UserDefaultsClient(defaults: defaults).set("dramatic", forKey: "personality")
+
+        XCTAssertEqual(UserDefaultsClient(defaults: defaults).retrieveString(forKey: "personality"), "dramatic")
+    }
+
+    func test_retrieveString_doesNotDeliverDoubleStoredUnderSameKey() {
+        let sut = makeSUT()
+
+        sut.set(1.5, forKey: "key")
+
+        XCTAssertNil(sut.retrieveString(forKey: "key"))
+    }
+
     // MARK: - Private helpers
 
     private func makeSUT(file: StaticString = #filePath, line: UInt = #line) -> UserDefaultsClient {

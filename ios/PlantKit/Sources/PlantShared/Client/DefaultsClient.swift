@@ -5,4 +5,6 @@ import Foundation
 public protocol DefaultsClient {
     func set(_ value: Double, forKey key: String)
     func retrieve(forKey key: String) -> Double?
+    func set(_ value: String, forKey key: String)
+    func retrieveString(forKey key: String) -> String?
 }

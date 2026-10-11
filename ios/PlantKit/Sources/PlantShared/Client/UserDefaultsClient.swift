@@ -15,4 +15,12 @@ public final class UserDefaultsClient: DefaultsClient {
     public func retrieve(forKey key: String) -> Double? {
         defaults.object(forKey: key) as? Double
     }
+
+    public func set(_ value: String, forKey key: String) {
+        defaults.set(value, forKey: key)
+    }
+
+    public func retrieveString(forKey key: String) -> String? {
+        defaults.object(forKey: key) as? String
+    }
 }

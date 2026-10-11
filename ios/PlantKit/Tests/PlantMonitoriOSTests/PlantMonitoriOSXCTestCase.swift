@@ -16,6 +16,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         let sut = PlantMonitorUIComposer.composed(
             with: loader,
             healthLoader: healthLoader,
+            speechLoader: SpeechLoaderStub(),
             plantName: "Sprout",
             room: "Living room",
             face: { FaceStub(mood: $0) },
@@ -54,6 +55,12 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         addTeardownBlock { [weak instance] in
             XCTAssertNil(instance, "Instance should be deallocated. Potential memory leak", file: file, line: line)
         }
+    }
+
+    /// Never completes, so the bubble keeps the template line.
+    @MainActor
+    final class SpeechLoaderStub: PlantSpeechLoader {
+        func load(mood: PlantMood, isSleeping: Bool, reading: PlantReading?, completion: @escaping (PlantSpeechLoader.Result) -> Void) {}
     }
 
     @MainActor

@@ -1,0 +1,38 @@
+/* PlantChat strings. Keys follow plant.chat.<thing>.<kind>. */
+
+"plant.chat.personality.cheerful.label" = "Cheerful";
+"plant.chat.personality.dramatic.label" = "Dramatic";
+"plant.chat.personality.grumpyGrandma.label" = "Grumpy grandma";
+"plant.chat.personality.chillSurfer.label" = "Chill surfer";
+"plant.chat.personality.politeButler.label" = "Polite butler";
+
+"plant.chat.mood.happy.label" = "Happy";
+"plant.chat.mood.thirsty.label" = "Thirsty";
+"plant.chat.mood.veryThirsty.label" = "Very thirsty";
+"plant.chat.mood.drowning.label" = "Drowning";
+"plant.chat.mood.tooDark.label" = "Too dark";
+"plant.chat.mood.tooHot.label" = "Too hot";
+"plant.chat.mood.tooCold.label" = "Too cold";
+"plant.chat.mood.dryAir.label" = "Dry air";
+"plant.chat.mood.offline.label" = "Offline";
+
+"plant.chat.mood.happy.speech" = "Feeling great today!";
+"plant.chat.mood.thirsty.speech" = "I could use a drink soon.";
+"plant.chat.mood.veryThirsty.speech" = "Water, please! I'm parched.";
+"plant.chat.mood.drowning.speech" = "Too much water! Let me dry out.";
+"plant.chat.mood.tooDark.speech" = "It's a bit dark in here.";
+"plant.chat.mood.tooHot.speech" = "Phew, it's hot in here.";
+"plant.chat.mood.tooCold.speech" = "Brr, I'm a little cold.";
+"plant.chat.mood.dryAir.speech" = "The air feels so dry.";
+"plant.chat.mood.offline.speech" = "Zzz… I can't feel my sensor.";
+"plant.chat.sleeping.speech" = "Zzz… see you at sunrise.";
+
+"plant.chat.greeting.speech" = "Hi! Ask me anything.";
+
+"plant.chat.reply.status" = "Right now: %@.";
+"plant.chat.reply.moisture" = "moisture %@";
+"plant.chat.reply.light" = "light %@";
+"plant.chat.reply.temperature" = "temperature %@";
+"plant.chat.reply.humidity" = "humidity %@";
+"plant.chat.reply.noReadings" = "I don't have any readings yet.";
+"plant.chat.reply.unknown" = "I can't feel my sensor right now.";

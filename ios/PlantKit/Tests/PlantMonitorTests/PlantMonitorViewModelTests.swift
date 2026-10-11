@@ -68,7 +68,7 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
     func test_appear_deliversMoodOfLoadedHealth() {
         let (sut, _, healthLoader) = makeSUT()
         var received: [PlantMood] = []
-        sut.loadedMood = { received.append($0) }
+        sut.loadedScene = { received.append(contentsOf: [$0.mood].compactMap { $0 }) }
 
         sut.appear()
         healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
@@ -79,7 +79,7 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
     func test_appear_deliversHappyMoodWithoutIssues() {
         let (sut, _, healthLoader) = makeSUT()
         var received: [PlantMood] = []
-        sut.loadedMood = { received.append($0) }
+        sut.loadedScene = { received.append(contentsOf: [$0.mood].compactMap { $0 }) }
 
         sut.appear()
         healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []))
@@ -90,7 +90,7 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
     func test_healthUpdate_loadsHealthAgain() {
         let (sut, _, healthLoader) = makeSUT()
         var received: [PlantMood] = []
-        sut.loadedMood = { received.append($0) }
+        sut.loadedScene = { received.append(contentsOf: [$0.mood].compactMap { $0 }) }
 
         sut.appear()
         healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []))
@@ -105,7 +105,7 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         let (sut, _, healthLoader) = makeSUT()
         var moods: [PlantMood] = []
         var errors: [Error] = []
-        sut.loadedMood = { moods.append($0) }
+        sut.loadedScene = { moods.append(contentsOf: [$0.mood].compactMap { $0 }) }
         sut.loadedError = { errors.append($0) }
 
         sut.appear()
@@ -122,11 +122,12 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         var sut: PlantMonitorViewModel? = PlantMonitorViewModel(
             loader: LoaderStub(),
             healthLoader: healthLoader,
+            speechLoader: SpeechLoaderStub(),
             plantName: "Sprout",
             actionHandler: { _ in }
         )
         var received: [PlantMood] = []
-        sut?.loadedMood = { received.append($0) }
+        sut?.loadedScene = { received.append(contentsOf: [$0.mood].compactMap { $0 }) }
 
         sut?.appear()
         sut = nil
@@ -225,7 +226,7 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
 
     func test_appear_doesNotDeliverAfterSUTIsReleased() {
         let loader = LoaderStub()
-        var sut: PlantMonitorViewModel? = PlantMonitorViewModel(loader: loader, healthLoader: HealthLoaderStub(), plantName: "Sprout", actionHandler: { _ in })
+        var sut: PlantMonitorViewModel? = PlantMonitorViewModel(loader: loader, healthLoader: HealthLoaderStub(), speechLoader: SpeechLoaderStub(), plantName: "Sprout", actionHandler: { _ in })
         var received: [PlantReading] = []
         sut?.loadedReading = { received.append($0) }
 
@@ -236,6 +237,142 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         XCTAssertEqual(received, [])
     }
 
+    // MARK: - Speech
+
+    func test_appear_doesNotLoadSpeechBeforeMood() {
+        let (sut, loader, _, speechLoader) = makeSUTWithSpeech()
+
+        sut.appear()
+        loader.completeSubscription(with: makeReading())
+
+        XCTAssertEqual(speechLoader.messages, [])
+    }
+
+    func test_mood_deliversTemplateLineAtOnceAndAsksSpeechLoader() {
+        let (sut, loader, healthLoader, speechLoader) = makeSUTWithSpeech()
+        var lines: [String] = []
+        sut.loadedSpeech = { lines.append($0) }
+        let reading = makeReading()
+
+        sut.appear()
+        loader.completeSubscription(with: reading)
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+
+        XCTAssertEqual(lines, [PlantMoodViewModel(mood: .thirsty).speech])
+        XCTAssertEqual(speechLoader.messages, [.init(mood: .thirsty, isSleeping: false, reading: reading)])
+    }
+
+    func test_speechLoad_deliversGeneratedLineAfterTemplate() {
+        let (sut, _, healthLoader, speechLoader) = makeSUTWithSpeech()
+        var lines: [String] = []
+        sut.loadedSpeech = { lines.append($0) }
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        speechLoader.completeLoad(with: "Got any water?")
+
+        XCTAssertEqual(lines, [PlantMoodViewModel(mood: .thirsty).speech, "Got any water?"])
+    }
+
+    func test_speechLoadFailure_keepsTemplateLine() {
+        let (sut, _, healthLoader, speechLoader) = makeSUTWithSpeech()
+        var lines: [String] = []
+        sut.loadedSpeech = { lines.append($0) }
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        speechLoader.completeLoad(with: anyNSError())
+
+        XCTAssertEqual(lines, [PlantMoodViewModel(mood: .thirsty).speech])
+    }
+
+    func test_speechLoad_ignoresResultForStaleKey() {
+        let (sut, _, healthLoader, speechLoader) = makeSUTWithSpeech()
+        var lines: [String] = []
+        sut.loadedSpeech = { lines.append($0) }
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        healthLoader.simulateUpdate()
+        healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []), at: 1)
+        speechLoader.completeLoad(with: "Stale thirsty line", at: 0)
+
+        XCTAssertEqual(lines, [PlantMoodViewModel(mood: .thirsty).speech, PlantMoodViewModel(mood: .happy).speech])
+    }
+
+    func test_sceneChange_loadsSpeechAgain() {
+        let (sut, loader, healthLoader, speechLoader) = makeSUTWithSpeech()
+        let bright = makeReading(lux: 1_000)
+        let dark = makeReading(lux: 2)
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []))
+        loader.completeSubscription(with: bright)
+        loader.completeSubscription(with: dark)
+
+        XCTAssertEqual(speechLoader.messages.map(\.isSleeping), [false, true])
+    }
+
+    func test_sceneChange_deliversSleepingTemplateLine() {
+        let (sut, loader, healthLoader, _) = makeSUTWithSpeech()
+        var lines: [String] = []
+        sut.loadedSpeech = { lines.append($0) }
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []))
+        loader.completeSubscription(with: makeReading(lux: 2))
+
+        XCTAssertEqual(lines, [PlantMoodViewModel(mood: .happy).speech, String.localised(key: "plant.monitor.sleeping.speech")])
+    }
+
+    func test_moodChange_loadsSpeechAgain() {
+        let (sut, _, healthLoader, speechLoader) = makeSUTWithSpeech()
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []))
+        healthLoader.simulateUpdate()
+        healthLoader.completeLoad(with: PlantHealth(score: 40, issues: [.tooHot]), at: 1)
+
+        XCTAssertEqual(speechLoader.messages.map(\.mood), [.happy, .tooHot])
+    }
+
+    func test_newReadingWithSameKey_doesNotLoadSpeechAgain() {
+        let (sut, loader, healthLoader, speechLoader) = makeSUTWithSpeech()
+        var lines: [String] = []
+        sut.loadedSpeech = { lines.append($0) }
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []))
+        loader.completeSubscription(with: makeReading(sequence: 1))
+        loader.completeSubscription(with: makeReading(sequence: 2))
+        healthLoader.simulateUpdate()
+        healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []), at: 1)
+
+        XCTAssertEqual(speechLoader.messages.count, 1)
+        XCTAssertEqual(lines.count, 1)
+    }
+
+    func test_speechLoad_doesNotDeliverAfterSUTIsReleased() {
+        let healthLoader = HealthLoaderStub()
+        let speechLoader = SpeechLoaderStub()
+        var sut: PlantMonitorViewModel? = PlantMonitorViewModel(
+            loader: LoaderStub(),
+            healthLoader: healthLoader,
+            speechLoader: speechLoader,
+            plantName: "Sprout",
+            actionHandler: { _ in }
+        )
+        var lines: [String] = []
+        sut?.loadedSpeech = { lines.append($0) }
+
+        sut?.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []))
+        sut = nil
+        speechLoader.completeLoad(with: "Late line")
+
+        XCTAssertEqual(lines, [PlantMoodViewModel(mood: .happy).speech])
+    }
+
     // MARK: - Private helpers
 
     private func makeSUT(
@@ -243,12 +380,29 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (sut: PlantMonitorViewModel, loader: LoaderStub, healthLoader: HealthLoaderStub) {
+        let (sut, loader, healthLoader, _) = makeSUTWithSpeech(actionHandler: actionHandler, file: file, line: line)
+        return (sut, loader, healthLoader)
+    }
+
+    private func makeSUTWithSpeech(
+        actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> (sut: PlantMonitorViewModel, loader: LoaderStub, healthLoader: HealthLoaderStub, speechLoader: SpeechLoaderStub) {
         let loader = LoaderStub()
         let healthLoader = HealthLoaderStub()
-        let sut = PlantMonitorViewModel(loader: loader, healthLoader: healthLoader, plantName: "Sprout", actionHandler: actionHandler)
+        let speechLoader = SpeechLoaderStub()
+        let sut = PlantMonitorViewModel(
+            loader: loader,
+            healthLoader: healthLoader,
+            speechLoader: speechLoader,
+            plantName: "Sprout",
+            actionHandler: actionHandler
+        )
         trackMemoryLeak(loader, file: file, line: line)
         trackMemoryLeak(healthLoader, file: file, line: line)
+        trackMemoryLeak(speechLoader, file: file, line: line)
         trackMemoryLeak(sut, file: file, line: line)
-        return (sut, loader, healthLoader)
+        return (sut, loader, healthLoader, speechLoader)
     }
 }

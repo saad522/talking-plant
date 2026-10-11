@@ -25,6 +25,7 @@ let package = Package(
         .target(name: "PlantDevice", dependencies: ["PlantShared"]),
         .target(name: "PlantHistory", dependencies: ["PlantShared"], resources: [.process("Resources")]),
         .target(name: "PlantHistoryiOS", dependencies: ["PlantHistory", "PlantShared"]),
+        .target(name: "PlantChat", dependencies: ["PlantShared"], resources: [.process("Resources")]),
         .target(name: "PlantFace", dependencies: ["PlantShared"]),
         .target(name: "PlantFaceiOS", dependencies: ["PlantFace", "PlantShared"]),
         .testTarget(name: "PlantSharedTests", dependencies: ["PlantShared"]),
@@ -39,6 +40,7 @@ let package = Package(
             name: "PlantHistoryiOSTests",
             dependencies: ["PlantHistoryiOS", "PlantHistory", "PlantShared", "ViewInspector"]
         ),
+        .testTarget(name: "PlantChatTests", dependencies: ["PlantChat", "PlantShared"]),
         .testTarget(name: "PlantFaceTests", dependencies: ["PlantFace", "PlantShared"]),
         .testTarget(
             name: "PlantFaceiOSTests",

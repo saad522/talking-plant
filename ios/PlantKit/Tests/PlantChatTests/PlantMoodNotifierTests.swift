@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class PlantMoodNotifierTests: PlantChatXCTestCase {
-    private let key = "plant.chat.notification.lastDate"
+    private func key(_ mood: PlantMood) -> String { "plant.chat.notification.lastDate.\(mood)" }
 
     func test_init_doesNotMessageCollaborators() {
         let sut = makeSUT()
@@ -121,29 +121,68 @@ final class PlantMoodNotifierTests: PlantChatXCTestCase {
 
         sut.changeMood(from: makeFacts(mood: .happy), to: makeFacts(mood: .thirsty))
 
-        XCTAssertTrue(sut.defaults.messages.contains(.set(now.timeIntervalSince1970, forKey: key)))
+        XCTAssertTrue(sut.defaults.messages.contains(.set(now.timeIntervalSince1970, forKey: key(.thirsty))))
     }
 
-    func test_moodChangeInsideInterval_doesNotNotify() {
+    func test_sameMoodInsideInterval_doesNotNotify() {
         var now = anyDate()
         let sut = makeSUT(now: { now })
         sut.changeMood(from: makeFacts(mood: .happy), to: makeFacts(mood: .thirsty))
 
         now = now.addingTimeInterval(3_599)
         sut.factsLoader.simulateUpdate()
-        sut.factsLoader.completeLoad(with: makeFacts(mood: .tooCold), at: 2)
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .happy), at: 2)
+        sut.factsLoader.simulateUpdate()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .thirsty), at: 3)
 
         XCTAssertEqual(sut.lineLoader.requests.count, 1)
     }
 
-    func test_moodChangeAtAndAfterInterval_notifiesAgain() {
+    func test_sameMoodAtAndAfterInterval_notifiesAgain() {
         var now = anyDate()
         let sut = makeSUT(now: { now })
         sut.changeMood(from: makeFacts(mood: .happy), to: makeFacts(mood: .thirsty))
 
         now = now.addingTimeInterval(3_600)
         sut.factsLoader.simulateUpdate()
-        sut.factsLoader.completeLoad(with: makeFacts(mood: .tooCold), at: 2)
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .happy), at: 2)
+        sut.factsLoader.simulateUpdate()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .thirsty), at: 3)
+
+        XCTAssertEqual(sut.lineLoader.requests.count, 2)
+    }
+
+    func test_escalationInsideInterval_notifies() {
+        let now = anyDate()
+        let sut = makeSUT(now: { now })
+        sut.changeMood(from: makeFacts(mood: .happy), to: makeFacts(mood: .thirsty))
+
+        sut.factsLoader.simulateUpdate()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .veryThirsty), at: 2)
+
+        XCTAssertEqual(sut.lineLoader.requests.count, 2)
+        XCTAssertTrue(sut.defaults.messages.contains(.set(now.timeIntervalSince1970, forKey: key(.veryThirsty))))
+    }
+
+    func test_deEscalationToRecentlyNotifiedMood_doesNotNotify() {
+        let now = anyDate()
+        let sut = makeSUT(now: { now })
+        sut.changeMood(from: makeFacts(mood: .happy), to: makeFacts(mood: .thirsty))
+        sut.factsLoader.simulateUpdate()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .veryThirsty), at: 2)
+
+        sut.factsLoader.simulateUpdate()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .thirsty), at: 3)
+
+        XCTAssertEqual(sut.lineLoader.requests.count, 2)
+    }
+
+    func test_differentLessSevereMoodNeverNotified_notifies() {
+        let sut = makeSUT()
+        sut.changeMood(from: makeFacts(mood: .happy), to: makeFacts(mood: .veryThirsty))
+
+        sut.factsLoader.simulateUpdate()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .dryAir), at: 2)
 
         XCTAssertEqual(sut.lineLoader.requests.count, 2)
     }
@@ -151,7 +190,7 @@ final class PlantMoodNotifierTests: PlantChatXCTestCase {
     func test_savedDate_limitsAcrossInstances() {
         let now = anyDate()
         let defaults = DefaultsSpy()
-        defaults.stub(now.addingTimeInterval(-60).timeIntervalSince1970, forKey: key)
+        defaults.stub(now.addingTimeInterval(-60).timeIntervalSince1970, forKey: key(.thirsty))
         let sut = makeSUT(now: { now }, defaults: defaults)
 
         sut.changeMood(from: makeFacts(mood: .happy), to: makeFacts(mood: .thirsty))
@@ -162,7 +201,7 @@ final class PlantMoodNotifierTests: PlantChatXCTestCase {
     func test_oldSavedDate_doesNotLimit() {
         let now = anyDate()
         let defaults = DefaultsSpy()
-        defaults.stub(now.addingTimeInterval(-3_601).timeIntervalSince1970, forKey: key)
+        defaults.stub(now.addingTimeInterval(-3_601).timeIntervalSince1970, forKey: key(.thirsty))
         let sut = makeSUT(now: { now }, defaults: defaults)
 
         sut.changeMood(from: makeFacts(mood: .happy), to: makeFacts(mood: .thirsty))

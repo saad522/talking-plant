@@ -3,6 +3,9 @@ import PlantShared
 
 @MainActor
 public final class PlantChatViewModel {
+    /// Reopening Chat after this long without a message starts a new conversation.
+    static let conversationTimeout: TimeInterval = 30 * 60
+
     public typealias Observer<T> = (T) -> Void
 
     private let chatLoader: PlantChatLoader
@@ -10,6 +13,7 @@ public final class PlantChatViewModel {
     private let factsLoader: PlantVoiceFactsLoader
     private let settings: PlantPersonalitySettings
     private let plantName: String
+    private let currentDate: () -> Date
     private let actionHandler: (PlantChatAction) -> Void
     private var appeared: Bool = false
     private var latestFacts: PlantVoiceFacts?
@@ -18,6 +22,8 @@ public final class PlantChatViewModel {
     private var isReplying: Bool = false
     /// Changes when the conversation restarts, so answers to the old one are dropped.
     private var conversation: Int = 0
+    private var lastMessageDate: Date?
+    private var lastMessageMood: PlantMood?
 
     public let personalities: [PlantPersonalityViewModel] = PlantPersonality.allCases.map(PlantPersonalityViewModel.init)
 
@@ -41,6 +47,7 @@ public final class PlantChatViewModel {
         factsLoader: PlantVoiceFactsLoader,
         settings: PlantPersonalitySettings,
         plantName: String,
+        currentDate: @escaping () -> Date = Date.init,
         actionHandler: @escaping (PlantChatAction) -> Void
     ) {
         self.chatLoader = chatLoader
@@ -48,20 +55,25 @@ public final class PlantChatViewModel {
         self.factsLoader = factsLoader
         self.settings = settings
         self.plantName = plantName
+        self.currentDate = currentDate
         self.actionHandler = actionHandler
     }
 
+    /// - Note: Reopening keeps the conversation, unless the mood changed or 30 minutes passed since the last message.
     public func appear() {
-        guard appeared == false else { return }
+        guard appeared == false else {
+            loadFacts { [weak self] in
+                self?.restartIfOutdated()
+            }
+            return
+        }
         appeared = true
         loadedPersonality?(settings.load())
         factsLoader.subscribe { [weak self] in
             self?.loadFacts()
         }
         loadedAvailability?(chatLoader.isAvailable)
-        loadFacts { [weak self] in
-            self?.greet()
-        }
+        greet()
     }
 
     public func send(_ text: String) {
@@ -95,15 +107,8 @@ public final class PlantChatViewModel {
 
     public func select(_ personality: PlantPersonality) {
         settings.save(personality)
-        chatLoader.reset()
-        conversation += 1
-        messages = []
-        if isReplying {
-            isReplying = false
-            loadedTyping?(false)
-        }
+        restartConversation()
         loadedPersonality?(personality)
-        loadedMessages?(messages)
         greet()
     }
 
@@ -124,25 +129,54 @@ public final class PlantChatViewModel {
         }
     }
 
+    private func restartIfOutdated() {
+        guard let lastMessageDate else { return }
+        let moodChanged = lastMessageMood != nil && latestFacts != nil && lastMessageMood != latestFacts?.mood
+        let timedOut = currentDate().timeIntervalSince(lastMessageDate) > Self.conversationTimeout
+        guard moodChanged || timedOut else { return }
+        restartConversation()
+        greet()
+    }
+
+    /// Drops the messages and any reply still on its way.
+    private func restartConversation() {
+        chatLoader.reset()
+        conversation += 1
+        messages = []
+        lastMessageDate = nil
+        lastMessageMood = nil
+        if isReplying {
+            isReplying = false
+            loadedTyping?(false)
+        }
+        loadedMessages?(messages)
+    }
+
+    /// Loads fresh facts first, so the greeting never describes an old mood.
     private func greet() {
         let conversation = conversation
-        guard let facts = latestFacts else {
-            append(PlantChatTemplate.greeting, from: .plant)
-            return
-        }
-        lineLoader.load(PlantVoiceLineRequest(facts: facts, purpose: .greeting)) { [weak self] result in
+        loadFacts { [weak self] in
             guard let self, self.conversation == conversation else { return }
-            switch result {
-            case .success(let line):
-                self.append(line, from: .plant)
-            case .failure:
+            guard let facts = self.latestFacts else {
                 self.append(PlantChatTemplate.greeting, from: .plant)
+                return
+            }
+            self.lineLoader.load(PlantVoiceLineRequest(facts: facts, purpose: .greeting)) { [weak self] result in
+                guard let self, self.conversation == conversation else { return }
+                switch result {
+                case .success(let line) where self.latestFacts?.mood == facts.mood:
+                    self.append(line, from: .plant)
+                default:
+                    self.append(PlantChatTemplate.greeting, from: .plant)
+                }
             }
         }
     }
 
     private func append(_ text: String, from sender: PlantChatMessageViewModel.Sender) {
         messages.append(PlantChatMessageViewModel(id: nextMessageID, text: text, sender: sender))
+        lastMessageDate = currentDate()
+        lastMessageMood = latestFacts?.mood
         nextMessageID += 1
         loadedMessages?(messages)
     }

@@ -100,6 +100,7 @@ final class PlantChatUIITests: PlantChatiOSXCTestCase {
         XCTAssertEqual(defaults.savedStrings["plant.chat.personality"], "chillSurfer")
         XCTAssertEqual(chatLoader.resetCount, 1)
         XCTAssertEqual(sut.bubbles.count, 0)
+        factsLoader.completeLoad(with: makeFacts(), at: 1)
         XCTAssertEqual(lineLoader.requests.count, 2)
         XCTAssertEqual(sut.personalityOptions.filter(\.isSelected).map(\.label), ["Chill surfer"])
 

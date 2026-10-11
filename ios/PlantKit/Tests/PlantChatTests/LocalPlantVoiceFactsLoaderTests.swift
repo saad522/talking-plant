@@ -74,6 +74,69 @@ final class LocalPlantVoiceFactsLoaderTests: PlantChatXCTestCase {
         }
     }
 
+    func test_load_deliversEveryProblemOfMoodState() {
+        let (sut, moodLoader, store) = makeSUT()
+        let reading = makeReading()
+
+        expect(sut, toDeliver: .success(PlantVoiceFacts(mood: .tooHot, isSleeping: false, reading: reading, problems: [.tooHot, .thirsty])), when: {
+            moodLoader.completeLoad(with: .tooHot, problems: [.tooHot, .thirsty])
+            store.completeRetrieval(with: [reading])
+        })
+    }
+
+    // MARK: - Recent watering
+
+    func test_load_setsWateredMinutesAgoWhenMoistureRoseMoreThanTwentyPointsInLastHour() {
+        let now = anyDate()
+        let (sut, moodLoader, store) = makeSUT(currentDate: now)
+        let before = makeReading(moisture: 30, receivedAt: now.addingTimeInterval(-25 * 60))
+        let after = makeReading(moisture: 51, receivedAt: now.addingTimeInterval(-5 * 60))
+
+        expect(sut, toDeliver: .success(PlantVoiceFacts(mood: .happy, isSleeping: false, reading: after, wateredMinutesAgo: 25)), when: {
+            moodLoader.completeLoad(with: .happy)
+            store.completeRetrieval(with: [before, after])
+        })
+    }
+
+    func test_load_doesNotSetWateredMinutesAgoForRiseOfExactlyTwentyPoints() {
+        let now = anyDate()
+        let (sut, moodLoader, store) = makeSUT(currentDate: now)
+        let before = makeReading(moisture: 30, receivedAt: now.addingTimeInterval(-25 * 60))
+        let after = makeReading(moisture: 50, receivedAt: now.addingTimeInterval(-5 * 60))
+
+        expect(sut, toDeliver: .success(PlantVoiceFacts(mood: .happy, isSleeping: false, reading: after)), when: {
+            moodLoader.completeLoad(with: .happy)
+            store.completeRetrieval(with: [before, after])
+        })
+    }
+
+    func test_load_doesNotSetWateredMinutesAgoWhenRiseStartedMoreThanAnHourAgo() {
+        let now = anyDate()
+        let (sut, moodLoader, store) = makeSUT(currentDate: now)
+        let before = makeReading(moisture: 20, receivedAt: now.addingTimeInterval(-61 * 60))
+        let after = makeReading(moisture: 60, receivedAt: now.addingTimeInterval(-30 * 60))
+        let latest = makeReading(moisture: 60, receivedAt: now.addingTimeInterval(-1 * 60))
+
+        expect(sut, toDeliver: .success(PlantVoiceFacts(mood: .happy, isSleeping: false, reading: latest)), when: {
+            moodLoader.completeLoad(with: .happy)
+            store.completeRetrieval(with: [before, after, latest])
+        })
+    }
+
+    func test_load_skipsReadingsWithoutMoistureWhenLookingForWatering() {
+        let now = anyDate()
+        let (sut, moodLoader, store) = makeSUT(currentDate: now)
+        let before = makeReading(moisture: 30, receivedAt: now.addingTimeInterval(-40 * 60))
+        let noMoisture = makeReading(moisture: nil, receivedAt: now.addingTimeInterval(-20 * 60))
+        let after = makeReading(moisture: 40, receivedAt: now.addingTimeInterval(-1 * 60))
+        let onlyMissing = makeReading(moisture: nil, receivedAt: now)
+
+        expect(sut, toDeliver: .success(PlantVoiceFacts(mood: .happy, isSleeping: false, reading: onlyMissing)), when: {
+            moodLoader.completeLoad(with: .happy)
+            store.completeRetrieval(with: [before, noMoisture, after, onlyMissing])
+        })
+    }
+
     func test_load_deliversRetrievalErrorOnMoodFailure() {
         let (sut, moodLoader, store) = makeSUT()
 

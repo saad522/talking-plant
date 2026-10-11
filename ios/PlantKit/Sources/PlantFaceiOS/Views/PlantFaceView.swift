@@ -35,8 +35,10 @@ public struct PlantFaceView: View {
         .accessibilityHidden(true)
         .onAppear {
             guard !reduceMotion else { return }
-            withAnimation(PlantFaceAnimation.breathing) { isBreathingIn = true }
-            withAnimation(PlantFaceAnimation.sway) { isSwayingForward = true }
+            // No withAnimation: the repeating animations are scoped to the views they drive,
+            // so layout changes elsewhere in the screen never pick them up.
+            isBreathingIn = true
+            isSwayingForward = true
         }
         .task(id: viewModel.blinks && !reduceMotion) {
             guard viewModel.blinks && !reduceMotion else { return }
@@ -107,6 +109,7 @@ public struct PlantFaceView: View {
             scale: pose.topScale,
             origin: CGPoint(x: PlantFaceSize.topLeafX, y: pose.topY)
         )
+        .animation(reduceMotion ? nil : PlantFaceAnimation.sway, value: isSwayingForward)
     }
 
     private var swayOffset: Double {
@@ -131,7 +134,9 @@ public struct PlantFaceView: View {
             features
         }
         .frame(width: PlantFaceSize.viewBox.width, height: PlantFaceSize.viewBox.height, alignment: .topLeading)
-        .scaleEffect(breathingScale, anchor: PlantFaceSize.headPivot)
+        .animation(PlantFaceAnimation.breathing, body: { content in
+            content.scaleEffect(breathingScale, anchor: PlantFaceSize.headPivot)
+        })
         .rotationEffect(.degrees(pose.tilt + viewModel.extraTilt), anchor: PlantFaceSize.headPivot)
     }
 

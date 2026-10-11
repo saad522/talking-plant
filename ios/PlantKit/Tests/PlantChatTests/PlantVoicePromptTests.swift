@@ -38,7 +38,7 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
         XCTAssertEqual(Set(descriptions).count, PlantMood.allCases.count)
         XCTAssertEqual(
             PlantVoicePrompt.facts(makeFacts(mood: .thirsty)).components(separatedBy: "\n")[0],
-            "Mood: thirsty: the soil is getting dry, you'd like water soon"
+            "Mood: thirsty: your SOIL is dry (this is about water in the pot, not the air), you'd like water soon"
         )
     }
 
@@ -55,7 +55,10 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
     func test_facts_leavesOutNilValues() {
         let text = PlantVoicePrompt.facts(makeFacts(reading: makeReading(moisture: nil, lux: 10, temperature: nil, humidity: nil)))
 
-        XCTAssertEqual(text, "Mood: thirsty: the soil is getting dry, you'd like water soon\nLight: 10 lx")
+        XCTAssertTrue(text.contains("Light: 10 lx"))
+        XCTAssertFalse(text.contains("Moisture:"))
+        XCTAssertFalse(text.contains("Temperature:"))
+        XCTAssertFalse(text.contains("Humidity:"))
     }
 
     func test_facts_saysNoReadingsWithoutReading() {
@@ -69,6 +72,62 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
         XCTAssertFalse(PlantVoicePrompt.facts(makeFacts(mood: .happy, isSleeping: false)).contains("sleepy"))
     }
 
+    func test_facts_saysEverySensorWithoutProblemIsFine() {
+        let text = PlantVoicePrompt.facts(makeFacts(mood: .happy))
+
+        XCTAssertTrue(text.contains("Your soil moisture is fine: you do NOT need water."))
+        XCTAssertTrue(text.contains("Your light is fine: you do NOT need more light."))
+        XCTAssertTrue(text.contains("Your temperature is fine: you are NOT too hot or too cold."))
+        XCTAssertTrue(text.contains("The air humidity is fine: the air is NOT too dry."))
+    }
+
+    func test_facts_leavesOutNegativeOfSensorWithProblem() {
+        let cases: [(PlantMood, String)] = [
+            (.thirsty, "soil moisture is fine"), (.veryThirsty, "soil moisture is fine"), (.drowning, "soil moisture is fine"),
+            (.tooDark, "light is fine"), (.tooHot, "temperature is fine"), (.tooCold, "temperature is fine"),
+            (.dryAir, "humidity is fine")
+        ]
+
+        cases.forEach { mood, negative in
+            let text = PlantVoicePrompt.facts(makeFacts(mood: mood))
+
+            XCTAssertFalse(text.contains(negative), "\(mood)")
+            XCTAssertEqual(text.components(separatedBy: "fine:").count - 1, 3, "\(mood)")
+        }
+    }
+
+    func test_facts_leavesOutNegativesOfEveryCurrentProblem() {
+        let text = PlantVoicePrompt.facts(makeFacts(mood: .tooHot, problems: [.tooHot, .thirsty]))
+
+        XCTAssertFalse(text.contains("soil moisture is fine"))
+        XCTAssertFalse(text.contains("temperature is fine"))
+        XCTAssertFalse(text.contains("you do NOT need water"))
+        XCTAssertTrue(text.contains("light is fine"))
+        XCTAssertTrue(text.contains("humidity is fine"))
+    }
+
+    func test_facts_leavesOutNegativeOfSensorWithoutValue() {
+        let text = PlantVoicePrompt.facts(makeFacts(mood: .happy, reading: makeReading(moisture: nil, humidity: nil)))
+
+        XCTAssertFalse(text.contains("soil moisture is fine"))
+        XCTAssertFalse(text.contains("humidity is fine"))
+        XCTAssertTrue(text.contains("light is fine"))
+    }
+
+    func test_facts_keepsDrySoilAndDryAirApart() {
+        let soil = PlantVoicePrompt.facts(makeFacts(mood: .thirsty))
+        let air = PlantVoicePrompt.facts(makeFacts(mood: .dryAir))
+
+        XCTAssertTrue(soil.contains("your SOIL is dry (this is about water in the pot, not the air)"))
+        XCTAssertTrue(air.contains("the AIR in the room is dry (this is about humidity, not your soil; you do NOT need water)"))
+    }
+
+    func test_facts_mentionsRecentWateringOnlyWhenSet() {
+        XCTAssertTrue(PlantVoicePrompt.facts(makeFacts(mood: .happy, wateredMinutesAgo: 12)).contains("You were watered 12 minutes ago."))
+        XCTAssertTrue(PlantVoicePrompt.facts(makeFacts(mood: .happy, wateredMinutesAgo: 1)).contains("You were watered 1 minute ago."))
+        XCTAssertFalse(PlantVoicePrompt.facts(makeFacts(mood: .happy)).contains("watered"))
+    }
+
     // MARK: - message
 
     func test_message_putsCurrentFactsBeforeText() {
@@ -76,7 +135,7 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
 
         XCTAssertEqual(
             PlantVoicePrompt.message("How are you?", facts: facts),
-            "Current facts:\n\(PlantVoicePrompt.facts(facts))\n\nThe person says: How are you?"
+            "Right now (always trust this over anything said earlier in the conversation):\n\(PlantVoicePrompt.facts(facts))\n\nThe person says: How are you?"
         )
     }
 
@@ -89,10 +148,36 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
         let texts = purposes.map { PlantVoicePrompt.line(facts, purpose: $0) }
 
         texts.forEach { text in
-            XCTAssertTrue(text.contains("at most 12 words, with no numbers"))
+            XCTAssertTrue(text.contains(", with no numbers"))
             XCTAssertTrue(text.contains(PlantVoicePrompt.facts(facts)))
         }
         XCTAssertEqual(Set(texts).count, purposes.count)
+    }
+
+    func test_line_givesHomeAndNotificationTheirRules() {
+        [PlantVoiceLineRequest.Purpose.home, .notification].forEach { purpose in
+            let text = PlantVoicePrompt.line(makeFacts(), purpose: purpose)
+
+            XCTAssertTrue(text.contains("at most 10 words, with no numbers"), "\(purpose)")
+            XCTAssertTrue(text.contains("Speak as the plant, in the first person."), "\(purpose)")
+            XCTAssertTrue(text.contains("Never say \"your plant\"."), "\(purpose)")
+            XCTAssertTrue(text.contains("Never thank or reply to the person."), "\(purpose)")
+        }
+    }
+
+    func test_line_soundsSleepyOnlyWhenSleeping() {
+        [PlantVoiceLineRequest.Purpose.home, .notification].forEach { purpose in
+            XCTAssertTrue(PlantVoicePrompt.line(makeFacts(mood: .happy, isSleeping: true), purpose: purpose).contains("Sound sleepy."))
+            XCTAssertFalse(PlantVoicePrompt.line(makeFacts(mood: .happy, isSleeping: false), purpose: purpose).contains("sleepy."))
+        }
+    }
+
+    func test_line_keepsGreetingToTwelveWordsWithoutTenWordRule() {
+        let text = PlantVoicePrompt.line(makeFacts(), purpose: .greeting)
+
+        XCTAssertTrue(text.contains("at most 12 words, with no numbers"))
+        XCTAssertFalse(text.contains("10 words"))
+        XCTAssertFalse(text.contains("Sound sleepy."))
     }
 
     // MARK: - history
@@ -167,8 +252,18 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
     }
 
     func test_cleanLine_deliversNilForLongLine() {
-        XCTAssertNotNil(PlantVoicePrompt.cleanLine(String(repeating: "a", count: 100)))
-        XCTAssertNil(PlantVoicePrompt.cleanLine(String(repeating: "a", count: 101)))
+        XCTAssertNotNil(PlantVoicePrompt.cleanLine(String(repeating: "a", count: 70)))
+        XCTAssertNil(PlantVoicePrompt.cleanLine(String(repeating: "a", count: 71)))
+    }
+
+    func test_cleanLine_deliversNilForMoreThanTwelveWords() {
+        XCTAssertNotNil(PlantVoicePrompt.cleanLine("one two three four five six seven eight nine ten eleven twelve"))
+        XCTAssertNil(PlantVoicePrompt.cleanLine("one two three four five six seven eight nine ten eleven twelve thirteen"))
+    }
+
+    func test_cleanLine_deliversNilWhenLineSaysYourPlant() {
+        XCTAssertNil(PlantVoicePrompt.cleanLine("Thanks for caring for your plant"))
+        XCTAssertNil(PlantVoicePrompt.cleanLine("Your Plant is happy"))
     }
 
     func test_cleanLine_deliversNilWhenLineContainsDigit() {

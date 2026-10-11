@@ -19,6 +19,8 @@ public final class PlantMonitorSceneViewModel {
     public let scene: PlantMonitorScene
     /// A happy plant at night sleeps. Any other mood stays awake to show itself.
     public let isSleeping: Bool
+    /// Water leads whenever the plant is thirsty, in every scene.
+    public let isWaterPrimary: Bool
     /// The three chips to show, in order.
     public let sensors: [PlantSensorKind]
     /// The chips that get the warning style. They follow the mood, not the scene.
@@ -29,6 +31,7 @@ public final class PlantMonitorSceneViewModel {
         self.mood = mood
         let isDark = (reading?.lux.map { $0 < Self.nightLux } ?? false) || mood == .offline
         let isThirsty = mood == .thirsty || mood == .veryThirsty
+        self.isWaterPrimary = isThirsty
         self.scene = isDark ? .night : (isThirsty ? .thirsty : .day)
         self.isSleeping = self.scene == .night && mood == .happy
         self.sensors = mood == .dryAir ? [.moisture, .light, .humidity] : [.moisture, .light, .temperature]

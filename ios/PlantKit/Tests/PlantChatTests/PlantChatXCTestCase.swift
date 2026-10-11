@@ -35,9 +35,17 @@ class PlantChatXCTestCase: XCTestCase {
     func makeFacts(
         mood: PlantMood = .thirsty,
         isSleeping: Bool = false,
-        reading: PlantReading? = nil
+        reading: PlantReading? = nil,
+        problems: [PlantMood] = [],
+        wateredMinutesAgo: Int? = nil
     ) -> PlantVoiceFacts {
-        PlantVoiceFacts(mood: mood, isSleeping: isSleeping, reading: reading ?? makeReading())
+        PlantVoiceFacts(
+            mood: mood,
+            isSleeping: isSleeping,
+            reading: reading ?? makeReading(),
+            problems: problems,
+            wateredMinutesAgo: wateredMinutesAgo
+        )
     }
 
     func trackMemoryLeak(_ instance: AnyObject, file: StaticString = #filePath, line: UInt = #line) {
@@ -99,8 +107,8 @@ class PlantChatXCTestCase: XCTestCase {
             loadCompletions.append(completion)
         }
 
-        func completeLoad(with mood: PlantMood, at index: Int = 0) {
-            loadCompletions[index](.success(mood))
+        func completeLoad(with mood: PlantMood, problems: [PlantMood] = [], at index: Int = 0) {
+            loadCompletions[index](.success(PlantMoodState(mood: mood, problems: problems)))
         }
 
         func completeLoad(with error: Error, at index: Int = 0) {

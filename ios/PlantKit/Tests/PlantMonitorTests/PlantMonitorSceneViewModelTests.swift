@@ -60,6 +60,23 @@ final class PlantMonitorSceneViewModelTests: PlantMonitorXCTestCase {
         XCTAssertEqual(makeSUT(mood: nil).sensors, [.moisture, .light, .temperature])
     }
 
+    // MARK: - Water button
+
+    func test_isWaterPrimary_isTrueForThirstyAndVeryThirstyByDayAndAtNight() {
+        [5_000, 0].forEach { lux in
+            XCTAssertTrue(makeSUT(lux: lux, mood: .thirsty).isWaterPrimary, "lux \(lux)")
+            XCTAssertTrue(makeSUT(lux: lux, mood: .veryThirsty).isWaterPrimary, "lux \(lux)")
+        }
+    }
+
+    func test_isWaterPrimary_isFalseForEveryOtherMood() {
+        PlantMood.allCases.filter { $0 != .thirsty && $0 != .veryThirsty }.forEach { mood in
+            XCTAssertFalse(makeSUT(mood: mood).isWaterPrimary, "day \(mood)")
+            XCTAssertFalse(makeSUT(lux: 0, mood: mood).isWaterPrimary, "night \(mood)")
+        }
+        XCTAssertFalse(makeSUT(mood: nil).isWaterPrimary)
+    }
+
     // MARK: - Warnings
 
     func test_warnings_followMood() {

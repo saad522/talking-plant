@@ -41,6 +41,8 @@ enum PlantMonitorSize {
     static let bubbleTailRadius: CGFloat = 6
     static let bubbleVerticalPadding: CGFloat = 12
     static let bubbleHorizontalPadding: CGFloat = 14
+    /// Three lines of the bubble font (15 pt text, about 18 pt tall, plus 5 pt spacing) and the padding.
+    static let bubbleHeight: CGFloat = 3 * 18 + 2 * PlantMonitorFont.bubbleLineSpacing + 2 * bubbleVerticalPadding
 
     static let chipSpacing: CGFloat = 8
     static let chipInset: CGFloat = 12

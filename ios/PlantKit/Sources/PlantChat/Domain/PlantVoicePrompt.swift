@@ -4,7 +4,9 @@ import PlantShared
 /// All text sent to the language model, and the check on what comes back. Deterministic.
 public enum PlantVoicePrompt {
     /// Longest home line or notification, in characters.
-    static let maximumLineLength = 100
+    static let maximumLineLength = 70
+    /// Longest home line or notification, in words.
+    static let maximumLineWords = 12
 
     public static func instructions(personality: PlantPersonality, plantName: String) -> String {
         """
@@ -20,6 +22,9 @@ public enum PlantVoicePrompt {
         if facts.isSleeping {
             lines.append("It's night and you're sleepy.")
         }
+        if let minutes = facts.wateredMinutesAgo {
+            lines.append("You were watered \(minutes) \(minutes == 1 ? "minute" : "minutes") ago.")
+        }
         if let reading = facts.reading {
             let values = [
                 reading.moisture.map { "Moisture: \(PlantReadingFormatter.percent($0))" },
@@ -28,6 +33,7 @@ public enum PlantVoicePrompt {
                 reading.humidity.map { "Humidity: \(PlantReadingFormatter.percent($0))" }
             ]
             lines.append(contentsOf: values.compactMap { $0 })
+            lines.append(contentsOf: negatives(facts, reading: reading))
         } else {
             lines.append("No readings yet.")
         }
@@ -36,12 +42,17 @@ public enum PlantVoicePrompt {
 
     /// The prompt for one chat turn: the current facts, then what the person said.
     public static func message(_ text: String, facts: PlantVoiceFacts) -> String {
-        "Current facts:\n\(self.facts(facts))\n\nThe person says: \(text)"
+        """
+        Right now (always trust this over anything said earlier in the conversation):
+        \(self.facts(facts))
+
+        The person says: \(text)
+        """
     }
 
     public static func line(_ facts: PlantVoiceFacts, purpose: PlantVoiceLineRequest.Purpose) -> String {
         """
-        Write one line of at most 12 words, with no numbers, for \(describe(purpose)).
+        Write one line of at most \(purpose == .greeting ? 12 : 10) words, with no numbers, for \(describe(purpose)).\(rules(for: purpose, facts: facts))
         Current facts:
         \(self.facts(facts))
         """
@@ -64,7 +75,7 @@ public enum PlantVoicePrompt {
     }
 
     /// The first line of `text` without whitespace or quotes, or nil when it can't be shown:
-    /// empty, too long, or containing a digit. The caller then uses a template, so a generated
+    /// empty, too long, containing "your plant", or containing a digit. The caller then uses a template, so a generated
     /// line never shows an invented number.
     public static func cleanLine(_ text: String) -> String? {
         let quotes = CharacterSet(charactersIn: "\"'“”‘’«»")
@@ -77,11 +88,44 @@ public enum PlantVoicePrompt {
 
         guard line.isEmpty == false,
               line.count <= maximumLineLength,
+              line.split(whereSeparator: \.isWhitespace).count <= maximumLineWords,
+              line.localizedCaseInsensitiveContains("your plant") == false,
               line.contains(where: \.isNumber) == false else { return nil }
         return line
     }
 
     // MARK: - Private helpers
+
+    /// The extra rules for home lines and notifications. A greeting only has its length limit.
+    private static func rules(for purpose: PlantVoiceLineRequest.Purpose, facts: PlantVoiceFacts) -> String {
+        guard purpose != .greeting else { return "" }
+        var rules = [
+            "Speak as the plant, in the first person.",
+            "Never say \"your plant\".",
+            "Never thank or reply to the person."
+        ]
+        if facts.isSleeping {
+            rules.append("Sound sleepy.")
+        }
+        return "\n" + rules.joined(separator: " ")
+    }
+
+    /// For every sensor with a value and no problem: an explicit "this is fine", so the model never invents a need.
+    private static func negatives(_ facts: PlantVoiceFacts, reading: PlantReading) -> [String] {
+        let problems = Set(facts.problems + [facts.mood])
+        let soil: Set<PlantMood> = [.thirsty, .veryThirsty, .drowning]
+        let temperature: Set<PlantMood> = [.tooHot, .tooCold]
+        return [
+            reading.moisture != nil && problems.isDisjoint(with: soil)
+                ? "Your soil moisture is fine: you do NOT need water." : nil,
+            reading.lux != nil && problems.contains(.tooDark) == false
+                ? "Your light is fine: you do NOT need more light." : nil,
+            reading.temperature != nil && problems.isDisjoint(with: temperature)
+                ? "Your temperature is fine: you are NOT too hot or too cold." : nil,
+            reading.humidity != nil && problems.contains(.dryAir) == false
+                ? "The air humidity is fine: the air is NOT too dry." : nil
+        ].compactMap { $0 }
+    }
 
     private static func range(
         _ statistics: PlantHistorySummary.Statistics,
@@ -93,13 +137,13 @@ public enum PlantVoicePrompt {
     private static func describe(_ mood: PlantMood) -> String {
         switch mood {
         case .happy: "happy: everything is fine, you feel great"
-        case .thirsty: "thirsty: the soil is getting dry, you'd like water soon"
-        case .veryThirsty: "very thirsty: the soil is very dry, you need water now"
+        case .thirsty: "thirsty: your SOIL is dry (this is about water in the pot, not the air), you'd like water soon"
+        case .veryThirsty: "very thirsty: your SOIL is very dry (this is about water in the pot, not the air), you need water now"
         case .drowning: "drowning: the soil is too wet, you need to dry out"
         case .tooDark: "too dark: there is not enough light"
         case .tooHot: "too hot: the room is too warm"
         case .tooCold: "too cold: the room is too chilly"
-        case .dryAir: "dry air: the air is too dry"
+        case .dryAir: "dry air: the AIR in the room is dry (this is about humidity, not your soil; you do NOT need water)"
         case .offline: "offline: you can't feel your sensor, so what you know may be old"
         }
     }

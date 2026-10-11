@@ -324,14 +324,15 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
         XCTAssertEqual(sut.renderedButtons().map(\.style), [.primary, .secondary, .secondary])
     }
 
-    func test_scene_rendersTalkAsPrimaryButtonAtNightEvenWhenThirsty() {
+    func test_scene_rendersWaterAsPrimaryButtonAtNightWhenThirsty() {
         let (sut, loader, healthLoader) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading(lux: 0))
         healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
 
-        XCTAssertEqual(sut.renderedButtons().first?.title, "Talk to Sprout")
+        XCTAssertEqual(sut.renderedButtons().map(\.title), ["Water", "Talk to Sprout", "History"])
+        XCTAssertEqual(sut.renderedButtons().map(\.style), [.primary, .secondary, .secondary])
         XCTAssertEqual(sut.renderedChips().map(\.isWarning), [true, false, false])
     }
 

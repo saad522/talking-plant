@@ -33,13 +33,13 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
 
     // MARK: - appear
 
-    func test_appear_subscribesAndLoadsFactsOnce() {
+    func test_appear_subscribesOnceAndReloadsFactsWhenReopened() {
         let sut = makeSUT()
 
         sut.viewModel.appear()
         sut.viewModel.appear()
 
-        XCTAssertEqual(sut.factsLoader.messages, [.subscribeFacts, .loadFacts])
+        XCTAssertEqual(sut.factsLoader.messages, [.subscribeFacts, .loadFacts, .loadFacts])
     }
 
     func test_appear_deliversSavedPersonality() {
@@ -149,6 +149,132 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
 
         XCTAssertEqual(sut.lineLoader.requests, [])
         XCTAssertEqual(received.last?.map(\.text), [String.localised(key: "plant.chat.greeting.speech")])
+    }
+
+    func test_greeting_isRequestedOnlyAfterFactsLoad() {
+        let sut = makeSUT()
+        let facts = makeFacts(mood: .tooHot)
+
+        sut.viewModel.appear()
+        XCTAssertEqual(sut.lineLoader.requests, [])
+        sut.factsLoader.completeLoad(with: facts)
+
+        XCTAssertEqual(sut.lineLoader.requests, [PlantVoiceLineRequest(facts: facts, purpose: .greeting)])
+    }
+
+    func test_select_loadsFreshFactsBeforeAskingForGreeting() {
+        let sut = makeLoadedSUT(facts: makeFacts(mood: .thirsty))
+        let fresh = makeFacts(mood: .tooCold)
+
+        sut.viewModel.select(.dramatic)
+        XCTAssertEqual(sut.lineLoader.requests.count, 1)
+        sut.factsLoader.completeLoad(with: fresh, at: 1)
+
+        XCTAssertEqual(sut.factsLoader.messages, [.subscribeFacts, .loadFacts, .loadFacts])
+        XCTAssertEqual(sut.lineLoader.requests.last, PlantVoiceLineRequest(facts: fresh, purpose: .greeting))
+    }
+
+    func test_greeting_usesTemplateWhenMoodChangesDuringGeneration() {
+        let sut = makeSUT()
+        var messages: [[PlantChatMessageViewModel]] = []
+        sut.viewModel.loadedMessages = { messages.append($0) }
+
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .thirsty))
+        sut.factsLoader.simulateUpdate()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .happy), at: 1)
+        sut.lineLoader.complete(with: "I am so thirsty!")
+
+        XCTAssertEqual(messages.last?.map(\.text), [String.localised(key: "plant.chat.greeting.speech")])
+    }
+
+    // MARK: - reopen
+
+    func test_reopen_keepsConversationWithSameMoodWithinThirtyMinutes() {
+        var now = anyDate()
+        let sut = makeSUT(currentDate: { now })
+        var messages: [[PlantChatMessageViewModel]] = []
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .thirsty))
+        sut.lineLoader.complete(with: "Hey!")
+        sut.viewModel.loadedMessages = { messages.append($0) }
+
+        now = now.addingTimeInterval(30 * 60)
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .thirsty), at: 1)
+
+        XCTAssertEqual(messages, [])
+        XCTAssertEqual(sut.lineLoader.requests.count, 1)
+        XCTAssertEqual(sut.chatLoader.resetCount, 0)
+    }
+
+    func test_reopen_startsFreshWhenMoodChanged() {
+        let sut = makeSUT()
+        var messages: [[PlantChatMessageViewModel]] = []
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .thirsty))
+        sut.lineLoader.complete(with: "Hey!")
+        sut.viewModel.loadedMessages = { messages.append($0) }
+
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .tooHot), at: 1)
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .tooHot), at: 2)
+        sut.lineLoader.complete(with: "Hot!", at: 1)
+
+        XCTAssertEqual(sut.chatLoader.resetCount, 1)
+        XCTAssertEqual(messages.map { $0.map(\.text) }, [[], ["Hot!"]])
+    }
+
+    func test_reopen_startsFreshAfterThirtyMinutesAndOneSecond() {
+        var now = anyDate()
+        let sut = makeSUT(currentDate: { now })
+        var messages: [[PlantChatMessageViewModel]] = []
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts())
+        sut.lineLoader.complete(with: "Hey!")
+        sut.viewModel.loadedMessages = { messages.append($0) }
+
+        now = now.addingTimeInterval(30 * 60 + 1)
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts(), at: 1)
+        sut.factsLoader.completeLoad(with: makeFacts(), at: 2)
+        sut.lineLoader.complete(with: "Welcome back!", at: 1)
+
+        XCTAssertEqual(sut.chatLoader.resetCount, 1)
+        XCTAssertEqual(messages.map { $0.map(\.text) }, [[], ["Welcome back!"]])
+    }
+
+    func test_reopen_measuresTimeFromLastMessage() {
+        var now = anyDate()
+        let sut = makeSUT(currentDate: { now })
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts())
+        sut.lineLoader.complete(with: "Hey!")
+        now = now.addingTimeInterval(20 * 60)
+        sut.viewModel.send("Hi")
+        sut.chatLoader.complete(with: "Hello")
+
+        now = now.addingTimeInterval(20 * 60)
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts(), at: 1)
+
+        XCTAssertEqual(sut.chatLoader.resetCount, 0)
+    }
+
+    func test_reopen_dropsReplyStillInFlight() {
+        let sut = makeLoadedSUT(facts: makeFacts(mood: .thirsty))
+        var messages: [[PlantChatMessageViewModel]] = []
+        var typing: [Bool] = []
+        sut.viewModel.send("Hi")
+        sut.viewModel.loadedMessages = { messages.append($0) }
+        sut.viewModel.loadedTyping = { typing.append($0) }
+
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .tooHot), at: 1)
+        sut.chatLoader.complete(with: "Old reply")
+
+        XCTAssertEqual(typing, [false])
+        XCTAssertEqual(messages.map { $0.map(\.text) }, [[]])
     }
 
     // MARK: - send
@@ -294,6 +420,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         sut.viewModel.loadedMessages = { messages.append($0) }
 
         sut.viewModel.select(.politeButler)
+        sut.factsLoader.completeLoad(with: makeFacts(), at: 1)
         XCTAssertEqual(sut.lineLoader.requests.count, 2)
         sut.lineLoader.complete(with: "Good day.", at: 1)
 
@@ -325,6 +452,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         sut.factsLoader.completeLoad(with: makeFacts())
         sut.viewModel.select(.dramatic)
         sut.lineLoader.complete(with: "Old greeting", at: 0)
+        sut.factsLoader.completeLoad(with: makeFacts(), at: 1)
         sut.lineLoader.complete(with: "New greeting", at: 1)
 
         XCTAssertEqual(messages.map { $0.map(\.text) }, [[], ["New greeting"]])
@@ -386,6 +514,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
 
     private func makeSUT(
         savedPersonality: PlantPersonality? = nil,
+        currentDate: @escaping () -> Date = Date.init,
         actionHandler: @escaping (PlantChatAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -404,6 +533,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
             factsLoader: factsLoader,
             settings: settings,
             plantName: "Sprout",
+            currentDate: currentDate,
             actionHandler: actionHandler
         )
         trackMemoryLeak(chatLoader, file: file, line: line)

@@ -1,10 +1,13 @@
 import Foundation
 import PlantShared
 
-/// Tells the person when the plant's mood turns into a problem, at most once per interval.
+/// Tells the person when the plant's mood turns into a problem. The same mood is announced at most
+/// once per interval; a mood more severe than the previous problem is always announced.
 @MainActor
 public final class PlantMoodNotifier {
-    static let lastDateKey = "plant.chat.notification.lastDate"
+    static func lastDateKey(for mood: PlantMood) -> String {
+        "plant.chat.notification.lastDate.\(mood)"
+    }
 
     private let factsLoader: PlantVoiceFactsLoader
     private let lineLoader: PlantVoiceLineLoader
@@ -17,7 +20,7 @@ public final class PlantMoodNotifier {
 
     /// - Parameters:
     ///   - currentDate: The real clock, not the simulated one, so the limit holds in simulated mode.
-    ///   - minimumInterval: The least time between two notifications, kept across launches.
+    ///   - minimumInterval: The least time between two notifications of the same mood, kept across launches.
     public init(
         factsLoader: PlantVoiceFactsLoader,
         lineLoader: PlantVoiceLineLoader,
@@ -54,9 +57,10 @@ public final class PlantMoodNotifier {
     private func handle(_ facts: PlantVoiceFacts) {
         let previous = lastMood
         lastMood = facts.mood
-        guard let previous, previous != facts.mood, facts.mood != .happy, canNotify() else { return }
+        guard let previous, previous != facts.mood, facts.mood != .happy,
+              isEscalation(from: previous, to: facts.mood) || canNotify(facts.mood) else { return }
 
-        defaults.set(currentDate().timeIntervalSince1970, forKey: Self.lastDateKey)
+        defaults.set(currentDate().timeIntervalSince1970, forKey: Self.lastDateKey(for: facts.mood))
 
         let notifications = notifications
         let title = plantName
@@ -71,8 +75,20 @@ public final class PlantMoodNotifier {
         }
     }
 
-    private func canNotify() -> Bool {
-        guard let last = defaults.retrieve(forKey: Self.lastDateKey) else { return true }
+    private func canNotify(_ mood: PlantMood) -> Bool {
+        guard let last = defaults.retrieve(forKey: Self.lastDateKey(for: mood)) else { return true }
         return currentDate().timeIntervalSince(Date(timeIntervalSince1970: last)) >= minimumInterval
+    }
+
+    private func isEscalation(from previous: PlantMood, to mood: PlantMood) -> Bool {
+        previous != .happy && severity(of: mood) > severity(of: previous)
+    }
+
+    /// Mirrors the priority order of `PlantHealthIssue` (PlantMonitor, which this feature can't import).
+    /// Higher is more severe; happy is lowest.
+    private func severity(of mood: PlantMood) -> Int {
+        let mostSevereFirst: [PlantMood] = [.offline, .drowning, .veryThirsty, .tooHot, .tooCold, .thirsty, .tooDark, .dryAir]
+        guard let index = mostSevereFirst.firstIndex(of: mood) else { return 0 }
+        return mostSevereFirst.count - index
     }
 }

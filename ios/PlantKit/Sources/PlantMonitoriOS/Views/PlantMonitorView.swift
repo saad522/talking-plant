@@ -19,17 +19,19 @@ public struct PlantMonitorView<Face: View>: View {
                 actions
             }
             .padding(.bottom, PlantMonitorSize.screenSpacing)
+            .animation(sceneFade, value: store.palette)
         }
-        .background { store.palette.background.ignoresSafeArea() }
+        .background { store.palette.background.ignoresSafeArea().animation(sceneFade, value: store.palette) }
         .environment(\.plantMonitorPalette, store.palette)
-        .animation(
-            reduceMotion ? nil : .easeInOut(duration: PlantMonitorSize.sceneFadeDuration),
-            value: store.palette
-        )
         // Only the home screen follows the scene, so History keeps following the system.
         .toolbarColorScheme(store.palette.colorScheme)
         .overlay { store.error }
         .onAppear(perform: viewModel.appear)
+    }
+
+    /// On the content and the background only, so a scene change never animates the scroll view or the toolbar.
+    private var sceneFade: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: PlantMonitorSize.sceneFadeDuration)
     }
 
     private var actions: some View {

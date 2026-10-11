@@ -39,7 +39,7 @@ public enum PlantMonitorUIComposer {
             }
             store?.window = PlantMonitorWindowView(celestial: scene.scene == .night ? .moon : .sun)
             store?.chips = makeChips(for: scene)
-            let buttons = makeButtons(for: scene.scene, viewModel: viewModel)
+            let buttons = makeButtons(isWaterPrimary: scene.isWaterPrimary, viewModel: viewModel)
             store?.primaryButton = buttons.primary
             store?.secondaryButtons = buttons.secondary
         }
@@ -75,9 +75,9 @@ public enum PlantMonitorUIComposer {
         }
     }
 
-    /// Water leads in the thirsty scene, Talk otherwise. History is always secondary.
+    /// Water leads while the plant is thirsty, Talk otherwise. History is always secondary.
     private static func makeButtons(
-        for scene: PlantMonitorScene,
+        isWaterPrimary: Bool,
         viewModel: PlantMonitorViewModel?
     ) -> (primary: PlantMonitorButtonView, secondary: [PlantMonitorButtonView]) {
         let talk = { (style: PlantMonitorButtonView.Style) in
@@ -105,7 +105,7 @@ public enum PlantMonitorUIComposer {
             accent: \.ink,
             action: { [weak viewModel] in viewModel?.historyTap() }
         )
-        return scene == .thirsty
+        return isWaterPrimary
             ? (water(.primary), [talk(.secondary), history])
             : (talk(.primary), [water(.secondary), history])
     }

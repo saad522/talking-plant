@@ -110,7 +110,7 @@ struct TalkingPlantApp: App {
             defaults: defaults,
             plantName: plantName,
             currentDate: Date.init,
-            minimumInterval: 60 * 60
+            minimumInterval: Self.notificationInterval
         )
         moodNotifier.start()
         history = PlantHistoryUIComposer.composed(with: LocalPlantHistoryLoader(store: store, currentDate: currentDate))
@@ -139,6 +139,19 @@ struct TalkingPlantApp: App {
                     }
             }
         }
+    }
+
+    /// One hour between notifications of the same mood. DEBUG builds accept `-PlantNotificationInterval <seconds>`.
+    private static var notificationInterval: TimeInterval {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "-PlantNotificationInterval"),
+           arguments.indices.contains(index + 1),
+           let seconds = TimeInterval(arguments[index + 1]) {
+            return seconds
+        }
+        #endif
+        return 60 * 60
     }
 
     /// The on-device model. DEBUG builds accept `-PlantVoiceUnavailable` to check the template fallback.
@@ -206,7 +219,9 @@ struct PlantHealthMoodLoaderAdapter: PlantMoodLoader {
     let healthLoader: PlantHealthLoader
 
     func load(completion: @escaping (PlantMoodLoader.Result) -> Void) {
-        healthLoader.load { completion($0.map(\.mood)) }
+        healthLoader.load { result in
+            completion(result.map { PlantMoodState(mood: $0.mood, problems: $0.issues.map(\.mood)) })
+        }
     }
 
     func subscribe(update: @escaping () -> Void) {
@@ -220,7 +235,7 @@ struct PlantVoiceSpeechLoaderAdapter: PlantSpeechLoader {
     let lineLoader: PlantVoiceLineLoader
 
     func load(mood: PlantMood, isSleeping: Bool, reading: PlantReading?, completion: @escaping (PlantSpeechLoader.Result) -> Void) {
-        let facts = PlantVoiceFacts(mood: mood, isSleeping: isSleeping, reading: reading)
+        let facts = PlantVoiceFacts(mood: mood, isSleeping: isSleeping, reading: reading, problems: [mood])
         lineLoader.load(PlantVoiceLineRequest(facts: facts, purpose: .home), completion: completion)
     }
 }

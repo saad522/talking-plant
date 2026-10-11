@@ -15,9 +15,10 @@ public struct PlantSpeechBubbleView: View {
             .lineSpacing(PlantMonitorFont.bubbleLineSpacing)
             .foregroundStyle(palette.ink)
             .multilineTextAlignment(.leading)
+            .lineLimit(3)
             .padding(.vertical, PlantMonitorSize.bubbleVerticalPadding)
             .padding(.horizontal, PlantMonitorSize.bubbleHorizontalPadding)
-            .frame(width: PlantMonitorSize.bubbleWidth, alignment: .leading)
+            .frame(width: PlantMonitorSize.bubbleWidth, height: PlantMonitorSize.bubbleHeight, alignment: .topLeading)
             .background(
                 palette.card,
                 in: UnevenRoundedRectangle(

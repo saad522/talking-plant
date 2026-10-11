@@ -62,6 +62,24 @@ One milestone per Claude Code session. Each ends with passing tests and a short 
   `DefaultsClient`); replace placeholder calibration defaults.
 - End-to-end: real board → app → mood → voice.
 
+## M9 — Leaf check-up
+- `PlantCheckup` / `PlantCheckupiOS` slices.
+- Take a photo of the plant in the app.
+- Vision separates the plant from the background; deterministic color analysis measures
+  green, yellow, and brown ratios and dark spots, tracked over time.
+- Diagnosis rules combine the photo result with sensor history:
+  - yellow leaves + soil wet for days → overwatering
+  - brown crispy tips + dry soil or low humidity → underwatering or dry air
+  - pale growth + low light all week → too dark
+  - burnt patches + very high light → too much sun
+  - dead brown leaves → time to prune
+- Foundation Models only phrases the result in the plant's voice. Wording is always
+  "this might be…" with a suggestion, never a definite diagnosis.
+- Later (not part of M9): a Create ML image classifier trained on our own labeled photos,
+  and an optional camera on the pot (XIAO ESP32S3 Sense).
+- **Done when:** the diagnosis rules are fully unit-tested, the photo-to-result flow works
+  on a real iPhone, and past check-ups are saved.
+
 ## Later
-Low-power Mode B, V2 parts (pump, display, battery sense), plant ID with the camera,
-voice chat, widgets, multiple plants, enclosure.
+Low-power Mode B, V2 parts (pump, display, battery sense), species identification with
+the camera, voice chat, widgets, multiple plants, enclosure.

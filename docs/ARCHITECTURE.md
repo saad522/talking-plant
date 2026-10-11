@@ -1360,3 +1360,4 @@ extension String {
 | M6 | `CoreBluetoothPeripheralClient` + `PlantDevice` pairing and Device Info |
 | M7 | Firmware (unchanged) |
 | M8 | `PlantDeviceiOS` calibration screen + `LocalMoistureCalibrationLoader` |
+| M9 | `PlantCheckup` / `PlantCheckupiOS`: leaf check-up from a photo. Vision plant segmentation, deterministic color analysis (green / yellow / brown ratios, dark spots) and diagnosis rules combining the photo result with sensor history (all unit-tested), saved past check-ups. Foundation Models only phrases the result as "this might be…" with a suggestion. Later: Create ML classifier on our own labeled photos, optional pot camera (XIAO ESP32S3 Sense) |

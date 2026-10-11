@@ -1,0 +1,14 @@
+/* PlantHistory strings. Keys follow plant.history.<thing>.<kind>. */
+
+"plant.history.title" = "History";
+
+"plant.history.range.day" = "24 hours";
+"plant.history.range.week" = "7 days";
+
+"plant.history.moisture.title" = "Moisture";
+"plant.history.light.title" = "Light";
+"plant.history.temperature.title" = "Temperature";
+"plant.history.humidity.title" = "Humidity";
+
+"plant.history.empty.description" = "No readings yet. They'll show up here as your plant reports in.";
+"plant.history.error.description" = "Couldn't load the history. It will try again with the next reading.";

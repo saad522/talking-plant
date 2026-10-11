@@ -50,6 +50,8 @@ One milestone per Claude Code session. Each ends with passing tests and a short 
 - `PlantDevice` pairing and Device Info loader (uses `PlantDeviceInfoMapper`), commands
   (uses `PlantDeviceCommandMapper`).
 - Device picker; simulated/real choice made in the composition root, toggled in Settings.
+- Simulated readings are stamped with the simulated clock (ahead of real time), so keep
+  them apart from real history, e.g. one store file per mode.
 - **Done when:** builds, and the human verifies on device once the board exists.
 
 ## M7 — Firmware (unchanged)

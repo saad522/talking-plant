@@ -1,5 +1,6 @@
 import PlantMonitor
 import PlantMonitoriOS
+import PlantShared
 import XCTest
 
 @MainActor

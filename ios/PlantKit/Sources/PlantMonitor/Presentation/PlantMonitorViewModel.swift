@@ -1,4 +1,5 @@
 import Foundation
+import PlantShared
 
 @MainActor
 public final class PlantMonitorViewModel {

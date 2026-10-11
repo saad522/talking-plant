@@ -43,8 +43,10 @@ ios/
     ├── Sources/
     │   ├── PlantShared/               # used by more than one feature
     │   │   ├── Contract/              # PlantBluetoothContract, PlantCharacteristic
-    │   │   ├── Client/                # PeripheralClient, SimulatedPeripheralClient, CoreBluetoothPeripheralClient
-    │   │   └── Domain/                # MoistureCalibration
+    │   │   ├── Client/                # PeripheralClient, SimulatedPeripheralClient, CoreBluetoothPeripheralClient,
+    │   │   │                          # PlantReadingStore, SwiftDataPlantReadingStore
+    │   │   ├── Domain/                # MoistureCalibration, PlantReading
+    │   │   └── Presentation/          # PlantReadingFormatter
     │   ├── PlantMonitor/              # Feature: live readings, health, mood
     │   │   ├── Domain/
     │   │   ├── API/
@@ -56,24 +58,35 @@ ios/
     │   │   ├── Views/
     │   │   ├── Composers/
     │   │   └── Styles/                # PlantMonitorFont, PlantMonitorColor
-    │   └── PlantDevice/               # Feature: device info, commands, calibration, pairing
-    │       ├── Domain/
-    │       └── API/
+    │   ├── PlantDevice/               # Feature: device info, commands, calibration, pairing
+    │   │   ├── Domain/
+    │   │   └── API/
+    │   ├── PlantHistory/              # Feature: stored readings, downsampled for charts
+    │   │   ├── Domain/
+    │   │   ├── API/
+    │   │   ├── Presentation/
+    │   │   └── Resources/en.lproj/PlantHistory.strings
+    │   └── PlantHistoryiOS/           # FeatureiOS: Swift Charts
+    │       ├── Stores/
+    │       ├── Views/
+    │       ├── Composers/
+    │       └── Styles/
     └── Tests/
         ├── PlantSharedTests/
         ├── PlantMonitorTests/         # unit tests, run on macOS
         ├── PlantMonitoriOSTests/      # integration tests from the UIComposer
-        └── PlantDeviceTests/
+        ├── PlantDeviceTests/
+        ├── PlantHistoryTests/
+        └── PlantHistoryiOSTests/
 ```
 
-Later features follow the same pattern: `PlantHistory` / `PlantHistoryiOS`,
-`PlantChat` / `PlantChatiOS`, `PlantDeviceiOS`.
+Later features follow the same pattern: `PlantChat` / `PlantChatiOS`, `PlantDeviceiOS`.
 
 ### Target dependency rules
 
 | Target | May import |
 |---|---|
-| `PlantShared` | Foundation (and CoreBluetooth inside `Client/` only) |
+| `PlantShared` | Foundation (and CoreBluetooth / SwiftData inside `Client/` only) |
 | `PlantX` (Feature) | Foundation, `PlantShared` |
 | `PlantXiOS` | SwiftUI, `PlantX`, `PlantShared` |
 | `PlantXTests` | XCTest, `PlantX`, `PlantShared` |
@@ -240,6 +253,7 @@ Implementations:
 | `CoreBluetoothPeripheralClient` | The real sensor over Bluetooth (M6). |
 | `SimulatedPeripheralClient` | The fake plant used until the hardware arrives and as a demo mode. It produces **real 16-byte packets** per `BLE_CONTRACT.md`, so everything above it runs the exact production path. |
 | `DefaultsClient` (+ `UserDefaultsClient`) | Small key-value storage (calibration, preferences). |
+| `PlantReadingStore` (+ `SwiftDataPlantReadingStore`) | Reading history: insert, retrieve a date range, and notify subscribers after each insert. Keeps 30 days, measured from the newest reading (M3). |
 
 Because the simulated plant is a *client*, not a loader, there is one data path:
 client → loader → mapper → view model, for both the simulated and the real sensor.
@@ -1354,7 +1368,7 @@ extension String {
 | Milestone | Work |
 |---|---|
 | M2 | `SimulatedPeripheralClient` (PlantShared) + the `PlantMonitor` slice above: loader, mapper, view model, sensor cards, loading, error, composer, composition root |
-| M3 | `PlantHistory` / `PlantHistoryiOS` + `LocalPlantReadingDecorator` with a SwiftData-backed store client |
+| M3 | `PlantHistory` / `PlantHistoryiOS` + `LocalPlantReadingDecorator` with a SwiftData-backed store client (`PlantReading` and `PlantReadingFormatter` promoted to PlantShared) |
 | M4 | Health and mood in `PlantMonitor` (deterministic, unit-tested) + the mood face as an embedded component |
 | M5 | `PlantChat` / `PlantChatiOS`: Foundation Models voice, notifications, chat, template fallback |
 | M6 | `CoreBluetoothPeripheralClient` + `PlantDevice` pairing and Device Info |

@@ -1,4 +1,5 @@
 import Foundation
+import PlantShared
 
 public enum PlantSensorKind: Equatable, CaseIterable {
     case moisture
@@ -19,10 +20,10 @@ public final class PlantSensorCardViewModel {
         case .humidity: String.localised(key: "plant.monitor.humidity.title")
         }
         self.value = switch kind {
-        case .moisture: PlantMonitorFormatter.percent(reading.moisture)
-        case .light: PlantMonitorFormatter.lux(reading.lux)
-        case .temperature: PlantMonitorFormatter.temperature(reading.temperature)
-        case .humidity: PlantMonitorFormatter.percent(reading.humidity)
+        case .moisture: PlantReadingFormatter.percent(reading.moisture)
+        case .light: PlantReadingFormatter.lux(reading.lux)
+        case .temperature: PlantReadingFormatter.temperature(reading.temperature)
+        case .humidity: PlantReadingFormatter.percent(reading.humidity)
         }
     }
 }

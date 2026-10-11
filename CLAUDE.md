@@ -38,27 +38,31 @@ talking-plant/
         ├── Sources/
         │   ├── PlantShared/                    # used by more than one feature
         │   │   ├── Contract/                   # PlantBluetoothContract, PlantCharacteristic
-        │   │   ├── Client/                     # PeripheralClient + implementations (M2, M6)
-        │   │   └── Domain/                     # MoistureCalibration
+        │   │   ├── Client/                     # PeripheralClient + implementations, PlantReadingStore
+        │   │   ├── Domain/                     # MoistureCalibration, PlantReading
+        │   │   └── Presentation/               # PlantReadingFormatter
         │   ├── PlantMonitor/                   # Feature: live readings, health, mood
-        │   │   ├── Domain/                     # PlantReading
-        │   │   ├── API/                        # PlantReadingMapper
-        │   │   ├── Persistence/
+        │   │   ├── Domain/                     # PlantReadingLoader, PlantMonitorAction
+        │   │   ├── API/                        # PeripheralPlantReadingLoader, PlantReadingMapper
+        │   │   ├── Persistence/                # LocalPlantReadingDecorator
         │   │   ├── Presentation/
         │   │   └── Resources/en.lproj/PlantMonitor.strings
         │   ├── PlantMonitoriOS/                # UI: Stores, Views, Composers, Styles
-        │   └── PlantDevice/                    # Feature: device info, commands, calibration, pairing
-        │       ├── Domain/                     # PlantDeviceInfo, PlantDeviceCommand
-        │       └── API/                        # PlantDeviceInfoMapper, PlantDeviceCommandMapper
+        │   ├── PlantDevice/                    # Feature: device info, commands, calibration, pairing
+        │   │   ├── Domain/                     # PlantDeviceInfo, PlantDeviceCommand
+        │   │   └── API/                        # PlantDeviceInfoMapper, PlantDeviceCommandMapper
+        │   ├── PlantHistory/                   # Feature: stored readings, downsampling
+        │   └── PlantHistoryiOS/                # UI: Swift Charts
         └── Tests/
             ├── PlantSharedTests/
             ├── PlantMonitorTests/              # unit tests, macOS
             ├── PlantMonitoriOSTests/           # integration tests from the UIComposer
-            └── PlantDeviceTests/
+            ├── PlantDeviceTests/
+            ├── PlantHistoryTests/
+            └── PlantHistoryiOSTests/
 ```
 
-Later features follow the same pattern (`PlantHistory` / `PlantHistoryiOS`, `PlantChat` /
-`PlantChatiOS`, `PlantDeviceiOS`). Folders appear when their first file does.
+Later features follow the same pattern (`PlantChat` / `PlantChatiOS`, `PlantDeviceiOS`). Folders appear when their first file does.
 
 ## Architecture rules
 

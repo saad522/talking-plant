@@ -140,6 +140,46 @@ final class SimulatedPeripheralClientTests: PlantSharedXCTestCase {
         XCTAssertEqual(humidities.max(), 5_500)
     }
 
+    func test_init_startsSimulatedClockAtStartDate() {
+        let (sut, _) = makeSUT(startDate: morningDate())
+
+        XCTAssertEqual(sut.currentDate, morningDate())
+    }
+
+    func test_tick_advancesSimulatedClockByTickIntervalTimesTimeScale() {
+        let (sut, schedule) = makeSUT(tickInterval: 2, timeScale: 720)
+        _ = subscribe(sut)
+
+        schedule.tick(times: 3)
+
+        XCTAssertEqual(sut.currentDate, morningDate().addingTimeInterval(3 * 2 * 720))
+    }
+
+    func test_read_doesNotAdvanceSimulatedClock() {
+        let (sut, _) = makeSUT()
+
+        _ = read(sut)
+
+        XCTAssertEqual(sut.currentDate, morningDate())
+    }
+
+    func test_makePacket_usesCalendarTimeZoneForDayCurve() {
+        // 08:00 UTC is 12:00 in UTC+4, so the light is at its noon peak there.
+        var plusFour = utcCalendar()
+        plusFour.timeZone = TimeZone(secondsFromGMT: 4 * 3_600)!
+        let (sut, _) = makeSUT(calendar: plusFour)
+
+        XCTAssertEqual(read(sut)?.lux, 2_000)
+    }
+
+    func test_defaultStartDate_isEightInTheMorningOfGivenDay() {
+        let now = morningDate().addingTimeInterval(5 * 3_600 + 123)
+
+        let start = SimulatedPeripheralClient.defaultStartDate(now: now, calendar: utcCalendar())
+
+        XCTAssertEqual(start, morningDate())
+    }
+
     func test_write_deliversUnsupportedCharacteristicError() {
         let (sut, _) = makeSUT()
 
@@ -200,11 +240,19 @@ final class SimulatedPeripheralClientTests: PlantSharedXCTestCase {
     private func makeSUT(
         tickInterval: TimeInterval = 1,
         timeScale: Double = 3_600,
+        startDate: Date? = nil,
+        calendar: Calendar? = nil,
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (sut: SimulatedPeripheralClient, schedule: ScheduleSpy) {
         let schedule = ScheduleSpy()
-        let sut = SimulatedPeripheralClient(tickInterval: tickInterval, timeScale: timeScale, schedule: schedule.schedule)
+        let sut = SimulatedPeripheralClient(
+            tickInterval: tickInterval,
+            timeScale: timeScale,
+            startDate: startDate ?? morningDate(),
+            calendar: calendar ?? utcCalendar(),
+            schedule: schedule.schedule
+        )
         trackMemoryLeak(schedule, file: file, line: line)
         trackMemoryLeak(sut, file: file, line: line)
         return (sut, schedule)

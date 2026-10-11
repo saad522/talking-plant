@@ -130,6 +130,14 @@ class PlantMonitorXCTestCase: XCTestCase {
             loadCompletions.append(completion)
         }
 
+        func completeLoad(with reading: PlantReading, at index: Int = 0) {
+            loadCompletions[index](.success(reading))
+        }
+
+        func completeLoad(with error: Error, at index: Int = 0) {
+            loadCompletions[index](.failure(error))
+        }
+
         private var subscriptions: [(PlantReadingLoader.Result) -> Void] = []
         func subscribe(update: @escaping (PlantReadingLoader.Result) -> Void) {
             messages.append(.subscribeReadings)
@@ -142,6 +150,35 @@ class PlantMonitorXCTestCase: XCTestCase {
 
         func completeSubscription(with error: Error, at index: Int = 0) {
             subscriptions[index](.failure(error))
+        }
+    }
+
+    @MainActor
+    final class StoreSpy: PlantReadingStore {
+        enum Message: Equatable {
+            case insert(PlantReading)
+            case retrieve(from: Date, to: Date)
+            case subscribe
+        }
+
+        var messages: [Message] = []
+
+        private var insertCompletions: [(PlantReadingStore.InsertionResult) -> Void] = []
+        func insert(_ reading: PlantReading, completion: @escaping (PlantReadingStore.InsertionResult) -> Void) {
+            messages.append(.insert(reading))
+            insertCompletions.append(completion)
+        }
+
+        func completeInsertion(with error: Error?, at index: Int = 0) {
+            insertCompletions[index](error)
+        }
+
+        func retrieve(from start: Date, to end: Date, completion: @escaping (PlantReadingStore.RetrievalResult) -> Void) {
+            messages.append(.retrieve(from: start, to: end))
+        }
+
+        func subscribe(update: @escaping () -> Void) {
+            messages.append(.subscribe)
         }
     }
 }

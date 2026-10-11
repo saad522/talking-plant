@@ -1,4 +1,5 @@
 import PlantMonitor
+import PlantShared
 import SwiftUI
 
 @MainActor

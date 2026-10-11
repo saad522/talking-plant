@@ -3,6 +3,7 @@ import Foundation
 /// A fake plant that sends real 16-byte Readings packets per `docs/BLE_CONTRACT.md`.
 /// Soil slowly dries, light follows a day curve, temperature and humidity swing a little.
 /// Deterministic: the same ticks always produce the same packets.
+/// `currentDate` is the simulated clock; inject it as the loaders' `currentDate` in simulated mode.
 @MainActor
 public final class SimulatedPeripheralClient: PeripheralClient {
     /// Calls `tick` every `interval` seconds until `tick` returns `false`.
@@ -16,14 +17,15 @@ public final class SimulatedPeripheralClient: PeripheralClient {
     static let driestMillivolts: Double = 2_600
     static let dryingMillivoltsPerHour: Double = 18
     static let peakLux: Double = 2_000
-    static let startSeconds: Double = 8 * 3_600   // 08:00
     private static let validFlags: UInt8 = 0b0111 // soil, light, environment
 
     private let tickInterval: TimeInterval
     private let timeScale: Double
     private let schedule: Schedule
+    private let calendar: Calendar
 
-    private var simulatedSeconds = startSeconds
+    /// Simulated time of the latest reading. Advances by `tickInterval × timeScale` per tick.
+    public private(set) var currentDate: Date
     private var soilMillivolts = wetMillivolts
     private var sequence: UInt32 = 0
     private var subscriptions: [(PeripheralClient.Result) -> Void] = []
@@ -32,14 +34,20 @@ public final class SimulatedPeripheralClient: PeripheralClient {
     /// - Parameters:
     ///   - tickInterval: Real seconds between readings.
     ///   - timeScale: Simulated seconds per real second. 720 = one simulated hour every 5 seconds.
+    ///   - startDate: Simulated time of the first reading.
+    ///   - calendar: Gives the local hour of day for the day curve.
     ///   - schedule: Drives the ticks. Tests inject their own to tick without waiting.
     public init(
         tickInterval: TimeInterval = 2,
         timeScale: Double = 720,
+        startDate: Date = SimulatedPeripheralClient.defaultStartDate(),
+        calendar: Calendar = .current,
         schedule: @escaping Schedule = SimulatedPeripheralClient.repeatingTimer
     ) {
         self.tickInterval = tickInterval
         self.timeScale = timeScale
+        self.currentDate = startDate
+        self.calendar = calendar
         self.schedule = schedule
     }
 
@@ -70,6 +78,11 @@ public final class SimulatedPeripheralClient: PeripheralClient {
         soilMillivolts = Self.wetMillivolts
     }
 
+    /// Today at 08:00.
+    public static func defaultStartDate(now: Date = Date(), calendar: Calendar = .current) -> Date {
+        calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now) ?? now
+    }
+
     public static func repeatingTimer(interval: TimeInterval, tick: @escaping @MainActor @Sendable () -> Bool) {
         Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
             let keepTicking = MainActor.assumeIsolated { tick() }
@@ -94,7 +107,7 @@ public final class SimulatedPeripheralClient: PeripheralClient {
 
     private func tick() {
         let elapsed = tickInterval * timeScale
-        simulatedSeconds += elapsed
+        currentDate += elapsed
         soilMillivolts = min(soilMillivolts + Self.dryingMillivoltsPerHour * elapsed / 3_600, Self.driestMillivolts)
         sequence &+= 1
 
@@ -103,7 +116,8 @@ public final class SimulatedPeripheralClient: PeripheralClient {
     }
 
     private func makePacket() -> Data {
-        let hour = (simulatedSeconds / 3_600).truncatingRemainder(dividingBy: 24)
+        let time = calendar.dateComponents([.hour, .minute, .second], from: currentDate)
+        let hour = Double(time.hour ?? 0) + Double(time.minute ?? 0) / 60 + Double(time.second ?? 0) / 3_600
         let daylight = max(0, sin(.pi * (hour - 6) / 12))   // 06:00 to 18:00, peak at noon
         let warmth = sin(2 * .pi * (hour - 9) / 24)         // warmest at 15:00
 

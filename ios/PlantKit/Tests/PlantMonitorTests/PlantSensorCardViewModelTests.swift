@@ -1,3 +1,4 @@
+import PlantShared
 import XCTest
 @testable import PlantMonitor
 

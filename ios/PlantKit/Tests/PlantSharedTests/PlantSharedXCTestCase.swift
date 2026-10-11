@@ -7,6 +7,37 @@ class PlantSharedXCTestCase: XCTestCase {
         try XCTUnwrap(MoistureCalibration(dryMillivolts: dry, wetMillivolts: wet), file: file, line: line)
     }
 
+    func utcCalendar() -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }
+
+    /// 2026-01-01 08:00 UTC.
+    func morningDate() -> Date {
+        Date(timeIntervalSince1970: 1_767_254_400)
+    }
+
+    func makeReading(
+        moisture: Double? = 50,
+        lux: Int? = 1_000,
+        temperature: Double? = 23.5,
+        humidity: Double? = 55.2,
+        batteryMillivolts: Int? = nil,
+        sequence: UInt32 = 42,
+        receivedAt: Date = Date(timeIntervalSince1970: 1_767_254_400)
+    ) -> PlantReading {
+        PlantReading(
+            moisture: moisture,
+            lux: lux,
+            temperature: temperature,
+            humidity: humidity,
+            batteryMillivolts: batteryMillivolts,
+            sequence: sequence,
+            receivedAt: receivedAt
+        )
+    }
+
     func trackMemoryLeak(_ instance: AnyObject, file: StaticString = #filePath, line: UInt = #line) {
         addTeardownBlock { [weak instance] in
             XCTAssertNil(instance, "Instance should be deallocated. Potential memory leak", file: file, line: line)

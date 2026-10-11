@@ -23,4 +23,12 @@ public final class UserDefaultsClient: DefaultsClient {
     public func retrieveString(forKey key: String) -> String? {
         defaults.object(forKey: key) as? String
     }
+
+    public func set(_ value: Bool, forKey key: String) {
+        defaults.set(value, forKey: key)
+    }
+
+    public func retrieveBool(forKey key: String) -> Bool? {
+        defaults.object(forKey: key) as? Bool
+    }
 }

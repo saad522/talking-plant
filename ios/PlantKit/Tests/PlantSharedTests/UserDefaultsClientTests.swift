@@ -57,6 +57,37 @@ final class UserDefaultsClientTests: PlantSharedXCTestCase {
         XCTAssertNil(sut.retrieveString(forKey: "key"))
     }
 
+    func test_retrieveBool_deliversNilForMissingKey() {
+        let sut = makeSUT()
+
+        XCTAssertNil(sut.retrieveBool(forKey: "missing"))
+    }
+
+    func test_retrieveBool_deliversLastSetValue() {
+        let sut = makeSUT()
+
+        sut.set(true, forKey: "speak")
+        sut.set(false, forKey: "speak")
+
+        XCTAssertEqual(sut.retrieveBool(forKey: "speak"), false)
+    }
+
+    func test_setBool_persistsAcrossInstancesSharingDefaults() {
+        let defaults = makeDefaults()
+
+        UserDefaultsClient(defaults: defaults).set(true, forKey: "speak")
+
+        XCTAssertEqual(UserDefaultsClient(defaults: defaults).retrieveBool(forKey: "speak"), true)
+    }
+
+    func test_retrieveBool_doesNotDeliverStringStoredUnderSameKey() {
+        let sut = makeSUT()
+
+        sut.set("yes", forKey: "key")
+
+        XCTAssertNil(sut.retrieveBool(forKey: "key"))
+    }
+
     // MARK: - Private helpers
 
     private func makeSUT(file: StaticString = #filePath, line: UInt = #line) -> UserDefaultsClient {

@@ -82,11 +82,14 @@ class PlantSharedXCTestCase: XCTestCase {
             case retrieve(forKey: String)
             case setString(String, forKey: String)
             case retrieveString(forKey: String)
+            case setBool(Bool, forKey: String)
+            case retrieveBool(forKey: String)
         }
 
         private(set) var messages: [Message] = []
         private var stubbed: [String: Double] = [:]
         private var stubbedStrings: [String: String] = [:]
+        private var stubbedBools: [String: Bool] = [:]
 
         func stub(_ value: Double, forKey key: String) {
             stubbed[key] = value
@@ -112,6 +115,15 @@ class PlantSharedXCTestCase: XCTestCase {
         func retrieveString(forKey key: String) -> String? {
             messages.append(.retrieveString(forKey: key))
             return stubbedStrings[key]
+        }
+
+        func set(_ value: Bool, forKey key: String) {
+            messages.append(.setBool(value, forKey: key))
+        }
+
+        func retrieveBool(forKey key: String) -> Bool? {
+            messages.append(.retrieveBool(forKey: key))
+            return stubbedBools[key]
         }
     }
 

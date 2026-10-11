@@ -72,6 +72,7 @@ class PlantChatiOSXCTestCase: XCTestCase {
     @MainActor
     final class DefaultsSpy: DefaultsClient {
         private(set) var savedStrings: [String: String] = [:]
+        private var savedBools: [String: Bool] = [:]
 
         func stub(_ value: String, forKey key: String) {
             savedStrings[key] = value
@@ -86,6 +87,14 @@ class PlantChatiOSXCTestCase: XCTestCase {
 
         func retrieveString(forKey key: String) -> String? {
             savedStrings[key]
+        }
+
+        func set(_ value: Bool, forKey key: String) {
+            savedBools[key] = value
+        }
+
+        func retrieveBool(forKey key: String) -> Bool? {
+            savedBools[key]
         }
     }
 

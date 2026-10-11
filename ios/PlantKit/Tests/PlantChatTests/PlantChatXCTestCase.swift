@@ -174,11 +174,14 @@ class PlantChatXCTestCase: XCTestCase {
             case retrieve(forKey: String)
             case setString(String, forKey: String)
             case retrieveString(forKey: String)
+            case setBool(Bool, forKey: String)
+            case retrieveBool(forKey: String)
         }
 
         private(set) var messages: [Message] = []
         private var doubles: [String: Double] = [:]
         private var strings: [String: String] = [:]
+        private var bools: [String: Bool] = [:]
 
         func stub(_ value: Double, forKey key: String) {
             doubles[key] = value
@@ -186,6 +189,10 @@ class PlantChatXCTestCase: XCTestCase {
 
         func stub(_ value: String, forKey key: String) {
             strings[key] = value
+        }
+
+        func stub(_ value: Bool, forKey key: String) {
+            bools[key] = value
         }
 
         func set(_ value: Double, forKey key: String) {
@@ -206,6 +213,16 @@ class PlantChatXCTestCase: XCTestCase {
         func retrieveString(forKey key: String) -> String? {
             messages.append(.retrieveString(forKey: key))
             return strings[key]
+        }
+
+        func set(_ value: Bool, forKey key: String) {
+            messages.append(.setBool(value, forKey: key))
+            bools[key] = value
+        }
+
+        func retrieveBool(forKey key: String) -> Bool? {
+            messages.append(.retrieveBool(forKey: key))
+            return bools[key]
         }
     }
 
@@ -303,6 +320,67 @@ class PlantChatXCTestCase: XCTestCase {
 
         func complete(with error: Error, at index: Int = 0) {
             completions[index](.failure(error))
+        }
+    }
+
+    @MainActor
+    final class TranscriberClientSpy: PlantTranscriberClient {
+        enum Message: Equatable {
+            case requestAuthorization
+            case prepare
+            case start
+            case finish
+            case cancel
+        }
+
+        var authorization: PlantSpeechAuthorization = .notDetermined
+        private(set) var messages: [Message] = []
+
+        private var authorizationCompletions: [(PlantSpeechAuthorization) -> Void] = []
+        func requestAuthorization(completion: @escaping (PlantSpeechAuthorization) -> Void) {
+            messages.append(.requestAuthorization)
+            authorizationCompletions.append(completion)
+        }
+
+        func completeAuthorization(with authorization: PlantSpeechAuthorization, at index: Int = 0) {
+            authorizationCompletions[index](authorization)
+        }
+
+        func prepare() {
+            messages.append(.prepare)
+        }
+
+        private var updates: [(PlantTranscriberEvent) -> Void] = []
+        func start(update: @escaping (PlantTranscriberEvent) -> Void) {
+            messages.append(.start)
+            updates.append(update)
+        }
+
+        func finish() {
+            messages.append(.finish)
+        }
+
+        func cancel() {
+            messages.append(.cancel)
+        }
+
+        func send(_ event: PlantTranscriberEvent, at index: Int = 0) {
+            updates[index](event)
+        }
+    }
+
+    @MainActor
+    final class ScheduleSpy {
+        private(set) var intervals: [TimeInterval] = []
+        private var actions: [@MainActor () -> Void] = []
+
+        func schedule(_ interval: TimeInterval, _ action: @escaping @MainActor () -> Void) {
+            intervals.append(interval)
+            actions.append(action)
+        }
+
+        func fire(at index: Int) {
+            actions[index]()
         }
     }
 }

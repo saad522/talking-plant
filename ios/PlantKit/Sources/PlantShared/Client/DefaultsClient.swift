@@ -7,4 +7,6 @@ public protocol DefaultsClient {
     func retrieve(forKey key: String) -> Double?
     func set(_ value: String, forKey key: String)
     func retrieveString(forKey key: String) -> String?
+    func set(_ value: Bool, forKey key: String)
+    func retrieveBool(forKey key: String) -> Bool?
 }

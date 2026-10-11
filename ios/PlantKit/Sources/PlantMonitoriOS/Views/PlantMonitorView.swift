@@ -1,11 +1,11 @@
 import PlantMonitor
 import SwiftUI
 
-public struct PlantMonitorView: View {
-    @ObservedObject private var store: PlantMonitorStore
+public struct PlantMonitorView<Face: View>: View {
+    @ObservedObject private var store: PlantMonitorStore<Face>
     private let viewModel: PlantMonitorViewModel
 
-    init(store: PlantMonitorStore, viewModel: PlantMonitorViewModel) {
+    init(store: PlantMonitorStore<Face>, viewModel: PlantMonitorViewModel) {
         self.store = store
         self.viewModel = viewModel
     }
@@ -13,6 +13,8 @@ public struct PlantMonitorView: View {
     public var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
+                store.mood
+
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                     store.moisture
                     store.light

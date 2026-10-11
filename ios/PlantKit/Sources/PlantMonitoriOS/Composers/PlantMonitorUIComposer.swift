@@ -4,12 +4,14 @@ import SwiftUI
 
 @MainActor
 public enum PlantMonitorUIComposer {
-    public static func composed(
+    public static func composed<Face: View>(
         with loader: PlantReadingLoader,
+        healthLoader: PlantHealthLoader,
+        face: @escaping (PlantMood) -> Face,
         actionHandler: @escaping (PlantMonitorAction) -> Void
-    ) -> PlantMonitorView {
-        let store = PlantMonitorStore()
-        let viewModel = PlantMonitorViewModel(loader: loader, actionHandler: actionHandler)
+    ) -> PlantMonitorView<Face> {
+        let store = PlantMonitorStore<Face>()
+        let viewModel = PlantMonitorViewModel(loader: loader, healthLoader: healthLoader, actionHandler: actionHandler)
 
         viewModel.loadedReading = { [weak store] reading in
             store?.loading = nil
@@ -18,6 +20,10 @@ public enum PlantMonitorUIComposer {
             store?.light = makeCard(.light, reading: reading)
             store?.temperature = makeCard(.temperature, reading: reading)
             store?.humidity = makeCard(.humidity, reading: reading)
+        }
+
+        viewModel.loadedMood = { [weak store] mood in
+            store?.mood = PlantMoodView(viewModel: PlantMoodViewModel(mood: mood), face: face(mood))
         }
 
         viewModel.loadedError = { [weak store] error in

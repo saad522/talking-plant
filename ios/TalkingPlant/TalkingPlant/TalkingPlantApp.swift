@@ -6,6 +6,7 @@
 //
 
 import Combine
+import PlantFaceiOS
 import PlantHistory
 import PlantHistoryiOS
 import PlantMonitor
@@ -16,7 +17,7 @@ import SwiftUI
 @main
 struct TalkingPlantApp: App {
     @StateObject private var navigation: AppNavigation
-    private let monitor: PlantMonitorView
+    private let monitor: PlantMonitorView<PlantFaceView>
     private let history: PlantHistoryView
     #if DEBUG
     private let simulatedPlant: SimulatedPeripheralClient
@@ -38,9 +39,22 @@ struct TalkingPlantApp: App {
         )
         let navigation = AppNavigation()
 
-        monitor = PlantMonitorUIComposer.composed(with: readings, actionHandler: { [weak navigation] action in
-            navigation?.handle(action)
-        })
+        let health = LocalPlantHealthLoader(
+            store: store,
+            profile: .houseplant,
+            currentDate: currentDate,
+            recheckInterval: 60,
+            schedule: SimulatedPeripheralClient.repeatingTimer
+        )
+
+        monitor = PlantMonitorUIComposer.composed(
+            with: readings,
+            healthLoader: health,
+            face: PlantFaceUIComposer.composed,
+            actionHandler: { [weak navigation] action in
+                navigation?.handle(action)
+            }
+        )
         history = PlantHistoryUIComposer.composed(with: LocalPlantHistoryLoader(store: store, currentDate: currentDate))
         _navigation = StateObject(wrappedValue: navigation)
         #if DEBUG

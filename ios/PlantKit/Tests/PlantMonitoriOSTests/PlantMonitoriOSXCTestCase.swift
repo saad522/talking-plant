@@ -1,6 +1,7 @@
 import PlantMonitor
 import PlantMonitoriOS
 import PlantShared
+import SwiftUI
 import XCTest
 
 @MainActor
@@ -9,11 +10,18 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
-    ) -> (sut: PlantMonitorView, loader: LoaderStub) {
+    ) -> (sut: PlantMonitorView<FaceStub>, loader: LoaderStub, healthLoader: HealthLoaderStub) {
         let loader = LoaderStub()
-        let sut = PlantMonitorUIComposer.composed(with: loader, actionHandler: actionHandler)
+        let healthLoader = HealthLoaderStub()
+        let sut = PlantMonitorUIComposer.composed(
+            with: loader,
+            healthLoader: healthLoader,
+            face: { FaceStub(mood: $0) },
+            actionHandler: actionHandler
+        )
         trackMemoryLeak(loader, file: file, line: line)
-        return (sut, loader)
+        trackMemoryLeak(healthLoader, file: file, line: line)
+        return (sut, loader, healthLoader)
     }
 
     func anyNSError() -> NSError {
@@ -47,6 +55,40 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
     }
 
     @MainActor
+    final class HealthLoaderStub: PlantHealthLoader {
+        enum Message: Equatable {
+            case loadHealth
+            case subscribeHealth
+        }
+
+        var messages: [Message] = []
+
+        private var loadCompletions: [(PlantHealthLoader.Result) -> Void] = []
+        func load(completion: @escaping (PlantHealthLoader.Result) -> Void) {
+            messages.append(.loadHealth)
+            loadCompletions.append(completion)
+        }
+
+        func completeLoad(with health: PlantHealth, at index: Int = 0) {
+            loadCompletions[index](.success(health))
+        }
+
+        func completeLoad(with error: Error, at index: Int = 0) {
+            loadCompletions[index](.failure(error))
+        }
+
+        private var subscriptions: [() -> Void] = []
+        func subscribe(update: @escaping () -> Void) {
+            messages.append(.subscribeHealth)
+            subscriptions.append(update)
+        }
+
+        func simulateUpdate(at index: Int = 0) {
+            subscriptions[index]()
+        }
+    }
+
+    @MainActor
     final class LoaderStub: PlantReadingLoader {
         enum Message: Equatable {
             case loadReading
@@ -74,6 +116,14 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         func completeSubscription(with error: Error, at index: Int = 0) {
             subscriptions[index](.failure(error))
         }
+    }
+}
+
+struct FaceStub: View, Equatable {
+    let mood: PlantMood
+
+    var body: some View {
+        Text("face")
     }
 }
 

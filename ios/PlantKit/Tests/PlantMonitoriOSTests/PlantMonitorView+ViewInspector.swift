@@ -2,13 +2,13 @@ import PlantMonitoriOS
 import SwiftUI
 import ViewInspector
 
-extension PlantMonitorView {
+extension PlantMonitorView where Face == FaceStub {
     var isLoading: Bool {
         (try? inspect().find(LoadingSkeletonView.self)) != nil
     }
 
     var historyLabel: String? {
-        try? inspect().scrollView().vStack().button(1).labelView().text().string()
+        try? inspect().find(ViewType.Button.self).labelView().text().string()
     }
 
     func simulateAppear() {
@@ -16,7 +16,7 @@ extension PlantMonitorView {
     }
 
     func simulateHistoryTap() {
-        try? inspect().scrollView().vStack().button(1).tap()
+        try? inspect().find(ViewType.Button.self).tap()
     }
 
     func renderedCards() -> [PlantSensorCardView] {
@@ -25,5 +25,13 @@ extension PlantMonitorView {
 
     func renderedError() -> PlantMonitorErrorView? {
         try? inspect().find(PlantMonitorErrorView.self).actualView()
+    }
+
+    func renderedFace() -> FaceStub? {
+        try? inspect().find(FaceStub.self).actualView()
+    }
+
+    func renderedMoodLabel() -> String? {
+        try? inspect().find(PlantMoodView<FaceStub>.self).vStack().text(1).string()
     }
 }

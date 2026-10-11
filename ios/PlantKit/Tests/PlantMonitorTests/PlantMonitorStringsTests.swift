@@ -13,6 +13,15 @@ final class PlantMonitorStringsTests: PlantMonitorXCTestCase {
             "plant.monitor.error.dismiss.label",
             "plant.monitor.connectivity.error.description",
             "plant.monitor.general.error.description",
+            "plant.monitor.mood.happy.label",
+            "plant.monitor.mood.thirsty.label",
+            "plant.monitor.mood.veryThirsty.label",
+            "plant.monitor.mood.drowning.label",
+            "plant.monitor.mood.tooDark.label",
+            "plant.monitor.mood.tooHot.label",
+            "plant.monitor.mood.tooCold.label",
+            "plant.monitor.mood.dryAir.label",
+            "plant.monitor.mood.offline.label",
         ]
 
         keys.forEach { key in

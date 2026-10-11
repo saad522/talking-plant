@@ -10,3 +10,13 @@
 "plant.monitor.error.dismiss.label" = "Dismiss";
 "plant.monitor.connectivity.error.description" = "Can't reach your plant. Make sure the sensor is nearby and switched on.";
 "plant.monitor.general.error.description" = "Something went wrong reading your plant. It will try again with the next reading.";
+
+"plant.monitor.mood.happy.label" = "Happy";
+"plant.monitor.mood.thirsty.label" = "Thirsty";
+"plant.monitor.mood.veryThirsty.label" = "Very thirsty";
+"plant.monitor.mood.drowning.label" = "Drowning";
+"plant.monitor.mood.tooDark.label" = "Too dark";
+"plant.monitor.mood.tooHot.label" = "Too hot";
+"plant.monitor.mood.tooCold.label" = "Too cold";
+"plant.monitor.mood.dryAir.label" = "Dry air";
+"plant.monitor.mood.offline.label" = "Offline";

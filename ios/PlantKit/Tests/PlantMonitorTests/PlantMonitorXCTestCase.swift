@@ -173,12 +173,78 @@ class PlantMonitorXCTestCase: XCTestCase {
             insertCompletions[index](error)
         }
 
+        private var retrievalCompletions: [(PlantReadingStore.RetrievalResult) -> Void] = []
         func retrieve(from start: Date, to end: Date, completion: @escaping (PlantReadingStore.RetrievalResult) -> Void) {
             messages.append(.retrieve(from: start, to: end))
+            retrievalCompletions.append(completion)
         }
 
+        func completeRetrieval(with readings: [PlantReading], at index: Int = 0) {
+            retrievalCompletions[index](.success(readings))
+        }
+
+        func completeRetrieval(with error: Error, at index: Int = 0) {
+            retrievalCompletions[index](.failure(error))
+        }
+
+        private var subscriptions: [() -> Void] = []
         func subscribe(update: @escaping () -> Void) {
             messages.append(.subscribe)
+            subscriptions.append(update)
+        }
+
+        func simulateInsertion(at index: Int = 0) {
+            subscriptions[index]()
+        }
+    }
+
+    @MainActor
+    final class HealthLoaderStub: PlantHealthLoader {
+        enum Message: Equatable {
+            case loadHealth
+            case subscribeHealth
+        }
+
+        var messages: [Message] = []
+
+        private var loadCompletions: [(PlantHealthLoader.Result) -> Void] = []
+        func load(completion: @escaping (PlantHealthLoader.Result) -> Void) {
+            messages.append(.loadHealth)
+            loadCompletions.append(completion)
+        }
+
+        func completeLoad(with health: PlantHealth, at index: Int = 0) {
+            loadCompletions[index](.success(health))
+        }
+
+        func completeLoad(with error: Error, at index: Int = 0) {
+            loadCompletions[index](.failure(error))
+        }
+
+        private var subscriptions: [() -> Void] = []
+        func subscribe(update: @escaping () -> Void) {
+            messages.append(.subscribeHealth)
+            subscriptions.append(update)
+        }
+
+        func simulateUpdate(at index: Int = 0) {
+            subscriptions[index]()
+        }
+    }
+
+    @MainActor
+    final class ScheduleSpy {
+        private(set) var intervals: [TimeInterval] = []
+        private var ticks: [@MainActor @Sendable () -> Bool] = []
+
+        func schedule(interval: TimeInterval, tick: @escaping @MainActor @Sendable () -> Bool) {
+            intervals.append(interval)
+            ticks.append(tick)
+        }
+
+        @discardableResult
+        func fire(at index: Int = 0) -> Bool {
+            ticks[index]()
         }
     }
 }

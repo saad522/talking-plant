@@ -13,6 +13,7 @@
 		4AC4892007799203005E9A99 /* PlantDevice in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892006799203005E9A99 /* PlantDevice */; };
 		4AC4892009799203005E9A99 /* PlantHistory in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892008799203005E9A99 /* PlantHistory */; };
 		4AC489200B799203005E9A99 /* PlantHistoryiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC489200A799203005E9A99 /* PlantHistoryiOS */; };
+		4AC489200D799203005E9A99 /* PlantFaceiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC489200C799203005E9A99 /* PlantFaceiOS */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -80,6 +81,7 @@
 				4AC4892007799203005E9A99 /* PlantDevice in Frameworks */,
 				4AC4892009799203005E9A99 /* PlantHistory in Frameworks */,
 				4AC489200B799203005E9A99 /* PlantHistoryiOS in Frameworks */,
+				4AC489200D799203005E9A99 /* PlantFaceiOS in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -146,6 +148,7 @@
 				4AC4892006799203005E9A99 /* PlantDevice */,
 				4AC4892008799203005E9A99 /* PlantHistory */,
 				4AC489200A799203005E9A99 /* PlantHistoryiOS */,
+				4AC489200C799203005E9A99 /* PlantFaceiOS */,
 			);
 			productName = TalkingPlant;
 			productReference = 4A69B560307973AF00235D0E /* TalkingPlant.app */;
@@ -661,6 +664,10 @@
 		4AC489200A799203005E9A99 /* PlantHistoryiOS */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PlantHistoryiOS;
+		};
+		4AC489200C799203005E9A99 /* PlantFaceiOS */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlantFaceiOS;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

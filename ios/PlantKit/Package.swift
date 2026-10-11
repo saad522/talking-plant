@@ -11,7 +11,9 @@ let package = Package(
         .library(name: "PlantMonitoriOS", targets: ["PlantMonitoriOS"]),
         .library(name: "PlantDevice", targets: ["PlantDevice"]),
         .library(name: "PlantHistory", targets: ["PlantHistory"]),
-        .library(name: "PlantHistoryiOS", targets: ["PlantHistoryiOS"])
+        .library(name: "PlantHistoryiOS", targets: ["PlantHistoryiOS"]),
+        .library(name: "PlantFace", targets: ["PlantFace"]),
+        .library(name: "PlantFaceiOS", targets: ["PlantFaceiOS"])
     ],
     dependencies: [
         .package(url: "https://github.com/nalexn/ViewInspector", from: "0.10.0")
@@ -23,6 +25,8 @@ let package = Package(
         .target(name: "PlantDevice", dependencies: ["PlantShared"]),
         .target(name: "PlantHistory", dependencies: ["PlantShared"], resources: [.process("Resources")]),
         .target(name: "PlantHistoryiOS", dependencies: ["PlantHistory", "PlantShared"]),
+        .target(name: "PlantFace", dependencies: ["PlantShared"]),
+        .target(name: "PlantFaceiOS", dependencies: ["PlantFace", "PlantShared"]),
         .testTarget(name: "PlantSharedTests", dependencies: ["PlantShared"]),
         .testTarget(name: "PlantMonitorTests", dependencies: ["PlantMonitor", "PlantShared"]),
         .testTarget(
@@ -34,6 +38,11 @@ let package = Package(
         .testTarget(
             name: "PlantHistoryiOSTests",
             dependencies: ["PlantHistoryiOS", "PlantHistory", "PlantShared", "ViewInspector"]
+        ),
+        .testTarget(name: "PlantFaceTests", dependencies: ["PlantFace", "PlantShared"]),
+        .testTarget(
+            name: "PlantFaceiOSTests",
+            dependencies: ["PlantFaceiOS", "PlantFace", "PlantShared", "ViewInspector"]
         )
     ]
 )

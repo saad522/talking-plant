@@ -6,13 +6,13 @@ import XCTest
 @MainActor
 final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     func test_init_doesNotMessageLoader() {
-        let (_, loader) = makeSUT()
+        let (_, loader, _) = makeSUT()
 
         XCTAssertEqual(loader.messages, [])
     }
 
     func test_init_displaysLoadingWithoutCardsOrError() {
-        let (sut, _) = makeSUT()
+        let (sut, _, _) = makeSUT()
 
         XCTAssertTrue(sut.isLoading)
         XCTAssertEqual(sut.renderedCards().count, 0)
@@ -20,13 +20,13 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_init_rendersLocalisedHistoryLabel() {
-        let (sut, _) = makeSUT()
+        let (sut, _, _) = makeSUT()
 
         XCTAssertEqual(sut.historyLabel, String.localised(key: "plant.monitor.history.label"))
     }
 
     func test_appear_subscribesToReadingsOnce() {
-        let (sut, loader) = makeSUT()
+        let (sut, loader, _) = makeSUT()
 
         sut.simulateAppear()
         sut.simulateAppear()
@@ -35,7 +35,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_rendersSensorCardsOnReading() {
-        let (sut, loader) = makeSUT()
+        let (sut, loader, _) = makeSUT()
         let reading = makeReading(moisture: 42, lux: 1_200, temperature: 21.5, humidity: 60)
 
         sut.simulateAppear()
@@ -52,7 +52,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_rendersLatestReadingOnEveryUpdate() {
-        let (sut, loader) = makeSUT()
+        let (sut, loader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading(moisture: 42))
@@ -62,7 +62,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_rendersPlaceholdersForMissingValues() {
-        let (sut, loader) = makeSUT()
+        let (sut, loader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading(moisture: nil, lux: nil, temperature: nil, humidity: nil))
@@ -71,7 +71,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_displaysConnectivityErrorOnFailure() {
-        let (sut, loader) = makeSUT()
+        let (sut, loader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: PeripheralPlantReadingLoader.Error.connectivity)
@@ -85,7 +85,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_displaysGeneralErrorOnOtherFailure() {
-        let (sut, loader) = makeSUT()
+        let (sut, loader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: PeripheralPlantReadingLoader.Error.invalidData)
@@ -97,7 +97,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_hidesErrorOnNextReading() {
-        let (sut, loader) = makeSUT()
+        let (sut, loader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: anyNSError())
@@ -110,7 +110,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     func test_error_deliversDismissedAction() {
         let exp = expectation(description: "wait for action")
         var invokedActions: [PlantMonitorAction] = []
-        let (sut, loader) = makeSUT(actionHandler: {
+        let (sut, loader, _) = makeSUT(actionHandler: {
             invokedActions.append($0)
             exp.fulfill()
         })
@@ -123,9 +123,70 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
         XCTAssertEqual(invokedActions, [.dismissed])
     }
 
+    func test_init_doesNotMessageHealthLoaderOrRenderMood() {
+        let (sut, _, healthLoader) = makeSUT()
+
+        XCTAssertEqual(healthLoader.messages, [])
+        XCTAssertNil(sut.renderedFace())
+        XCTAssertNil(sut.renderedMoodLabel())
+    }
+
+    func test_appear_loadsAndSubscribesToHealthOnce() {
+        let (sut, _, healthLoader) = makeSUT()
+
+        sut.simulateAppear()
+        sut.simulateAppear()
+
+        XCTAssertEqual(healthLoader.messages, [.loadHealth, .subscribeHealth])
+    }
+
+    func test_appear_rendersFaceAndLabelOnceHealthLoads() {
+        let (sut, _, healthLoader) = makeSUT()
+
+        sut.simulateAppear()
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+
+        XCTAssertEqual(sut.renderedFace(), FaceStub(mood: .thirsty))
+        XCTAssertEqual(sut.renderedMoodLabel(), String.localised(key: "plant.monitor.mood.thirsty.label"))
+    }
+
+    func test_appear_rendersHappyFaceWithoutIssues() {
+        let (sut, _, healthLoader) = makeSUT()
+
+        sut.simulateAppear()
+        healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []))
+
+        XCTAssertEqual(sut.renderedFace(), FaceStub(mood: .happy))
+        XCTAssertEqual(sut.renderedMoodLabel(), String.localised(key: "plant.monitor.mood.happy.label"))
+    }
+
+    func test_healthUpdate_rendersNewFaceAndLabel() {
+        let (sut, _, healthLoader) = makeSUT()
+
+        sut.simulateAppear()
+        healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []))
+        healthLoader.simulateUpdate()
+        healthLoader.completeLoad(with: PlantHealth(score: 40, issues: [.veryThirsty]), at: 1)
+
+        XCTAssertEqual(sut.renderedFace(), FaceStub(mood: .veryThirsty))
+        XCTAssertEqual(sut.renderedMoodLabel(), String.localised(key: "plant.monitor.mood.veryThirsty.label"))
+    }
+
+    func test_healthLoadFailure_keepsLastMood() {
+        let (sut, _, healthLoader) = makeSUT()
+
+        sut.simulateAppear()
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        healthLoader.simulateUpdate()
+        healthLoader.completeLoad(with: anyNSError(), at: 1)
+
+        XCTAssertEqual(sut.renderedFace(), FaceStub(mood: .thirsty))
+        XCTAssertNil(sut.renderedError())
+    }
+
     func test_historyTap_deliversHistoryTapAction() {
         var invokedActions: [PlantMonitorAction] = []
-        let (sut, _) = makeSUT(actionHandler: { invokedActions.append($0) })
+        let (sut, _, _) = makeSUT(actionHandler: { invokedActions.append($0) })
 
         sut.simulateHistoryTap()
 

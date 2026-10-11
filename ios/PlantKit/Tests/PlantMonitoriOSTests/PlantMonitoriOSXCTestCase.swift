@@ -7,6 +7,7 @@ import XCTest
 @MainActor
 class PlantMonitoriOSXCTestCase: XCTestCase {
     func makeSUT(
+        speechLoader: SpeechLoaderStub = SpeechLoaderStub(),
         actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -16,7 +17,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         let sut = PlantMonitorUIComposer.composed(
             with: loader,
             healthLoader: healthLoader,
-            speechLoader: SpeechLoaderStub(),
+            speechLoader: speechLoader,
             plantName: "Sprout",
             room: "Living room",
             face: { FaceStub(mood: $0) },
@@ -24,6 +25,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         )
         trackMemoryLeak(loader, file: file, line: line)
         trackMemoryLeak(healthLoader, file: file, line: line)
+        trackMemoryLeak(speechLoader, file: file, line: line)
         return (sut, loader, healthLoader)
     }
 
@@ -57,10 +59,20 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         }
     }
 
-    /// Never completes, so the bubble keeps the template line.
+    /// Completes only on demand, so the bubble keeps the template line until then.
     @MainActor
     final class SpeechLoaderStub: PlantSpeechLoader {
-        func load(mood: PlantMood, isSleeping: Bool, reading: PlantReading?, completion: @escaping (PlantSpeechLoader.Result) -> Void) {}
+        private(set) var requestCount = 0
+
+        private var completions: [(PlantSpeechLoader.Result) -> Void] = []
+        func load(mood: PlantMood, isSleeping: Bool, reading: PlantReading?, completion: @escaping (PlantSpeechLoader.Result) -> Void) {
+            requestCount += 1
+            completions.append(completion)
+        }
+
+        func complete(with line: String, at index: Int = 0) {
+            completions[index](.success(line))
+        }
     }
 
     @MainActor

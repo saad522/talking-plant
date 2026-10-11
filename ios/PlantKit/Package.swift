@@ -12,6 +12,8 @@ let package = Package(
         .library(name: "PlantDevice", targets: ["PlantDevice"]),
         .library(name: "PlantHistory", targets: ["PlantHistory"]),
         .library(name: "PlantHistoryiOS", targets: ["PlantHistoryiOS"]),
+        .library(name: "PlantChat", targets: ["PlantChat"]),
+        .library(name: "PlantChatiOS", targets: ["PlantChatiOS"]),
         .library(name: "PlantFace", targets: ["PlantFace"]),
         .library(name: "PlantFaceiOS", targets: ["PlantFaceiOS"])
     ],
@@ -26,6 +28,7 @@ let package = Package(
         .target(name: "PlantHistory", dependencies: ["PlantShared"], resources: [.process("Resources")]),
         .target(name: "PlantHistoryiOS", dependencies: ["PlantHistory", "PlantShared"]),
         .target(name: "PlantChat", dependencies: ["PlantShared"], resources: [.process("Resources")]),
+        .target(name: "PlantChatiOS", dependencies: ["PlantChat", "PlantShared"]),
         .target(name: "PlantFace", dependencies: ["PlantShared"]),
         .target(name: "PlantFaceiOS", dependencies: ["PlantFace", "PlantShared"]),
         .testTarget(name: "PlantSharedTests", dependencies: ["PlantShared"]),
@@ -41,6 +44,10 @@ let package = Package(
             dependencies: ["PlantHistoryiOS", "PlantHistory", "PlantShared", "ViewInspector"]
         ),
         .testTarget(name: "PlantChatTests", dependencies: ["PlantChat", "PlantShared"]),
+        .testTarget(
+            name: "PlantChatiOSTests",
+            dependencies: ["PlantChatiOS", "PlantChat", "PlantShared", "ViewInspector"]
+        ),
         .testTarget(name: "PlantFaceTests", dependencies: ["PlantFace", "PlantShared"]),
         .testTarget(
             name: "PlantFaceiOSTests",

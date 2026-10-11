@@ -47,7 +47,8 @@ One milestone per Claude Code session. Each ends with passing tests and a short 
 
 ## M5 — The plant's voice (Foundation Models)
 - `PlantChat` / `PlantChatiOS` slices.
-- Personality picker: dramatic, grumpy grandma, chill surfer, polite butler.
+- Plan: `docs/plans/M5.md`.
+- Personality picker: cheerful (default), dramatic, grumpy grandma, chill surfer, polite butler.
 - Notifications written in the plant's voice when the mood changes, rate-limited.
 - Chat screen; a tool lets the model fetch history summaries.
 - Template fallback when the model is unavailable.

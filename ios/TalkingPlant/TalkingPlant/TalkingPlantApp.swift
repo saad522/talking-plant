@@ -6,6 +6,9 @@
 //
 
 import Combine
+import Foundation
+import PlantChat
+import PlantChatiOS
 import PlantFaceiOS
 import PlantHistory
 import PlantHistoryiOS
@@ -19,6 +22,9 @@ struct TalkingPlantApp: App {
     @StateObject private var navigation: AppNavigation
     private let monitor: PlantMonitorView<PlantFaceView>
     private let history: PlantHistoryView
+    private let chat: PlantChatView<PlantFaceView>
+    private let moodNotifier: PlantMoodNotifier
+    private let notificationClient: UserNotificationsPlantNotificationClient
     #if DEBUG
     private let simulatedPlant: SimulatedPeripheralClient
     #endif
@@ -47,19 +53,66 @@ struct TalkingPlantApp: App {
             schedule: SimulatedPeripheralClient.repeatingTimer
         )
 
+        let plantName = "Sprout"
+        let defaults = UserDefaultsClient()
+        let settings = PlantPersonalitySettings(defaults: defaults)
+        let historySummary = LocalPlantHistorySummaryLoader(store: store, currentDate: currentDate)
+        let languageModel = Self.makeLanguageModel(historyLoader: historySummary)
+        let factsLoader = LocalPlantVoiceFactsLoader(
+            moodLoader: PlantHealthMoodLoaderAdapter(healthLoader: health),
+            store: store,
+            currentDate: currentDate
+        )
+        let lineLoader = LanguageModelPlantVoiceLineLoader(
+            client: languageModel.client,
+            personality: { settings.load() },
+            plantName: plantName
+        )
+        let chatLoader = LanguageModelPlantChatLoader(
+            client: languageModel.client,
+            personality: { settings.load() },
+            plantName: plantName
+        )
+
         monitor = PlantMonitorUIComposer.composed(
             with: readings,
             healthLoader: health,
-            plantName: "Sprout",
+            speechLoader: PlantVoiceSpeechLoaderAdapter(lineLoader: lineLoader),
+            plantName: plantName,
             room: "Living room",
             face: PlantFaceUIComposer.composed,
             actionHandler: { [weak navigation] action in
                 #if DEBUG
                 if action == .waterTap { client.water() }
                 #endif
+                if action == .talkTap { languageModel.prewarm() }
                 navigation?.handle(action)
             }
         )
+        chat = PlantChatUIComposer.composed(
+            chatLoader: chatLoader,
+            lineLoader: lineLoader,
+            factsLoader: factsLoader,
+            settings: settings,
+            plantName: plantName,
+            face: PlantFaceUIComposer.composed,
+            actionHandler: { [weak navigation] action in
+                navigation?.handle(action)
+            }
+        )
+
+        // Notifications use the real clock, so the limit holds even though the simulated clock runs ahead.
+        notificationClient = UserNotificationsPlantNotificationClient()
+        moodNotifier = PlantMoodNotifier(
+            factsLoader: factsLoader,
+            lineLoader: lineLoader,
+            notifications: notificationClient,
+            defaults: defaults,
+            plantName: plantName,
+            currentDate: Date.init,
+            minimumInterval: 60 * 60
+        )
+        moodNotifier.start()
         history = PlantHistoryUIComposer.composed(with: LocalPlantHistoryLoader(store: store, currentDate: currentDate))
         _navigation = StateObject(wrappedValue: navigation)
         #if DEBUG
@@ -81,10 +134,24 @@ struct TalkingPlantApp: App {
                     .navigationDestination(for: AppNavigation.Route.self) { route in
                         switch route {
                         case .history: history
+                        case .chat: chat
                         }
                     }
             }
         }
+    }
+
+    /// The on-device model. DEBUG builds accept `-PlantVoiceUnavailable` to check the template fallback.
+    private static func makeLanguageModel(
+        historyLoader: PlantHistorySummaryLoader
+    ) -> (client: PlantLanguageModelClient, prewarm: () -> Void) {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-PlantVoiceUnavailable") {
+            return (UnavailableLanguageModelClient(), {})
+        }
+        #endif
+        let client = FoundationModelsPlantLanguageModelClient(historyLoader: historyLoader)
+        return (client, { client.prewarm() })
     }
 
     private static func makeStore() -> PlantReadingStore {
@@ -113,6 +180,7 @@ struct TalkingPlantApp: App {
 final class AppNavigation: ObservableObject {
     enum Route: Hashable {
         case history
+        case chat
     }
 
     @Published var path: [Route] = []
@@ -120,7 +188,57 @@ final class AppNavigation: ObservableObject {
     func handle(_ action: PlantMonitorAction) {
         switch action {
         case .historyTap: path.append(.history)
-        case .talkTap, .waterTap, .dismissed: break
+        case .talkTap: path.append(.chat)
+        case .waterTap, .dismissed: break
+        }
+    }
+
+    func handle(_ action: PlantChatAction) {
+        switch action {
+        case .backTap: _ = path.popLast()
         }
     }
 }
+
+/// PlantChat's mood source, backed by the monitor's health loader.
+@MainActor
+struct PlantHealthMoodLoaderAdapter: PlantMoodLoader {
+    let healthLoader: PlantHealthLoader
+
+    func load(completion: @escaping (PlantMoodLoader.Result) -> Void) {
+        healthLoader.load { completion($0.map(\.mood)) }
+    }
+
+    func subscribe(update: @escaping () -> Void) {
+        healthLoader.subscribe(update: update)
+    }
+}
+
+/// The home speech bubble's source, backed by PlantChat's line loader.
+@MainActor
+struct PlantVoiceSpeechLoaderAdapter: PlantSpeechLoader {
+    let lineLoader: PlantVoiceLineLoader
+
+    func load(mood: PlantMood, isSleeping: Bool, reading: PlantReading?, completion: @escaping (PlantSpeechLoader.Result) -> Void) {
+        let facts = PlantVoiceFacts(mood: mood, isSleeping: isSleeping, reading: reading)
+        lineLoader.load(PlantVoiceLineRequest(facts: facts, purpose: .home), completion: completion)
+    }
+}
+
+#if DEBUG
+/// Stands in for the model when the app is launched with `-PlantVoiceUnavailable`.
+@MainActor
+private struct UnavailableLanguageModelClient: PlantLanguageModelClient {
+    let isAvailable = false
+
+    func makeSession(instructions: String, canReadHistory: Bool) -> PlantLanguageModelSession {
+        FailingSession()
+    }
+
+    private final class FailingSession: PlantLanguageModelSession {
+        func respond(to prompt: String, completion: @escaping (PlantLanguageModelSession.Result) -> Void) {
+            completion(.failure(PlantLanguageModelError.generation))
+        }
+    }
+}
+#endif

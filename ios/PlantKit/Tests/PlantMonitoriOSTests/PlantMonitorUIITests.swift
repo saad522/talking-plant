@@ -203,6 +203,20 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
         XCTAssertEqual(sut.subtitle, "Living room · Thirsty")
     }
 
+    func test_appear_replacesTemplateBubbleWithGeneratedLine() {
+        let speechLoader = SpeechLoaderStub()
+        let (sut, _, healthLoader) = makeSUT(speechLoader: speechLoader)
+
+        sut.simulateAppear()
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        XCTAssertEqual(sut.bubbleText, "I could use a drink soon.")
+        XCTAssertEqual(speechLoader.requestCount, 1)
+
+        speechLoader.complete(with: "My soil feels dusty, friend.")
+
+        XCTAssertEqual(sut.bubbleText, "My soil feels dusty, friend.")
+    }
+
     func test_appear_rendersBubbleTextForEveryMood() {
         let issues: [PlantMood: [PlantHealthIssue]] = [
             .happy: [], .thirsty: [.thirsty], .veryThirsty: [.veryThirsty], .drowning: [.drowning],

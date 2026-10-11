@@ -21,6 +21,16 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         XCTAssertEqual(sut.viewModel.personalities.first?.label, "Cheerful")
     }
 
+    func test_init_providesLabelsForTheScreen() {
+        let sut = makeSUT()
+
+        XCTAssertEqual(sut.viewModel.backLabel, "Back")
+        XCTAssertEqual(sut.viewModel.personalityLabel, "Personality")
+        XCTAssertEqual(sut.viewModel.placeholderLabel, "Say something…")
+        XCTAssertEqual(sut.viewModel.sendLabel, "Send")
+        XCTAssertTrue(sut.viewModel.unavailableLabel.contains("Apple Intelligence"))
+    }
+
     // MARK: - appear
 
     func test_appear_subscribesAndLoadsFactsOnce() {

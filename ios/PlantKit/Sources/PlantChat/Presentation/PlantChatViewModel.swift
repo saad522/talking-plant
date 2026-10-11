@@ -9,6 +9,7 @@ public final class PlantChatViewModel {
     private let lineLoader: PlantVoiceLineLoader
     private let factsLoader: PlantVoiceFactsLoader
     private let settings: PlantPersonalitySettings
+    private let plantName: String
     private let actionHandler: (PlantChatAction) -> Void
     private var appeared: Bool = false
     private var latestFacts: PlantVoiceFacts?
@@ -19,6 +20,14 @@ public final class PlantChatViewModel {
     private var conversation: Int = 0
 
     public let personalities: [PlantPersonalityViewModel] = PlantPersonality.allCases.map(PlantPersonalityViewModel.init)
+
+    public let backLabel: String = String.localised(key: "plant.chat.back.label")
+    public let personalityLabel: String = String.localised(key: "plant.chat.personality.label")
+    public let placeholderLabel: String = String.localised(key: "plant.chat.input.placeholder")
+    public let sendLabel: String = String.localised(key: "plant.chat.send.label")
+    public var unavailableLabel: String {
+        String(format: String.localised(key: "plant.chat.unavailable.notice"), plantName)
+    }
 
     public var loadedMessages: Observer<[PlantChatMessageViewModel]>?
     public var loadedTyping: Observer<Bool>?
@@ -38,6 +47,7 @@ public final class PlantChatViewModel {
         self.lineLoader = lineLoader
         self.factsLoader = factsLoader
         self.settings = settings
+        self.plantName = plantName
         self.actionHandler = actionHandler
     }
 

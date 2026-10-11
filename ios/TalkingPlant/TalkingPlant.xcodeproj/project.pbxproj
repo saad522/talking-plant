@@ -14,6 +14,8 @@
 		4AC4892009799203005E9A99 /* PlantHistory in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892008799203005E9A99 /* PlantHistory */; };
 		4AC489200B799203005E9A99 /* PlantHistoryiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC489200A799203005E9A99 /* PlantHistoryiOS */; };
 		4AC489200D799203005E9A99 /* PlantFaceiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC489200C799203005E9A99 /* PlantFaceiOS */; };
+		4AC489200F799203005E9A99 /* PlantChat in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC489200E799203005E9A99 /* PlantChat */; };
+		4AC4892011799203005E9A99 /* PlantChatiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892010799203005E9A99 /* PlantChatiOS */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,6 +84,8 @@
 				4AC4892009799203005E9A99 /* PlantHistory in Frameworks */,
 				4AC489200B799203005E9A99 /* PlantHistoryiOS in Frameworks */,
 				4AC489200D799203005E9A99 /* PlantFaceiOS in Frameworks */,
+				4AC489200F799203005E9A99 /* PlantChat in Frameworks */,
+				4AC4892011799203005E9A99 /* PlantChatiOS in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -149,6 +153,8 @@
 				4AC4892008799203005E9A99 /* PlantHistory */,
 				4AC489200A799203005E9A99 /* PlantHistoryiOS */,
 				4AC489200C799203005E9A99 /* PlantFaceiOS */,
+				4AC489200E799203005E9A99 /* PlantChat */,
+				4AC4892010799203005E9A99 /* PlantChatiOS */,
 			);
 			productName = TalkingPlant;
 			productReference = 4A69B560307973AF00235D0E /* TalkingPlant.app */;
@@ -668,6 +674,14 @@
 		4AC489200C799203005E9A99 /* PlantFaceiOS */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PlantFaceiOS;
+		};
+		4AC489200E799203005E9A99 /* PlantChat */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlantChat;
+		};
+		4AC4892010799203005E9A99 /* PlantChatiOS */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlantChatiOS;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

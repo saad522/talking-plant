@@ -10,6 +10,10 @@ class PlantMonitorXCTestCase: XCTestCase {
         0x90, 0x15, 0x00, 0x00, 0x2A, 0x00, 0x00, 0x00,
     ])
 
+    func anyNSError() -> NSError {
+        NSError(domain: "any", code: 1)
+    }
+
     func anyDate() -> Date {
         Date(timeIntervalSince1970: 1_000)
     }
@@ -54,5 +58,90 @@ class PlantMonitorXCTestCase: XCTestCase {
             .forEach { value in withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
         withUnsafeBytes(of: sequence.littleEndian) { data.append(contentsOf: $0) }
         return data
+    }
+
+    func trackMemoryLeak(_ instance: AnyObject, file: StaticString = #filePath, line: UInt = #line) {
+        addTeardownBlock { [weak instance] in
+            XCTAssertNil(instance, "Instance should be deallocated. Potential memory leak", file: file, line: line)
+        }
+    }
+
+    @MainActor
+    final class ClientSpy: PeripheralClient {
+        enum Message: Equatable {
+            case read(PlantCharacteristic)
+            case subscribe(PlantCharacteristic)
+            case write(Data, PlantCharacteristic)
+        }
+
+        var messages: [Message] = []
+
+        private var readCompletions: [(PeripheralClient.Result) -> Void] = []
+        func read(_ characteristic: PlantCharacteristic, completion: @escaping (PeripheralClient.Result) -> Void) {
+            messages.append(.read(characteristic))
+            readCompletions.append(completion)
+        }
+
+        func completeRead(with data: Data, at index: Int = 0) {
+            readCompletions[index](.success(data))
+        }
+
+        func completeRead(with error: Error, at index: Int = 0) {
+            readCompletions[index](.failure(error))
+        }
+
+        private var subscriptions: [(PeripheralClient.Result) -> Void] = []
+        func subscribe(to characteristic: PlantCharacteristic, update: @escaping (PeripheralClient.Result) -> Void) {
+            messages.append(.subscribe(characteristic))
+            subscriptions.append(update)
+        }
+
+        func completeSubscription(with data: Data, at index: Int = 0) {
+            subscriptions[index](.success(data))
+        }
+
+        func completeSubscription(with error: Error, at index: Int = 0) {
+            subscriptions[index](.failure(error))
+        }
+
+        private var writeCompletions: [(PeripheralClient.WriteResult) -> Void] = []
+        func write(_ data: Data, to characteristic: PlantCharacteristic, completion: @escaping (PeripheralClient.WriteResult) -> Void) {
+            messages.append(.write(data, characteristic))
+            writeCompletions.append(completion)
+        }
+
+        func completeWrite(with error: Error?, at index: Int = 0) {
+            writeCompletions[index](error)
+        }
+    }
+
+    @MainActor
+    final class LoaderStub: PlantReadingLoader {
+        enum Message: Equatable {
+            case loadReading
+            case subscribeReadings
+        }
+
+        var messages: [Message] = []
+
+        private var loadCompletions: [(PlantReadingLoader.Result) -> Void] = []
+        func load(completion: @escaping (PlantReadingLoader.Result) -> Void) {
+            messages.append(.loadReading)
+            loadCompletions.append(completion)
+        }
+
+        private var subscriptions: [(PlantReadingLoader.Result) -> Void] = []
+        func subscribe(update: @escaping (PlantReadingLoader.Result) -> Void) {
+            messages.append(.subscribeReadings)
+            subscriptions.append(update)
+        }
+
+        func completeSubscription(with reading: PlantReading, at index: Int = 0) {
+            subscriptions[index](.success(reading))
+        }
+
+        func completeSubscription(with error: Error, at index: Int = 0) {
+            subscriptions[index](.failure(error))
+        }
     }
 }

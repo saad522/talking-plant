@@ -677,7 +677,9 @@ public struct PlantMonitorErrorView: View {
 
     public var body: some View {
         ZStack {
-            PlantMonitorColor.background
+            Rectangle()
+                .fill(PlantMonitorColor.background)
+                .ignoresSafeArea()
             VStack(alignment: .center, spacing: 24) {
                 store.icon
                     .font(PlantMonitorFont.icon)
@@ -784,8 +786,16 @@ an `Equatable` stub view for `Face`.
 ### 5.5 Styles
 
 Feature-prefixed `enum`s with static constants: `PlantMonitorFont`, `PlantMonitorColor`.
-Use colors that work in light and dark mode and compile on macOS (e.g. `Color.primary`,
-`Color.secondary`, or asset colors), never hard-coded UIKit colors.
+Use **adaptive SwiftUI styles** that work in light and dark mode and compile on macOS
+(`Color.primary`, `Color.secondary`, opacity variants, `BackgroundStyle` via `.background`),
+never hard-coded UIKit colors and **no asset catalog colors**.
+
+Why no asset catalog: FeatureiOS targets must keep building and testing with `swift test` on
+macOS, and the SwiftPM command line does not reliably compile `.xcassets` the way Xcode
+does. An asset color would then build in Xcode but be missing under `swift test`. SwiftUI's
+semantic styles already adapt to light/dark mode and accessibility settings, so they cover
+what the asset colors were for. A style that isn't a `Color` (like `BackgroundStyle`) is
+drawn through a shape, e.g. `Rectangle().fill(PlantMonitorColor.background)`.
 
 ```swift
 import SwiftUI
@@ -801,13 +811,12 @@ enum PlantMonitorFont {
 enum PlantMonitorColor {
     static let primaryText: Color = .primary
     static let secondaryText: Color = .secondary
-    static let background: Color = Color("PlantBackground", bundle: .module)
+    static let background: BackgroundStyle = .background
     static let cardBackground: Color = .secondary.opacity(0.12)
 }
 ```
 
-Asset colors live in an asset catalog inside the FeatureiOS target (add
-`resources: [.process("Resources")]` to that target when the first asset is added).
+If a custom brand color is ever needed, propose how to add it first.
 
 ---
 

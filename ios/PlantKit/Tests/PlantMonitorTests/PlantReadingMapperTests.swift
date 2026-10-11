@@ -132,7 +132,7 @@ final class PlantReadingMapperTests: PlantMonitorXCTestCase {
         line: UInt = #line
     ) {
         XCTAssertThrowsError(try map(data), message, file: file, line: line) { error in
-            XCTAssertEqual(error as? PlantReadingMapper.Error, .invalidData, message, file: file, line: line)
+            XCTAssertEqual(error as? PeripheralPlantReadingLoader.Error, .invalidData, message, file: file, line: line)
         }
     }
 }

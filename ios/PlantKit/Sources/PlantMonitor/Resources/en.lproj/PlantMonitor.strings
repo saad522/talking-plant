@@ -1,1 +1,12 @@
 /* PlantMonitor strings. Keys follow plant.monitor.<thing>.<kind>. */
+
+"plant.monitor.history.label" = "History";
+
+"plant.monitor.moisture.title" = "Moisture";
+"plant.monitor.light.title" = "Light";
+"plant.monitor.temperature.title" = "Temperature";
+"plant.monitor.humidity.title" = "Humidity";
+
+"plant.monitor.error.dismiss.label" = "Dismiss";
+"plant.monitor.connectivity.error.description" = "Can't reach your plant. Make sure the sensor is nearby and switched on.";
+"plant.monitor.general.error.description" = "Something went wrong reading your plant. It will try again with the next reading.";

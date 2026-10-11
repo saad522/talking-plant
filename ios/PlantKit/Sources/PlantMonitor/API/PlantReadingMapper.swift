@@ -2,11 +2,6 @@ import Foundation
 import PlantShared
 
 enum PlantReadingMapper {
-    // Replaced by `PeripheralPlantReadingLoader.Error` when the loader is added in M2.
-    enum Error: Swift.Error, Equatable {
-        case invalidData
-    }
-
     private struct RemoteReading {
         private enum Flag: UInt8 {
             case soil = 0b0001
@@ -57,7 +52,7 @@ enum PlantReadingMapper {
     static func map(_ data: Data, receivedAt: Date, calibration: MoistureCalibration) throws -> PlantReading {
         guard let reading = RemoteReading(data: data),
               reading.version == PlantBluetoothContract.protocolVersion else {
-            throw Error.invalidData
+            throw PeripheralPlantReadingLoader.Error.invalidData
         }
 
         return reading.local(receivedAt: receivedAt, calibration: calibration)

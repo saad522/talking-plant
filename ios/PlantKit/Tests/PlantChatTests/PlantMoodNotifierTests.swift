@@ -164,6 +164,32 @@ final class PlantMoodNotifierTests: PlantChatXCTestCase {
         XCTAssertTrue(sut.defaults.messages.contains(.set(now.timeIntervalSince1970, forKey: key(.veryThirsty))))
     }
 
+    func test_escalation_followsInjectedRanking() {
+        let ranking: [PlantMood] = [.thirsty, .veryThirsty]
+        let sut = makeSUT(severityRanking: ranking)
+        sut.changeMood(from: makeFacts(mood: .happy), to: makeFacts(mood: .veryThirsty))
+
+        sut.factsLoader.simulateUpdate()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .thirsty), at: 2)
+        XCTAssertEqual(sut.lineLoader.requests.count, 2)
+
+        sut.factsLoader.simulateUpdate()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .veryThirsty), at: 3)
+        XCTAssertEqual(sut.lineLoader.requests.count, 2)
+    }
+
+    func test_moodMissingFromRanking_isNeverAnEscalation() {
+        let sut = makeSUT(severityRanking: [.veryThirsty])
+        sut.changeMood(from: makeFacts(mood: .happy), to: makeFacts(mood: .thirsty))
+
+        sut.factsLoader.simulateUpdate()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .veryThirsty), at: 2)
+        sut.factsLoader.simulateUpdate()
+        sut.factsLoader.completeLoad(with: makeFacts(mood: .thirsty), at: 3)
+
+        XCTAssertEqual(sut.lineLoader.requests.count, 2)
+    }
+
     func test_deEscalationToRecentlyNotifiedMood_doesNotNotify() {
         let now = anyDate()
         let sut = makeSUT(now: { now })
@@ -217,7 +243,8 @@ final class PlantMoodNotifierTests: PlantChatXCTestCase {
             notifications: NotificationClientSpy(),
             defaults: DefaultsSpy(),
             plantName: "Sprout",
-            minimumInterval: 3_600
+            minimumInterval: 3_600,
+            severityRanking: Self.severityRanking
         )
         weak var weakSUT = sut
 
@@ -246,8 +273,11 @@ final class PlantMoodNotifierTests: PlantChatXCTestCase {
         }
     }
 
+    private static let severityRanking: [PlantMood] = [.offline, .drowning, .veryThirsty, .tooHot, .tooCold, .thirsty, .tooDark, .dryAir]
+
     private func makeSUT(
         plantName: String = "Sprout",
+        severityRanking: [PlantMood] = severityRanking,
         now: @escaping () -> Date = { Date(timeIntervalSince1970: 1_000_000) },
         defaults: DefaultsSpy = DefaultsSpy(),
         file: StaticString = #filePath,
@@ -263,7 +293,8 @@ final class PlantMoodNotifierTests: PlantChatXCTestCase {
             defaults: defaults,
             plantName: plantName,
             currentDate: now,
-            minimumInterval: 3_600
+            minimumInterval: 3_600,
+            severityRanking: severityRanking
         )
         trackMemoryLeak(factsLoader, file: file, line: line)
         trackMemoryLeak(lineLoader, file: file, line: line)

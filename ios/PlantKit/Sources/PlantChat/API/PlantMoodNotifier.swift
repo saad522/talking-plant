@@ -16,11 +16,13 @@ public final class PlantMoodNotifier {
     private let plantName: String
     private let currentDate: () -> Date
     private let minimumInterval: TimeInterval
+    private let severityRanking: [PlantMood]
     private var lastMood: PlantMood?
 
     /// - Parameters:
     ///   - currentDate: The real clock, not the simulated one, so the limit holds in simulated mode.
     ///   - minimumInterval: The least time between two notifications of the same mood, kept across launches.
+    ///   - severityRanking: Problem moods, most severe first. A mood missing from it counts as least severe.
     public init(
         factsLoader: PlantVoiceFactsLoader,
         lineLoader: PlantVoiceLineLoader,
@@ -28,7 +30,8 @@ public final class PlantMoodNotifier {
         defaults: DefaultsClient,
         plantName: String,
         currentDate: @escaping () -> Date = Date.init,
-        minimumInterval: TimeInterval
+        minimumInterval: TimeInterval,
+        severityRanking: [PlantMood]
     ) {
         self.factsLoader = factsLoader
         self.lineLoader = lineLoader
@@ -37,6 +40,7 @@ public final class PlantMoodNotifier {
         self.plantName = plantName
         self.currentDate = currentDate
         self.minimumInterval = minimumInterval
+        self.severityRanking = severityRanking
     }
 
     public func start() {
@@ -84,11 +88,9 @@ public final class PlantMoodNotifier {
         previous != .happy && severity(of: mood) > severity(of: previous)
     }
 
-    /// Mirrors the priority order of `PlantHealthIssue` (PlantMonitor, which this feature can't import).
-    /// Higher is more severe; happy is lowest.
+    /// Higher is more severe; a mood missing from the ranking is lowest, like happy.
     private func severity(of mood: PlantMood) -> Int {
-        let mostSevereFirst: [PlantMood] = [.offline, .drowning, .veryThirsty, .tooHot, .tooCold, .thirsty, .tooDark, .dryAir]
-        guard let index = mostSevereFirst.firstIndex(of: mood) else { return 0 }
-        return mostSevereFirst.count - index
+        guard let index = severityRanking.firstIndex(of: mood) else { return 0 }
+        return severityRanking.count - index
     }
 }

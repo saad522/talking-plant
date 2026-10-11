@@ -110,7 +110,8 @@ struct TalkingPlantApp: App {
             defaults: defaults,
             plantName: plantName,
             currentDate: Date.init,
-            minimumInterval: Self.notificationInterval
+            minimumInterval: Self.notificationInterval,
+            severityRanking: PlantHealthIssue.allCases.map(\.mood)
         )
         moodNotifier.start()
         history = PlantHistoryUIComposer.composed(with: LocalPlantHistoryLoader(store: store, currentDate: currentDate))

@@ -107,6 +107,10 @@ Follow `docs/ARCHITECTURE.md`. The short version:
 - Commit messages and summaries: short and plain.
 - Never commit or push. Leave all changes uncommitted so I can review them in Xcode,
   then I commit myself.
+- Don't launch the iOS simulator, take screenshots, or run xcodebuild simulator tests
+  unless I explicitly ask. I do the visual checks and run the full test suite myself.
+- Run only the test targets affected by your change (`swift test --filter <Target>`).
+- Read only the sections of `ARCHITECTURE.md` relevant to the task.
 
 ## Commands
 

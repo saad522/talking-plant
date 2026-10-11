@@ -18,6 +18,9 @@ struct TalkingPlantApp: App {
     @StateObject private var navigation: AppNavigation
     private let monitor: PlantMonitorView
     private let history: PlantHistoryView
+    #if DEBUG
+    private let simulatedPlant: SimulatedPeripheralClient
+    #endif
 
     init() {
         let store = Self.makeStore()
@@ -40,12 +43,22 @@ struct TalkingPlantApp: App {
         })
         history = PlantHistoryUIComposer.composed(with: LocalPlantHistoryLoader(store: store, currentDate: currentDate))
         _navigation = StateObject(wrappedValue: navigation)
+        #if DEBUG
+        simulatedPlant = client
+        #endif
     }
 
     var body: some Scene {
         WindowGroup {
             NavigationStack(path: $navigation.path) {
                 monitor
+                    #if DEBUG
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Water") { simulatedPlant.water() }
+                        }
+                    }
+                    #endif
                     .navigationDestination(for: AppNavigation.Route.self) { route in
                         switch route {
                         case .history: history

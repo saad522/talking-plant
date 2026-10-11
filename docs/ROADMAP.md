@@ -36,6 +36,15 @@ One milestone per Claude Code session. Each ends with passing tests and a short 
 - **Done when:** health and mood are fully unit-tested and the face changes as the
   simulated plant dries out.
 
+## D1 — v2 visual design
+- Sprout character (`docs/DESIGN.md` section 5) replaces the mood face: six visual states,
+  morphing between moods, idle blink and breathing (off with Reduce Motion).
+- Home screen restyled to `DESIGN.md` section 4: header, scene card, speech bubble with a
+  template line per mood, sensor chips, Talk and History buttons; day, thirsty and night scenes.
+- Plan: `docs/plans/D1.md`.
+- **Done when:** the scene and face mapping are unit-tested, the composer integration tests
+  pass, and the character morphs as the simulated plant dries out and night falls.
+
 ## M5 — The plant's voice (Foundation Models)
 - `PlantChat` / `PlantChatiOS` slices.
 - Personality picker: dramatic, grumpy grandma, chill surfer, polite butler.

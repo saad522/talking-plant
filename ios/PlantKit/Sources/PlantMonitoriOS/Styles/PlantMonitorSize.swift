@@ -7,6 +7,9 @@ enum PlantMonitorSize {
     static let actionsPadding: CGFloat = 20
     static let actionsSpacing: CGFloat = 10
 
+    /// Scene changes (palette, sun to moon) cross-fade over this long, unless Reduce Motion is on.
+    static let sceneFadeDuration: Double = 1
+
     static let sceneMargin: CGFloat = 16
     static let sceneHeight: CGFloat = 440
     static let sceneRadius: CGFloat = 32

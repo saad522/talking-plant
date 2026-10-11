@@ -21,4 +21,10 @@ final class PlantMonitorHeaderViewModelTests: PlantMonitorXCTestCase {
 
         XCTAssertEqual(sut.subtitle, "Living room · Very thirsty")
     }
+
+    func test_init_deliversSleepingAsMoodLabelWhileSleeping() {
+        let sut = PlantMonitorHeaderViewModel(name: "Sprout", room: "Living room", mood: .happy, isSleeping: true)
+
+        XCTAssertEqual(sut.subtitle, "Living room · Sleeping")
+    }
 }

@@ -29,15 +29,13 @@ public enum PlantMonitorUIComposer {
             store?.error = nil
         }
 
-        viewModel.loadedMood = { [weak store] mood in
-            let header = PlantMonitorHeaderViewModel(name: plantName, room: room, mood: mood)
-            store?.subtitle = header.subtitle
-            store?.face = face(mood)
-            store?.bubble = PlantSpeechBubbleView(text: PlantMoodViewModel(mood: mood).speech)
-        }
-
         viewModel.loadedScene = { [weak store, weak viewModel] scene in
             store?.palette = palette(for: scene.scene)
+            if let faceMood = scene.faceMood, let speech = scene.speech {
+                store?.subtitle = scene.header(name: plantName, room: room).subtitle
+                store?.face = face(faceMood)
+                store?.bubble = PlantSpeechBubbleView(text: speech)
+            }
             store?.window = PlantMonitorWindowView(celestial: scene.scene == .night ? .moon : .sun)
             store?.chips = makeChips(for: scene)
             let buttons = makeButtons(for: scene.scene, viewModel: viewModel)

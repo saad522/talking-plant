@@ -244,6 +244,30 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
         XCTAssertNil(sut.renderedError())
     }
 
+    func test_scene_rendersSleepingPlantWhenHappyAtNight() {
+        let (sut, loader, healthLoader) = makeSUT()
+
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading(lux: 3))
+        healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []))
+
+        XCTAssertEqual(sut.renderedFace(), FaceStub(mood: PlantMonitorSceneViewModel.sleepingFaceMood))
+        XCTAssertEqual(sut.bubbleText, "Zzz… see you at sunrise.")
+        XCTAssertEqual(sut.subtitle, "Living room · Sleeping")
+    }
+
+    func test_scene_wakesPlantToComplainAtNight() {
+        let (sut, loader, healthLoader) = makeSUT()
+
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading(lux: 3))
+        healthLoader.completeLoad(with: PlantHealth(score: 40, issues: [.tooHot]))
+
+        XCTAssertEqual(sut.renderedFace(), FaceStub(mood: .tooHot))
+        XCTAssertEqual(sut.bubbleText, "Phew, it's hot in here.")
+        XCTAssertEqual(sut.subtitle, "Living room · Too hot")
+    }
+
     func test_scene_rendersSunByDayAndMoonAtNight() {
         let (sut, loader, _) = makeSUT()
 

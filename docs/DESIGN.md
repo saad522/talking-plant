@@ -71,6 +71,20 @@ on the Claude Design canvas. When this document and the code disagree, this docu
 **Scene selection:** night when light is below 10 lx or the mood is offline; thirsty when
 the mood is thirsty or very thirsty; day otherwise.
 
+**Sleeping:** when the scene is night and the mood is happy, the plant sleeps: asleep
+visual state, speech "Zzz… see you at sunrise.", subtitle "<room> · Sleeping". Any other
+mood keeps its own state, speech and subtitle at night, so the plant wakes up to complain.
+The logic lives in `PlantMonitorSceneViewModel` (`isSleeping`). A sleeping plant is drawn
+with `PlantMonitorSceneViewModel.sleepingFaceMood` (`tooDark`), so sleeping and too dark
+currently share the asleep pose.
+
+**Color scheme:** the home screen sets the scheme per scene (light for day and thirsty,
+dark for night) with `toolbarColorScheme`, so the status bar follows it. History keeps
+following the system setting.
+
+**Scene change:** the palette and the window (sun to moon) cross-fade over ~1 s. With
+Reduce Motion there is no animation.
+
 ---
 
 ## 3. Typography

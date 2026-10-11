@@ -83,6 +83,60 @@ final class PlantMonitorSceneViewModelTests: PlantMonitorXCTestCase {
         XCTAssertEqual(makeSUT(mood: nil).warnings, [])
     }
 
+    // MARK: - Sleeping
+
+    func test_isSleeping_isTrueOnlyForHappyAtNight() {
+        PlantMood.allCases.forEach { mood in
+            XCTAssertEqual(makeSUT(lux: 0, mood: mood).isSleeping, mood == .happy, "night \(mood)")
+            XCTAssertFalse(makeSUT(lux: 1_000, mood: mood).isSleeping, "day \(mood)")
+        }
+        XCTAssertFalse(makeSUT(lux: 0, mood: nil).isSleeping)
+    }
+
+    func test_sleeping_deliversSleepingFaceMoodSpeechAndSubtitle() {
+        let sut = makeSUT(lux: 0, mood: .happy)
+
+        XCTAssertEqual(sut.faceMood, PlantMonitorSceneViewModel.sleepingFaceMood)
+        XCTAssertEqual(sut.speech, "Zzz… see you at sunrise.")
+        XCTAssertEqual(sut.header(name: "Sprout", room: "Living room").subtitle, "Living room · Sleeping")
+    }
+
+    func test_sleepingFaceMood_isTooDark_whichPlantFaceDrawsAsAsleep() {
+        // PlantFaceTests pins `.tooDark` to the asleep state. PlantMonitor can't import PlantFace.
+        XCTAssertEqual(PlantMonitorSceneViewModel.sleepingFaceMood, .tooDark)
+    }
+
+    func test_awake_deliversOwnMoodSpeechAndSubtitleAtNightAndByDay() {
+        PlantMood.allCases.filter { $0 != .happy }.forEach { mood in
+            [0, 1_000].forEach { lux in
+                let sut = makeSUT(lux: lux, mood: mood)
+                let expected = PlantMoodViewModel(mood: mood)
+
+                XCTAssertEqual(sut.faceMood, mood, "\(mood) \(lux)")
+                XCTAssertEqual(sut.speech, expected.speech, "\(mood) \(lux)")
+                XCTAssertEqual(
+                    sut.header(name: "Sprout", room: "Living room").subtitle,
+                    "Living room · \(expected.label)",
+                    "\(mood) \(lux)"
+                )
+            }
+        }
+    }
+
+    func test_happyByDay_deliversHappyMoodAndSpeech() {
+        let sut = makeSUT(lux: 1_000, mood: .happy)
+
+        XCTAssertEqual(sut.faceMood, .happy)
+        XCTAssertEqual(sut.speech, PlantMoodViewModel(mood: .happy).speech)
+    }
+
+    func test_faceMoodAndSpeech_areNilBeforeMoodLoads() {
+        let sut = makeSUT(mood: nil)
+
+        XCTAssertNil(sut.faceMood)
+        XCTAssertNil(sut.speech)
+    }
+
     // MARK: - Private helpers
 
     private func makeSUT(lux: Int? = 1_000, mood: PlantMood?) -> PlantMonitorSceneViewModel {

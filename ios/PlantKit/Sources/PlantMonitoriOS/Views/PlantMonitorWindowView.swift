@@ -7,6 +7,7 @@ public struct PlantMonitorWindowView: View {
     }
 
     @Environment(\.plantMonitorPalette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public let celestial: Celestial
 
@@ -25,8 +26,8 @@ public struct PlantMonitorWindowView: View {
             ZStack(alignment: .topLeading) {
                 palette.sky
                 switch celestial {
-                case .sun: sun(in: glass)
-                case .moon: moon(in: glass)
+                case .sun: sun(in: glass).transition(.opacity)
+                case .moon: moon(in: glass).transition(.opacity)
                 }
                 palette.windowFrame
                     .frame(width: PlantMonitorSize.windowPane)
@@ -35,6 +36,10 @@ public struct PlantMonitorWindowView: View {
                     .frame(height: PlantMonitorSize.windowPane)
                     .frame(maxHeight: .infinity)
             }
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: PlantMonitorSize.sceneFadeDuration),
+                value: celestial
+            )
             .frame(width: glass.width, height: glass.height)
             .clipShape(RoundedRectangle(cornerRadius: PlantMonitorSize.windowRadius - border))
             .offset(x: border, y: border)

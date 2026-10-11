@@ -31,8 +31,8 @@ struct PlantMonitorPalette: Equatable, Sendable {
     let warningBorder: Color
     let warningValue: Color
     let warningLabel: Color
-    /// Night keeps the status bar readable on a dark background.
-    let colorScheme: ColorScheme?
+    /// Set on the home screen's toolbar so the status bar stays readable on this palette.
+    let colorScheme: ColorScheme
 
     static let day = PlantMonitorPalette(
         background: Color(hex: 0xEEF4E6),
@@ -55,7 +55,7 @@ struct PlantMonitorPalette: Equatable, Sendable {
         warningBorder: Color(hex: 0xE9A55A),
         warningValue: Color(hex: 0x9A3F12),
         warningLabel: Color(hex: 0x7A4A2A),
-        colorScheme: nil
+        colorScheme: .light
     )
 
     static let thirsty = PlantMonitorPalette(
@@ -79,7 +79,7 @@ struct PlantMonitorPalette: Equatable, Sendable {
         warningBorder: day.warningBorder,
         warningValue: day.warningValue,
         warningLabel: day.warningLabel,
-        colorScheme: nil
+        colorScheme: .light
     )
 
     static let night = PlantMonitorPalette(

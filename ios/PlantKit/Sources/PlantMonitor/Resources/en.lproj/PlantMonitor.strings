@@ -21,6 +21,7 @@
 "plant.monitor.mood.dryAir.label" = "Dry air";
 "plant.monitor.mood.offline.label" = "Offline";
 
+"plant.monitor.sleeping.label" = "Sleeping";
 "plant.monitor.talk.label" = "Talk to %@";
 "plant.monitor.water.label" = "Water";
 "plant.monitor.header.subtitle" = "%@ · %@";
@@ -34,3 +35,4 @@
 "plant.monitor.mood.tooCold.speech" = "Brr, I'm a little cold.";
 "plant.monitor.mood.dryAir.speech" = "The air feels so dry.";
 "plant.monitor.mood.offline.speech" = "Zzz… I can't feel my sensor.";
+"plant.monitor.sleeping.speech" = "Zzz… see you at sunrise.";

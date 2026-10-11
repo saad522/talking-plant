@@ -34,6 +34,8 @@ final class PlantMonitorStringsTests: PlantMonitorXCTestCase {
             "plant.monitor.mood.tooCold.speech",
             "plant.monitor.mood.dryAir.speech",
             "plant.monitor.mood.offline.speech",
+            "plant.monitor.sleeping.label",
+            "plant.monitor.sleeping.speech",
         ]
 
         keys.forEach { key in

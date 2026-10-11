@@ -22,6 +22,11 @@ final class PlantFaceViewModelTests: PlantFaceXCTestCase {
         }
     }
 
+    func test_init_drawsSleepingFaceMoodAsAsleep() {
+        // PlantMonitorSceneViewModel.sleepingFaceMood is `.tooDark` (pinned in PlantMonitorTests).
+        XCTAssertEqual(PlantFaceViewModel(mood: .tooDark).state, .asleep)
+    }
+
     func test_init_setsDrySoilOnlyForThirstyAndVeryThirsty() {
         let drySoilMoods = PlantMood.allCases.filter { PlantFaceViewModel(mood: $0).drySoil }
 

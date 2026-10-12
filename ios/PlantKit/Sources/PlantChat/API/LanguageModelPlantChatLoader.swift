@@ -9,7 +9,9 @@ public final class LanguageModelPlantChatLoader: PlantChatLoader {
     private var session: PlantLanguageModelSession?
     private var sessionPersonality: PlantPersonality?
     private var recentReplies: [String] = []
+    private var turnsInSession = 0
     private static let repeatWindow = 3
+    private static let maximumTurnsPerSession = 6
     #if DEBUG
     private static let logger = Logger(subsystem: "TalkingPlant", category: "chat")
     #endif
@@ -39,7 +41,10 @@ public final class LanguageModelPlantChatLoader: PlantChatLoader {
         #if DEBUG
         Self.logger.debug("Prompt:\n\(prompt, privacy: .public)")
         #endif
-        respond(to: prompt, facts: facts, canRetryContext: true, canRetryRepeat: true, completion: completion)
+        if turnsInSession >= Self.maximumTurnsPerSession {
+            resetSession()
+        }
+        respond(to: prompt, facts: facts, retries: .init(), completion: completion)
     }
 
     public func reset() {
@@ -50,44 +55,64 @@ public final class LanguageModelPlantChatLoader: PlantChatLoader {
     private func resetSession() {
         session = nil
         sessionPersonality = nil
+        turnsInSession = 0
+    }
+
+    /// Each problem gets one fresh session, then the template.
+    private struct Retries {
+        var context = true
+        var repeated = true
+        var rejected = true
     }
 
     private func respond(
         to prompt: String,
         facts: PlantVoiceFacts,
-        canRetryContext: Bool,
-        canRetryRepeat: Bool,
+        retries: Retries,
         completion: @escaping (PlantChatLoader.Result) -> Void
     ) {
-        currentSession().respond(to: prompt) { [weak self] result in
+        let session = currentSession()
+        turnsInSession += 1
+        session.respond(to: prompt) { [weak self] result in
             guard let self else { return }
             switch result {
             case .success(let text):
                 #if DEBUG
                 Self.logger.debug("Reply:\n\(text, privacy: .public)")
                 #endif
-                if recentReplies.contains(Self.normalized(text)) {
-                    if canRetryRepeat {
-                        resetSession()
-                        respond(to: prompt, facts: facts, canRetryContext: canRetryContext, canRetryRepeat: false, completion: completion)
-                    } else {
-                        let template = PlantChatTemplate.reply(facts: facts)
-                        remember(template)
-                        completion(.success(template))
-                    }
+                let reply = PlantChatReplyGuard.clean(text)
+                var retries = retries
+                if PlantChatReplyGuard.isRejected(reply) {
+                    guard retries.rejected else { return deliverTemplate(facts, completion) }
+                    retries.rejected = false
+                    resetSession()
+                    respond(to: prompt, facts: facts, retries: retries, completion: completion)
+                } else if recentReplies.contains(Self.normalized(reply)) {
+                    guard retries.repeated else { return deliverTemplate(facts, completion) }
+                    retries.repeated = false
+                    resetSession()
+                    respond(to: prompt, facts: facts, retries: retries, completion: completion)
                 } else {
-                    remember(text)
-                    completion(.success(text))
+                    remember(reply)
+                    completion(.success(reply))
                 }
             case .failure(let error):
-                if canRetryContext, error as? PlantLanguageModelError == .contextTooLong {
+                if retries.context, error as? PlantLanguageModelError == .contextTooLong {
+                    var retries = retries
+                    retries.context = false
                     resetSession()
-                    respond(to: prompt, facts: facts, canRetryContext: false, canRetryRepeat: canRetryRepeat, completion: completion)
+                    respond(to: prompt, facts: facts, retries: retries, completion: completion)
                 } else {
                     completion(.failure(Error.generation))
                 }
             }
         }
+    }
+
+    private func deliverTemplate(_ facts: PlantVoiceFacts, _ completion: (PlantChatLoader.Result) -> Void) {
+        let template = PlantChatTemplate.reply(facts: facts)
+        remember(template)
+        completion(.success(template))
     }
 
     private func remember(_ reply: String) {

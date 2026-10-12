@@ -94,7 +94,7 @@ struct TalkingPlantApp: App {
             lineLoader: lineLoader,
             factsLoader: factsLoader,
             settings: settings,
-            transcriptLoader: TranscriberPlantTranscriptLoader(client: Self.makeTranscriberClient()),
+            transcriptLoader: TranscriberPlantTranscriptLoader(client: Self.makeTranscriberClient(plantName: plantName)),
             audioSession: AVAudioSessionPlantAudioSessionClient(),
             synthesizer: AVSpeechPlantSynthesizerClient(),
             spokenReplies: PlantSpokenReplySettings(defaults: defaults),
@@ -163,13 +163,13 @@ struct TalkingPlantApp: App {
     }
 
     /// DEBUG builds accept `-PlantSpeechUnsupported` to check keyboard-only mode in the simulator.
-    private static func makeTranscriberClient() -> PlantTranscriberClient {
+    private static func makeTranscriberClient(plantName: String) -> PlantTranscriberClient {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-PlantSpeechUnsupported") {
             return UnsupportedTranscriberClient()
         }
         #endif
-        return SpeechAnalyzerPlantTranscriberClient()
+        return SpeechAnalyzerPlantTranscriberClient(plantName: plantName)
     }
 
     /// The on-device model. DEBUG builds accept `-PlantVoiceUnavailable` to check the template fallback.

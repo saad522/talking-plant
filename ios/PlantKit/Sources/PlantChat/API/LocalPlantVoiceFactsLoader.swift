@@ -14,6 +14,7 @@ public final class LocalPlantVoiceFactsLoader: PlantVoiceFactsLoader {
     private let moodLoader: PlantMoodLoader
     private let store: PlantReadingStore
     private let currentDate: () -> Date
+    private let calendar: Calendar
 
     public enum Error: Swift.Error, Equatable {
         case retrieval
@@ -23,16 +24,19 @@ public final class LocalPlantVoiceFactsLoader: PlantVoiceFactsLoader {
     public init(
         moodLoader: PlantMoodLoader,
         store: PlantReadingStore,
-        currentDate: @escaping () -> Date = Date.init
+        currentDate: @escaping () -> Date = Date.init,
+        calendar: Calendar = .current
     ) {
         self.moodLoader = moodLoader
         self.store = store
         self.currentDate = currentDate
+        self.calendar = calendar
     }
 
     public func load(completion: @escaping (PlantVoiceFactsLoader.Result) -> Void) {
         let store = store
         let currentDate = currentDate
+        let calendar = calendar
         moodLoader.load { result in
             switch result {
             case .success(let state):
@@ -40,7 +44,7 @@ public final class LocalPlantVoiceFactsLoader: PlantVoiceFactsLoader {
                 store.retrieve(from: now.addingTimeInterval(-Self.window), to: now) { result in
                     switch result {
                     case .success(let readings):
-                        completion(.success(Self.facts(state: state, readings: readings, now: now)))
+                        completion(.success(Self.facts(state: state, readings: readings, now: now, calendar: calendar)))
                     case .failure:
                         completion(.failure(Error.retrieval))
                     }
@@ -55,7 +59,7 @@ public final class LocalPlantVoiceFactsLoader: PlantVoiceFactsLoader {
         moodLoader.subscribe(update: update)
     }
 
-    private static func facts(state: PlantMoodState, readings: [PlantReading], now: Date) -> PlantVoiceFacts {
+    private static func facts(state: PlantMoodState, readings: [PlantReading], now: Date, calendar: Calendar) -> PlantVoiceFacts {
         let reading = readings.last
         let isDark = reading?.lux.map { $0 < nightLux } ?? false
         return PlantVoiceFacts(
@@ -63,7 +67,8 @@ public final class LocalPlantVoiceFactsLoader: PlantVoiceFactsLoader {
             isSleeping: state.mood == .happy && isDark,
             reading: reading,
             problems: state.problems,
-            wateredMinutesAgo: wateredMinutesAgo(in: readings, now: now)
+            wateredMinutesAgo: wateredMinutesAgo(in: readings, now: now),
+            timeOfDay: PlantTimeOfDay(hour: calendar.component(.hour, from: now))
         )
     }
 

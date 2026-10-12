@@ -196,6 +196,117 @@ final class LanguageModelPlantChatLoaderTests: PlantChatXCTestCase {
         XCTAssertEqual(try? results.first?.get(), "a")
     }
 
+    // MARK: - Reply guard
+
+    func test_send_removesStageDirectionsFromReply() {
+        let (sut, client, _) = makeSUT()
+
+        expect(sut, toDeliver: .success("I'm fine, thanks."), when: {
+            client.sessions[0].complete(with: "*Grumbles* I'm fine, thanks. (smiles)")
+        })
+    }
+
+    func test_send_keepsOnlyTheFirstThreeSentences() {
+        let (sut, client, _) = makeSUT()
+
+        expect(sut, toDeliver: .success("One. Two! Three?"), when: {
+            client.sessions[0].complete(with: "One. Two! Three? Four. Five.")
+        })
+    }
+
+    func test_send_retriesWithNewSessionWhenReplyContainsABlockedWord() {
+        let (sut, client, _) = makeSUT()
+        let facts = makeFacts()
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("Hi", facts: facts) { results.append($0) }
+        client.sessions[0].complete(with: "You're being a prick.")
+        client.sessions[1].complete(with: "Hello, friend!")
+
+        XCTAssertEqual(client.sessions.count, 2)
+        XCTAssertEqual(client.sessions[1].prompts, [PlantVoicePrompt.message("Hi", facts: facts)])
+        XCTAssertEqual(try? results.first?.get(), "Hello, friend!")
+        XCTAssertEqual(results.count, 1)
+    }
+
+    func test_send_deliversTemplateWhenReplyIsBlockedAgainAfterRetry() {
+        let (sut, client, _) = makeSUT()
+        let facts = makeFacts()
+
+        expect(sut, toDeliver: .success(PlantChatTemplate.reply(facts: facts)), when: {
+            client.sessions[0].complete(with: "Shut your stupid mouth.")
+            client.sessions[1].complete(with: "What an idiot.")
+        })
+        XCTAssertEqual(client.sessions.count, 2)
+    }
+
+    func test_send_retriesThenDeliversTemplateWhenReplyIsEmptyAfterCleaning() {
+        let (sut, client, _) = makeSUT()
+        let facts = makeFacts()
+
+        expect(sut, toDeliver: .success(PlantChatTemplate.reply(facts: facts)), when: {
+            client.sessions[0].complete(with: "*Sighs*")
+            client.sessions[1].complete(with: "(silence)")
+        })
+        XCTAssertEqual(client.sessions.count, 2)
+    }
+
+    func test_send_checksRepetitionAgainstTheCleanedReply() {
+        let (sut, client, _) = makeSUT()
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("One", facts: makeFacts()) { _ in }
+        client.sessions[0].complete(with: "I'm fine.")
+        sut.send("Two", facts: makeFacts()) { results.append($0) }
+        client.sessions[0].complete(with: "*Smiles* I'm fine.", at: 1)
+        client.sessions[1].complete(with: "All good here!")
+
+        XCTAssertEqual(client.sessions.count, 2)
+        XCTAssertEqual(try? results.first?.get(), "All good here!")
+    }
+
+    // MARK: - Session drift
+
+    func test_send_startsNewSessionAfterSixTurns() {
+        let (sut, client, _) = makeSUT()
+
+        (0..<6).forEach { index in
+            sut.send("Q\(index)", facts: makeFacts()) { _ in }
+            client.sessions[0].complete(with: "Reply \(index)", at: index)
+        }
+        XCTAssertEqual(client.sessions.count, 1)
+
+        sut.send("Q6", facts: makeFacts()) { _ in }
+
+        XCTAssertEqual(client.sessions.count, 2)
+        XCTAssertEqual(client.sessions[1].prompts.count, 1)
+    }
+
+    func test_send_keepsRecentRepliesWhenSessionIsRenewedAfterSixTurns() {
+        let (sut, client, _) = makeSUT()
+        var results: [PlantChatLoader.Result] = []
+
+        (0..<6).forEach { index in
+            sut.send("Q\(index)", facts: makeFacts()) { _ in }
+            client.sessions[0].complete(with: "Reply \(index)", at: index)
+        }
+        sut.send("Q6", facts: makeFacts()) { results.append($0) }
+        client.sessions[1].complete(with: "Reply 5")
+        client.sessions[2].complete(with: "Fresh reply")
+
+        XCTAssertEqual(client.sessions.count, 3)
+        XCTAssertEqual(try? results.first?.get(), "Fresh reply")
+    }
+
+    func test_send_includesTimeOfDayInThePrompt() {
+        let (sut, client, _) = makeSUT()
+        let facts = makeFacts(timeOfDay: .morning)
+
+        sut.send("Hi", facts: facts) { _ in }
+
+        XCTAssertTrue(client.sessions[0].prompts[0].contains("Time of day: morning."))
+    }
+
     func test_reset_forgetsRecentReplies() {
         let (sut, client, _) = makeSUT()
         var results: [PlantChatLoader.Result] = []

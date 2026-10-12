@@ -37,14 +37,16 @@ class PlantChatXCTestCase: XCTestCase {
         isSleeping: Bool = false,
         reading: PlantReading? = nil,
         problems: [PlantMood] = [],
-        wateredMinutesAgo: Int? = nil
+        wateredMinutesAgo: Int? = nil,
+        timeOfDay: PlantTimeOfDay? = nil
     ) -> PlantVoiceFacts {
         PlantVoiceFacts(
             mood: mood,
             isSleeping: isSleeping,
             reading: reading ?? makeReading(),
             problems: problems,
-            wateredMinutesAgo: wateredMinutesAgo
+            wateredMinutesAgo: wateredMinutesAgo,
+            timeOfDay: timeOfDay
         )
     }
 

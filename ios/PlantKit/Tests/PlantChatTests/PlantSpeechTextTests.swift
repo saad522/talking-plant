@@ -6,8 +6,12 @@ final class PlantSpeechTextTests: XCTestCase {
         XCTAssertEqual(PlantSpeechText.clean("I'm a little thirsty, 24 percent."), "I'm a little thirsty, 24 percent.")
     }
 
-    func test_clean_removesAsterisksUnderscoresAndHashes() {
-        XCTAssertEqual(PlantSpeechText.clean("*sighs* I need _water_ #now"), "sighs I need water now")
+    func test_clean_removesUnderscoresAndHashes() {
+        XCTAssertEqual(PlantSpeechText.clean("I need _water_ #now"), "I need water now")
+    }
+
+    func test_clean_removesStageDirectionsWithTheirContent() {
+        XCTAssertEqual(PlantSpeechText.clean("*Grumbles* I'm fine (smiling) thanks *waves leaves*"), "I'm fine thanks")
     }
 
     func test_clean_removesEmoji() {

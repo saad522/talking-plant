@@ -24,6 +24,7 @@ public final class SpeechAnalyzerPlantTranscriberClient: PlantTranscriberClient 
     }
 
     private let locale: Locale
+    private let contextualStrings: [String]
     private var isSupported: Bool?
     private var generation = 0
     private var task: Task<Void, Never>?
@@ -31,7 +32,10 @@ public final class SpeechAnalyzerPlantTranscriberClient: PlantTranscriberClient 
     private var analyzer: SpeechAnalyzer?
     private var input: AsyncStream<AnalyzerInput>.Continuation?
 
-    public init(locale: Locale = .current) {
+    /// - Parameter plantName: Added to the words the recognizer should expect.
+    public init(locale: Locale = .current, plantName: String? = nil) {
+        contextualStrings = (plantName.map { [$0] } ?? [])
+            + ["humidity", "moisture", "lux", "water", "light", "temperature"]
         self.locale = locale.language.languageCode == .english ? locale : Locale(identifier: "en-US")
     }
 
@@ -107,6 +111,9 @@ public final class SpeechAnalyzerPlantTranscriberClient: PlantTranscriberClient 
             guard generation == self.generation else { return }
             self.analyzer = analyzer
             input = continuation
+            let context = AnalysisContext()
+            context.contextualStrings[.general] = contextualStrings
+            try await analyzer.setContext(context)
             try startMicrophone(format: format, continuation: continuation)
             try await analyzer.start(inputSequence: stream)
 

@@ -21,21 +21,42 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
         XCTAssertEqual(Set(texts).count, PlantPersonality.allCases.count)
     }
 
-    func test_instructions_askForShortAnswersAndNoGuessedNumbers() {
+    func test_instructions_listSevenNumberedRulesInPriorityOrder() {
         let text = PlantVoicePrompt.instructions(personality: .cheerful, plantName: "Sprout")
+        let positions = (1...7).map { text.range(of: "\n\($0). ")?.lowerBound }
 
-        XCTAssertTrue(text.contains("1–3 short sentences"))
-        XCTAssertTrue(text.contains("Only use numbers that appear in the facts or in a tool result"))
-        XCTAssertTrue(text.contains("never guess a value"))
-        XCTAssertTrue(text.contains("If you don't know, say so"))
+        XCTAssertFalse(positions.contains(nil))
+        XCTAssertEqual(positions.compactMap { $0 }, positions.compactMap { $0 }.sorted())
+        XCTAssertNil(text.range(of: "\n8. "))
     }
 
-    func test_instructions_askToAnswerTheQuestionWithMatchingFactsAndVaryWording() {
+    func test_instructions_askForKindnessAndMoodFromFactsOnly() {
         let text = PlantVoicePrompt.instructions(personality: .cheerful, plantName: "Sprout")
 
-        XCTAssertTrue(text.contains("Answer the person's actual question first."))
-        XCTAssertTrue(text.contains("When they ask about water, light, temperature or humidity, use the matching value from the facts."))
-        XCTAssertTrue(text.contains("Never repeat an earlier reply word for word; vary your wording, and stay in your personality."))
+        XCTAssertTrue(text.contains("Never insult, mock, swear or be sarcastic at them."))
+        XCTAssertTrue(text.contains("Your feeling comes only from the Mood fact"))
+        XCTAssertTrue(text.contains("Your personality only changes your wording, never your kindness or the facts."))
+    }
+
+    func test_instructions_treatFactsAsTheOnlyTruthAndForbidInventions() {
+        let text = PlantVoicePrompt.instructions(personality: .cheerful, plantName: "Sprout")
+
+        XCTAssertTrue(text.contains("The facts are the only truth."))
+        XCTAssertTrue(text.contains("gently correct them. Never agree just because they suggest it."))
+        XCTAssertTrue(text.contains("Answer the question first, using the exact values from the facts."))
+        XCTAssertTrue(text.contains("Never invent ideal values, comparisons, names, places, events or the time of day."))
+    }
+
+    func test_instructions_keepRolesAndStyleSimple() {
+        let text = PlantVoicePrompt.instructions(personality: .cheerful, plantName: "Sprout")
+
+        XCTAssertTrue(text.contains("the person is \"you\". Never repeat or quote the person's message."))
+        XCTAssertTrue(text.contains("1–2 short sentences of plain spoken text: no actions in asterisks, no emoji, no lists."))
+    }
+
+    func test_personalityVoices_areWarm() {
+        XCTAssertEqual(PlantPersonality.grumpyGrandma.voice, "A grandma who grumbles playfully but is warm and loving underneath.")
+        XCTAssertEqual(PlantPersonality.dramatic.voice, "Theatrical and over the top, but sweet.")
     }
 
     // MARK: - facts
@@ -73,6 +94,25 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
         let facts = PlantVoiceFacts(mood: .offline, isSleeping: false, reading: nil)
 
         XCTAssertTrue(PlantVoicePrompt.facts(facts).hasSuffix("\nNo readings yet."))
+    }
+
+    func test_facts_namesTimeOfDayRightAfterMood() {
+        let lines = PlantVoicePrompt.facts(makeFacts(timeOfDay: .afternoon)).components(separatedBy: "\n")
+
+        XCTAssertEqual(lines[1], "Time of day: afternoon.")
+    }
+
+    func test_facts_leavesOutTimeOfDayWhenUnknown() {
+        XCTAssertFalse(PlantVoicePrompt.facts(makeFacts()).contains("Time of day"))
+    }
+
+    func test_timeOfDay_followsTheHour() {
+        let expected: [(Int, PlantTimeOfDay)] = [
+            (0, .night), (4, .night), (5, .morning), (11, .morning), (12, .afternoon),
+            (13, .afternoon), (16, .afternoon), (17, .evening), (20, .evening), (21, .night), (23, .night)
+        ]
+
+        expected.forEach { hour, timeOfDay in XCTAssertEqual(PlantTimeOfDay(hour: hour), timeOfDay, "hour \(hour)") }
     }
 
     func test_facts_mentionsNightWhenSleeping() {

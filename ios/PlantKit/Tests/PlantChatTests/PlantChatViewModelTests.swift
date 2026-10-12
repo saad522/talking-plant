@@ -817,7 +817,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
 
         sut.chatLoader.complete(with: "*sighs* Water, please 🌱")
 
-        XCTAssertEqual(sut.synthesizer.speeches, [.init(text: "sighs Water, please", style: PlantPersonality.politeButler.speechStyle)])
+        XCTAssertEqual(sut.synthesizer.speeches, [.init(text: "Water, please", style: PlantPersonality.politeButler.speechStyle)])
         XCTAssertEqual(activities, [.speaking])
         XCTAssertEqual(sut.audioSession.messages.filter { $0 == .deactivate }.count, 0)
 

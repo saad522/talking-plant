@@ -3,10 +3,17 @@ import Foundation
 public enum PlantSpeechText {
     /// Text safe to read aloud. Empty means nothing is spoken.
     public static func clean(_ text: String) -> String {
-        let withoutSymbols = text.unicodeScalars.filter { scalar in
+        let withoutSymbols = removingStageDirections(text).unicodeScalars.filter { scalar in
             !"*_#".unicodeScalars.contains(scalar) && !isEmoji(scalar)
         }
         return String(String.UnicodeScalarView(withoutSymbols))
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+    }
+
+    /// Removes `*…*` and `(…)` with their content, e.g. "*sighs* I'm fine (smiling)" becomes "I'm fine".
+    static func removingStageDirections(_ text: String) -> String {
+        text.replacingOccurrences(of: #"\*[^*]*\*|\([^)]*\)"#, with: " ", options: .regularExpression)
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
     }

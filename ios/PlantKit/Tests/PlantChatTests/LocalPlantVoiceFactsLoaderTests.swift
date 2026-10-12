@@ -84,6 +84,24 @@ final class LocalPlantVoiceFactsLoaderTests: PlantChatXCTestCase {
         })
     }
 
+    // MARK: - Time of day
+
+    func test_load_deliversTimeOfDayFromTheInjectedClock() {
+        let hours: [(Int, PlantTimeOfDay)] = [(8, .morning), (13, .afternoon), (19, .evening), (23, .night)]
+
+        hours.forEach { hour, expected in
+            let now = Date(timeIntervalSince1970: TimeInterval(hour * 3_600 + 60))
+            let (sut, moodLoader, store) = makeSUT(currentDate: now)
+            var received: [PlantVoiceFactsLoader.Result] = []
+
+            sut.load { received.append($0) }
+            moodLoader.completeLoad(with: .happy)
+            store.completeRetrieval(with: [])
+
+            XCTAssertEqual(try? received.first?.get().timeOfDay, expected, "hour \(hour)")
+        }
+    }
+
     // MARK: - Recent watering
 
     func test_load_setsWateredMinutesAgoWhenMoistureRoseMoreThanTwentyPointsInLastHour() {
@@ -200,11 +218,28 @@ final class LocalPlantVoiceFactsLoaderTests: PlantChatXCTestCase {
         let moodLoader = MoodLoaderStub()
         let store = StoreSpy()
         let now = currentDate ?? anyDate()
-        let sut = LocalPlantVoiceFactsLoader(moodLoader: moodLoader, store: store, currentDate: { now })
+        let sut = LocalPlantVoiceFactsLoader(moodLoader: moodLoader, store: store, currentDate: { now }, calendar: utcCalendar)
         trackMemoryLeak(moodLoader, file: file, line: line)
         trackMemoryLeak(store, file: file, line: line)
         trackMemoryLeak(sut, file: file, line: line)
         return (sut, moodLoader, store)
+    }
+
+    private var utcCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }
+
+    /// Time of day has its own tests.
+    private func withoutTimeOfDay(_ facts: PlantVoiceFacts) -> PlantVoiceFacts {
+        PlantVoiceFacts(
+            mood: facts.mood,
+            isSleeping: facts.isSleeping,
+            reading: facts.reading,
+            problems: facts.problems,
+            wateredMinutesAgo: facts.wateredMinutesAgo
+        )
     }
 
     private func expect(
@@ -224,7 +259,7 @@ final class LocalPlantVoiceFactsLoaderTests: PlantChatXCTestCase {
         }
         switch (expected, received[0]) {
         case let (.success(expected), .success(received)):
-            XCTAssertEqual(expected, received, file: file, line: line)
+            XCTAssertEqual(expected, withoutTimeOfDay(received), file: file, line: line)
         case let (.failure(expected as LocalPlantVoiceFactsLoader.Error), .failure(received as LocalPlantVoiceFactsLoader.Error)):
             XCTAssertEqual(expected, received, file: file, line: line)
         default:

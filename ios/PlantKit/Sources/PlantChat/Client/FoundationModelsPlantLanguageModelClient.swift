@@ -19,7 +19,7 @@ public final class FoundationModelsPlantLanguageModelClient: PlantLanguageModelC
 
     public func makeSession(instructions: String, canReadHistory: Bool) -> PlantLanguageModelSession {
         let tools: [any Tool] = canReadHistory ? [PlantHistoryTool(historyLoader: historyLoader)] : []
-        let options = GenerationOptions(temperature: canReadHistory ? 0.8 : nil)
+        let options = GenerationOptions(temperature: canReadHistory ? 0.5 : nil)
         return Session(LanguageModelSession(tools: tools, instructions: instructions), options: options)
     }
 

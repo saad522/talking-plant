@@ -11,10 +11,10 @@ public enum PlantPersonality: String, Equatable, Sendable, CaseIterable {
     public var voice: String {
         switch self {
         case .cheerful: "Cheerful and warm, upbeat and a little playful."
-        case .dramatic: "Dramatic and theatrical, as if every small thing is an epic event."
-        case .grumpyGrandma: "A grumpy grandma who mutters and complains, but secretly cares."
-        case .chillSurfer: "A laid-back surfer, relaxed, with easy surf slang."
-        case .politeButler: "A polite English butler, formal, courteous and understated."
+        case .dramatic: "Theatrical and over the top, but sweet."
+        case .grumpyGrandma: "A grandma who grumbles playfully but is warm and loving underneath."
+        case .chillSurfer: "A laid-back, friendly surfer, relaxed, with easy surf slang."
+        case .politeButler: "A polite English butler, formal, courteous and warmly attentive."
         }
     }
 }

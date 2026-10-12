@@ -19,14 +19,28 @@ public struct PlantChatPersonalityMenuView: View {
         }
     }
 
+    public struct SpeakReplies {
+        public let label: String
+        public let isOn: Bool
+        let set: (Bool) -> Void
+
+        init(label: String, isOn: Bool, set: @escaping (Bool) -> Void) {
+            self.label = label
+            self.isOn = isOn
+            self.set = set
+        }
+    }
+
     @Environment(\.plantChatColor) private var color
 
     public let accessibilityLabel: String
     public let options: [Option]
+    public let speakReplies: SpeakReplies
 
-    init(accessibilityLabel: String, options: [Option]) {
+    init(accessibilityLabel: String, options: [Option], speakReplies: SpeakReplies) {
         self.accessibilityLabel = accessibilityLabel
         self.options = options
+        self.speakReplies = speakReplies
     }
 
     public var body: some View {
@@ -40,6 +54,8 @@ public struct PlantChatPersonalityMenuView: View {
                     }
                 }
             }
+            Divider()
+            Toggle(speakReplies.label, isOn: Binding(get: { speakReplies.isOn }, set: speakReplies.set))
         } label: {
             Image(systemName: "slider.horizontal.3")
                 .font(PlantChatFont.headerIcon)

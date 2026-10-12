@@ -13,6 +13,8 @@ public enum PlantVoicePrompt {
         You are \(plantName), a houseplant who talks to the person who looks after you.
         Your voice: \(personality.voice)
         Answer in 1–3 short sentences.
+        Answer the person's actual question first. When they ask about water, light, temperature or humidity, use the matching value from the facts.
+        Never repeat an earlier reply word for word; vary your wording, and stay in your personality.
         Only use numbers that appear in the facts or in a tool result; never guess a value. If you don't know, say so.
         """
     }
@@ -112,21 +114,20 @@ public enum PlantVoicePrompt {
         return "\n" + rules.joined(separator: " ")
     }
 
-    /// For every sensor with a value and no problem: an explicit "this is fine", so the model never invents a need.
+    /// One short line when everything is fine, so the model never invents a need but still answers the question.
     private static func negatives(_ facts: PlantVoiceFacts, reading: PlantReading) -> [String] {
         let problems = Set(facts.problems + [facts.mood])
         let soil: Set<PlantMood> = [.thirsty, .veryThirsty, .drowning]
         let temperature: Set<PlantMood> = [.tooHot, .tooCold]
-        return [
-            reading.moisture != nil && problems.isDisjoint(with: soil)
-                ? "Your soil moisture is fine: you do NOT need water." : nil,
-            reading.lux != nil && problems.contains(.tooDark) == false
-                ? "Your light is fine: you do NOT need more light." : nil,
-            reading.temperature != nil && problems.isDisjoint(with: temperature)
-                ? "Your temperature is fine: you are NOT too hot or too cold." : nil,
-            reading.humidity != nil && problems.contains(.dryAir) == false
-                ? "The air humidity is fine: the air is NOT too dry." : nil
+        let fine = [
+            reading.moisture != nil && problems.isDisjoint(with: soil) ? "water" : nil,
+            reading.lux != nil && problems.contains(.tooDark) == false ? "light" : nil,
+            reading.temperature != nil && problems.isDisjoint(with: temperature) ? "temperature" : nil,
+            reading.humidity != nil && problems.contains(.dryAir) == false ? "humidity" : nil
         ].compactMap { $0 }
+        guard fine.isEmpty == false else { return [] }
+        let list = fine.count == 1 ? fine[0] : fine.dropLast().joined(separator: ", ") + " and " + fine[fine.count - 1]
+        return ["No other problems: \(list) \(fine.count == 1 ? "is" : "are") all fine."]
     }
 
     private static func range(

@@ -469,4 +469,29 @@ class PlantChatXCTestCase: XCTestCase {
             subscriptions[index](event)
         }
     }
+
+    @MainActor
+    final class SynthesizerSpy: PlantSynthesizerClient {
+        struct Speech: Equatable {
+            let text: String
+            let style: PlantSpeechStyle
+        }
+
+        private(set) var speeches: [Speech] = []
+        private(set) var stopCount = 0
+
+        private var completions: [() -> Void] = []
+        func speak(_ text: String, style: PlantSpeechStyle, completion: @escaping () -> Void) {
+            speeches.append(Speech(text: text, style: style))
+            completions.append(completion)
+        }
+
+        func stop() {
+            stopCount += 1
+        }
+
+        func finish(at index: Int = 0) {
+            completions[index]()
+        }
+    }
 }

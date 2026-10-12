@@ -30,6 +30,14 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
         XCTAssertTrue(text.contains("If you don't know, say so"))
     }
 
+    func test_instructions_askToAnswerTheQuestionWithMatchingFactsAndVaryWording() {
+        let text = PlantVoicePrompt.instructions(personality: .cheerful, plantName: "Sprout")
+
+        XCTAssertTrue(text.contains("Answer the person's actual question first."))
+        XCTAssertTrue(text.contains("When they ask about water, light, temperature or humidity, use the matching value from the facts."))
+        XCTAssertTrue(text.contains("Never repeat an earlier reply word for word; vary your wording, and stay in your personality."))
+    }
+
     // MARK: - facts
 
     func test_facts_describesEveryMood() {
@@ -72,46 +80,52 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
         XCTAssertFalse(PlantVoicePrompt.facts(makeFacts(mood: .happy, isSleeping: false)).contains("sleepy"))
     }
 
-    func test_facts_saysEverySensorWithoutProblemIsFine() {
+    func test_facts_saysInOneLineThatEverySensorWithoutProblemIsFine() {
         let text = PlantVoicePrompt.facts(makeFacts(mood: .happy))
 
-        XCTAssertTrue(text.contains("Your soil moisture is fine: you do NOT need water."))
-        XCTAssertTrue(text.contains("Your light is fine: you do NOT need more light."))
-        XCTAssertTrue(text.contains("Your temperature is fine: you are NOT too hot or too cold."))
-        XCTAssertTrue(text.contains("The air humidity is fine: the air is NOT too dry."))
+        XCTAssertTrue(text.contains("No other problems: water, light, temperature and humidity are all fine."))
+        XCTAssertFalse(text.contains("NOT"))
+        XCTAssertTrue(text.contains("Moisture:"))
     }
 
-    func test_facts_leavesOutNegativeOfSensorWithProblem() {
+    func test_facts_leavesOutSensorWithProblemFromFineLine() {
         let cases: [(PlantMood, String)] = [
-            (.thirsty, "soil moisture is fine"), (.veryThirsty, "soil moisture is fine"), (.drowning, "soil moisture is fine"),
-            (.tooDark, "light is fine"), (.tooHot, "temperature is fine"), (.tooCold, "temperature is fine"),
-            (.dryAir, "humidity is fine")
+            (.thirsty, "No other problems: light, temperature and humidity are all fine."),
+            (.veryThirsty, "No other problems: light, temperature and humidity are all fine."),
+            (.drowning, "No other problems: light, temperature and humidity are all fine."),
+            (.tooDark, "No other problems: water, temperature and humidity are all fine."),
+            (.tooHot, "No other problems: water, light and humidity are all fine."),
+            (.tooCold, "No other problems: water, light and humidity are all fine."),
+            (.dryAir, "No other problems: water, light and temperature are all fine.")
         ]
 
-        cases.forEach { mood, negative in
-            let text = PlantVoicePrompt.facts(makeFacts(mood: mood))
-
-            XCTAssertFalse(text.contains(negative), "\(mood)")
-            XCTAssertEqual(text.components(separatedBy: "fine:").count - 1, 3, "\(mood)")
+        cases.forEach { mood, line in
+            XCTAssertTrue(PlantVoicePrompt.facts(makeFacts(mood: mood)).contains(line), "\(mood)")
         }
     }
 
-    func test_facts_leavesOutNegativesOfEveryCurrentProblem() {
+    func test_facts_leavesOutEveryCurrentProblemFromFineLine() {
         let text = PlantVoicePrompt.facts(makeFacts(mood: .tooHot, problems: [.tooHot, .thirsty]))
 
-        XCTAssertFalse(text.contains("soil moisture is fine"))
-        XCTAssertFalse(text.contains("temperature is fine"))
-        XCTAssertFalse(text.contains("you do NOT need water"))
-        XCTAssertTrue(text.contains("light is fine"))
-        XCTAssertTrue(text.contains("humidity is fine"))
+        XCTAssertTrue(text.contains("No other problems: light and humidity are all fine."))
     }
 
-    func test_facts_leavesOutNegativeOfSensorWithoutValue() {
+    func test_facts_leavesOutSensorWithoutValueFromFineLine() {
         let text = PlantVoicePrompt.facts(makeFacts(mood: .happy, reading: makeReading(moisture: nil, humidity: nil)))
 
-        XCTAssertFalse(text.contains("soil moisture is fine"))
-        XCTAssertFalse(text.contains("humidity is fine"))
-        XCTAssertTrue(text.contains("light is fine"))
+        XCTAssertTrue(text.contains("No other problems: light and temperature are all fine."))
+    }
+
+    func test_facts_usesSingularVerbForOneFineSensor() {
+        let text = PlantVoicePrompt.facts(makeFacts(mood: .happy, reading: makeReading(moisture: nil, lux: 10, temperature: nil, humidity: nil)))
+
+        XCTAssertTrue(text.contains("No other problems: light is all fine."))
+    }
+
+    func test_facts_hasNoFineLineWhenNothingIsFine() {
+        let text = PlantVoicePrompt.facts(makeFacts(mood: .happy, reading: makeReading(moisture: nil, lux: nil, temperature: nil, humidity: nil)))
+
+        XCTAssertFalse(text.contains("No other problems"))
     }
 
     func test_facts_keepsDrySoilAndDryAirApart() {

@@ -9,8 +9,10 @@ class PlantChatiOSXCTestCase: XCTestCase {
     func makeSUT(
         savedPersonality: PlantPersonality? = nil,
         isAvailable: Bool = true,
+        spokenRepliesEnabled: Bool? = nil,
         transcriptLoader: TranscriptLoaderStub = TranscriptLoaderStub(),
         audioSession: AudioSessionSpy = AudioSessionSpy(),
+        synthesizer: SynthesizerSpy = SynthesizerSpy(),
         actionHandler: @escaping (PlantChatAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -29,6 +31,9 @@ class PlantChatiOSXCTestCase: XCTestCase {
         if let savedPersonality {
             defaults.stub(savedPersonality.rawValue, forKey: "plant.chat.personality")
         }
+        if let spokenRepliesEnabled {
+            defaults.stub(spokenRepliesEnabled, forKey: "plant.chat.spokenReplies.enabled")
+        }
         let sut = PlantChatUIComposer.composed(
             chatLoader: chatLoader,
             lineLoader: lineLoader,
@@ -36,6 +41,8 @@ class PlantChatiOSXCTestCase: XCTestCase {
             settings: PlantPersonalitySettings(defaults: defaults),
             transcriptLoader: transcriptLoader,
             audioSession: audioSession,
+            synthesizer: synthesizer,
+            spokenReplies: PlantSpokenReplySettings(defaults: defaults),
             plantName: "Sprout",
             face: { FaceStub(mood: $0) },
             actionHandler: actionHandler
@@ -46,6 +53,7 @@ class PlantChatiOSXCTestCase: XCTestCase {
         trackMemoryLeak(defaults, file: file, line: line)
         trackMemoryLeak(transcriptLoader, file: file, line: line)
         trackMemoryLeak(audioSession, file: file, line: line)
+        trackMemoryLeak(synthesizer, file: file, line: line)
         return (sut, chatLoader, lineLoader, factsLoader, defaults)
     }
 
@@ -78,10 +86,14 @@ class PlantChatiOSXCTestCase: XCTestCase {
     @MainActor
     final class DefaultsSpy: DefaultsClient {
         private(set) var savedStrings: [String: String] = [:]
-        private var savedBools: [String: Bool] = [:]
+        private(set) var savedBools: [String: Bool] = [:]
 
         func stub(_ value: String, forKey key: String) {
             savedStrings[key] = value
+        }
+
+        func stub(_ value: Bool, forKey key: String) {
+            savedBools[key] = value
         }
 
         func set(_ value: Double, forKey key: String) {}
@@ -212,6 +224,26 @@ class PlantChatiOSXCTestCase: XCTestCase {
         func activate() -> Bool { true }
         func deactivate() {}
         func subscribe(update: @escaping (PlantAudioSessionEvent) -> Void) {}
+    }
+
+    @MainActor
+    final class SynthesizerSpy: PlantSynthesizerClient {
+        private(set) var speeches: [String] = []
+        private(set) var stopCount = 0
+
+        private var completions: [() -> Void] = []
+        func speak(_ text: String, style: PlantSpeechStyle, completion: @escaping () -> Void) {
+            speeches.append(text)
+            completions.append(completion)
+        }
+
+        func stop() {
+            stopCount += 1
+        }
+
+        func finish(at index: Int = 0) {
+            completions[index]()
+        }
     }
 }
 

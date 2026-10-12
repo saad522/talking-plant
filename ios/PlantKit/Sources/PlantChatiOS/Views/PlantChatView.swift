@@ -43,6 +43,14 @@ public struct PlantChatView<Face: View>: View {
         .onChange(of: scenePhase) { if scenePhase != .active { viewModel.disappear() } }
     }
 
+    private var micLabel: String {
+        switch store.activity {
+        case .listening: viewModel.stopListeningLabel
+        case .speaking: viewModel.interruptLabel
+        case .idle, .thinking: viewModel.talkLabel
+        }
+    }
+
     @ViewBuilder
     private var input: some View {
         switch store.inputMode {
@@ -50,7 +58,7 @@ public struct PlantChatView<Face: View>: View {
             PlantChatVoiceControlsView(
                 activity: store.activity,
                 keyboardLabel: viewModel.keyboardLabel,
-                micLabel: store.activity == .listening ? viewModel.stopListeningLabel : viewModel.talkLabel,
+                micLabel: micLabel,
                 endLabel: viewModel.endLabel,
                 keyboard: viewModel.keyboardTap,
                 mic: viewModel.micTap,

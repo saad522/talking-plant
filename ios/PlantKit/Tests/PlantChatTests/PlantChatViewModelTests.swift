@@ -633,18 +633,6 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         XCTAssertEqual(sut.audioSession.messages.last, .activate)
     }
 
-    func test_reply_toSpokenTurn_goesIdleAndDeactivates() {
-        let sut = makeListeningSUT()
-        var activities: [PlantChatActivity] = []
-        sut.viewModel.loadedActivity = { activities.append($0) }
-        sut.transcriptLoader.sendFinal("Hi")
-
-        sut.chatLoader.complete(with: "Hello!")
-
-        XCTAssertEqual(activities, [.thinking, .idle])
-        XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
-    }
-
     func test_emptyFinalTranscript_goesIdleDeactivatesAndSendsNothing() {
         let sut = makeListeningSUT()
         var activities: [PlantChatActivity] = []
@@ -820,6 +808,243 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         XCTAssertEqual(sut.viewModel.talkLabel, "Talk to Sprout")
     }
 
+    // MARK: - voice: spoken replies
+
+    func test_reply_toSpokenTurn_isSpokenCleanedWithPersonalityStyleThenIdleWhenFinished() {
+        let sut = makeSpokenTurnSUT(personality: .politeButler)
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.chatLoader.complete(with: "*sighs* Water, please 🌱")
+
+        XCTAssertEqual(sut.synthesizer.speeches, [.init(text: "sighs Water, please", style: PlantPersonality.politeButler.speechStyle)])
+        XCTAssertEqual(activities, [.speaking])
+        XCTAssertEqual(sut.audioSession.messages.filter { $0 == .deactivate }.count, 0)
+
+        sut.synthesizer.finish()
+
+        XCTAssertEqual(activities, [.speaking, .idle])
+        XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+    }
+
+    func test_reply_toSpokenTurn_showsTheOriginalTextEvenWhenSpoken() {
+        let sut = makeSpokenTurnSUT()
+        var messages: [[PlantChatMessageViewModel]] = []
+        sut.viewModel.loadedMessages = { messages.append($0) }
+
+        sut.chatLoader.complete(with: "*sighs* Hi")
+
+        XCTAssertEqual(messages.last?.last?.text, "*sighs* Hi")
+    }
+
+    func test_templateFallbackReply_toSpokenTurn_isSpoken() {
+        let sut = makeSpokenTurnSUT()
+
+        sut.chatLoader.complete(with: anyNSError())
+
+        XCTAssertEqual(sut.synthesizer.speeches.count, 1)
+        XCTAssertFalse(sut.synthesizer.speeches[0].text.isEmpty)
+    }
+
+    func test_reply_withSpokenRepliesOff_isNotSpoken() {
+        let sut = makeLoadedSUT()
+        sut.viewModel.setSpokenReplies(false)
+        sut.viewModel.micTap()
+        sut.transcriptLoader.sendFinal("Hi")
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.chatLoader.complete(with: "Hello!")
+
+        XCTAssertEqual(sut.synthesizer.speeches, [])
+        XCTAssertEqual(activities, [.idle])
+        XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+    }
+
+    func test_reply_toTypedTurn_isNeverSpoken() {
+        let sut = makeLoadedSUT()
+
+        sut.viewModel.send("Hi")
+        sut.chatLoader.complete(with: "Hello!")
+
+        XCTAssertEqual(sut.synthesizer.speeches, [])
+        XCTAssertEqual(sut.audioSession.messages, [.subscribe])
+    }
+
+    func test_greeting_isNeverSpoken() {
+        let sut = makeLoadedSUT()
+
+        XCTAssertEqual(sut.synthesizer.speeches, [])
+    }
+
+    func test_reply_thatCleansToNothing_isNotSpoken() {
+        let sut = makeSpokenTurnSUT()
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.chatLoader.complete(with: "🌱 **")
+
+        XCTAssertEqual(sut.synthesizer.speeches, [])
+        XCTAssertEqual(activities, [.idle])
+    }
+
+    func test_micTap_whileSpeaking_stopsSpeechThenListensWithoutReactivatingOrDeactivating() {
+        let sut = makeSpokenTurnSUT()
+        sut.chatLoader.complete(with: "Hello!")
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.viewModel.micTap()
+
+        XCTAssertEqual(sut.synthesizer.stopCount, 1)
+        XCTAssertEqual(sut.transcriptLoader.messages.last, .start)
+        XCTAssertEqual(activities, [.listening])
+        XCTAssertEqual(sut.audioSession.messages.filter { $0 == .activate }.count, 1)
+        XCTAssertEqual(sut.audioSession.messages.filter { $0 == .deactivate }.count, 0)
+    }
+
+    func test_speechCompletion_afterItWasCutOff_isIgnored() {
+        let sut = makeSpokenTurnSUT()
+        sut.chatLoader.complete(with: "Hello!")
+        sut.viewModel.micTap()
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.synthesizer.finish()
+
+        XCTAssertEqual(activities, [])
+        XCTAssertEqual(sut.audioSession.messages.filter { $0 == .deactivate }.count, 0)
+    }
+
+    func test_interruptionOrLostOutput_whileSpeaking_stopsSpeechDeactivatesAndGoesIdle() {
+        for event in [PlantAudioSessionEvent.interruptionBegan, .outputDeviceLost] {
+            let sut = makeSpokenTurnSUT()
+            sut.chatLoader.complete(with: "Hello!")
+            var activities: [PlantChatActivity] = []
+            sut.viewModel.loadedActivity = { activities.append($0) }
+
+            sut.audioSession.simulate(event)
+            sut.synthesizer.finish()
+
+            XCTAssertEqual(sut.synthesizer.stopCount, 1, "\(event)")
+            XCTAssertEqual(sut.audioSession.messages.last, .deactivate, "\(event)")
+            XCTAssertEqual(activities, [.idle], "\(event)")
+        }
+    }
+
+    func test_interruption_whileThinking_showsTheReplyButDoesNotSpeakIt() {
+        let sut = makeSpokenTurnSUT()
+        var messages: [[PlantChatMessageViewModel]] = []
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedMessages = { messages.append($0) }
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.audioSession.simulate(.interruptionBegan)
+        sut.chatLoader.complete(with: "Hello!")
+
+        XCTAssertEqual(messages.last?.last?.text, "Hello!")
+        XCTAssertEqual(sut.synthesizer.speeches, [])
+        XCTAssertEqual(activities, [.idle])
+    }
+
+    func test_interruption_whileThinking_doesNotMuteTheNextSpokenTurn() {
+        let sut = makeSpokenTurnSUT()
+        sut.audioSession.simulate(.interruptionBegan)
+        sut.chatLoader.complete(with: "Hello!")
+        sut.viewModel.micTap()
+        sut.transcriptLoader.sendFinal("Again", at: 1)
+
+        sut.chatLoader.complete(with: "Hi again!", at: 1)
+
+        XCTAssertEqual(sut.synthesizer.speeches.map(\.text), ["Hi again!"])
+    }
+
+    func test_setSpokenReplies_savesAndDelivers() {
+        let sut = makeLoadedSUT()
+        var received: [Bool] = []
+        sut.viewModel.loadedSpokenReplies = { received.append($0) }
+
+        sut.viewModel.setSpokenReplies(false)
+        sut.viewModel.setSpokenReplies(true)
+
+        XCTAssertEqual(received, [false, true])
+        XCTAssertTrue(sut.defaults.messages.contains(.setBool(false, forKey: "plant.chat.spokenReplies.enabled")))
+        XCTAssertEqual(sut.defaults.messages.last, .setBool(true, forKey: "plant.chat.spokenReplies.enabled"))
+    }
+
+    func test_appear_deliversSavedSpokenRepliesSetting() {
+        let sut = makeSUT()
+        sut.defaults.stub(false, forKey: "plant.chat.spokenReplies.enabled")
+        var received: [Bool] = []
+        sut.viewModel.loadedSpokenReplies = { received.append($0) }
+
+        sut.viewModel.appear()
+
+        XCTAssertEqual(received, [false])
+    }
+
+    func test_setSpokenReplies_off_whileSpeaking_stopsSpeechAndGoesIdle() {
+        let sut = makeSpokenTurnSUT()
+        sut.chatLoader.complete(with: "Hello!")
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.viewModel.setSpokenReplies(false)
+
+        XCTAssertEqual(sut.synthesizer.stopCount, 1)
+        XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+        XCTAssertEqual(activities, [.idle])
+    }
+
+    func test_setSpokenReplies_off_whileThinking_doesNotSpeakTheReply() {
+        let sut = makeSpokenTurnSUT()
+
+        sut.viewModel.setSpokenReplies(false)
+        sut.chatLoader.complete(with: "Hello!")
+
+        XCTAssertEqual(sut.synthesizer.speeches, [])
+    }
+
+    func test_endTap_whileSpeaking_stopsSpeechDeactivatesAndGoesBack() {
+        var actions: [PlantChatAction] = []
+        let sut = makeSpokenTurnSUT(actionHandler: { actions.append($0) })
+        sut.chatLoader.complete(with: "Hello!")
+
+        sut.viewModel.endTap()
+
+        XCTAssertEqual(sut.synthesizer.stopCount, 1)
+        XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+        XCTAssertEqual(actions, [.backTap])
+    }
+
+    func test_disappear_whileThinking_showsTheReplyButDoesNotSpeakIt() {
+        let sut = makeSpokenTurnSUT()
+
+        sut.viewModel.disappear()
+        sut.chatLoader.complete(with: "Hello!")
+
+        XCTAssertEqual(sut.synthesizer.speeches, [])
+    }
+
+    func test_selectPersonality_whileSpeaking_stopsSpeech() {
+        let sut = makeSpokenTurnSUT()
+        sut.chatLoader.complete(with: "Hello!")
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.viewModel.select(.dramatic)
+
+        XCTAssertEqual(sut.synthesizer.stopCount, 1)
+        XCTAssertEqual(activities, [.idle])
+    }
+
+    func test_init_providesInterruptAndSpeakRepliesLabels() {
+        let sut = makeSUT()
+
+        XCTAssertEqual(sut.viewModel.interruptLabel, "Interrupt Sprout")
+        XCTAssertEqual(sut.viewModel.speakRepliesLabel, "Speak replies")
+    }
+
     // MARK: - memory
 
     func test_appear_doesNotDeliverAfterSUTIsReleased() {
@@ -832,6 +1057,8 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
             settings: settings,
             transcriptLoader: TranscriptLoaderStub(),
             audioSession: AudioSessionSpy(),
+            synthesizer: SynthesizerSpy(),
+            spokenReplies: PlantSpokenReplySettings(defaults: DefaultsSpy()),
             plantName: "Sprout",
             actionHandler: { _ in }
         )
@@ -855,6 +1082,8 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         let settings: PlantPersonalitySettings
         let transcriptLoader: TranscriptLoaderStub
         let audioSession: AudioSessionSpy
+        let synthesizer: SynthesizerSpy
+        let defaults: DefaultsSpy
     }
 
     private func makeSUT(
@@ -873,6 +1102,8 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         let transcriptLoader = TranscriptLoaderStub()
         transcriptLoader.authorization = authorization
         let audioSession = AudioSessionSpy()
+        let synthesizer = SynthesizerSpy()
+        let spokenReplies = PlantSpokenReplySettings(defaults: defaults)
         if let savedPersonality {
             settings.save(savedPersonality)
         }
@@ -883,6 +1114,8 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
             settings: settings,
             transcriptLoader: transcriptLoader,
             audioSession: audioSession,
+            synthesizer: synthesizer,
+            spokenReplies: spokenReplies,
             plantName: "Sprout",
             currentDate: currentDate,
             actionHandler: actionHandler
@@ -894,8 +1127,10 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         trackMemoryLeak(settings, file: file, line: line)
         trackMemoryLeak(transcriptLoader, file: file, line: line)
         trackMemoryLeak(audioSession, file: file, line: line)
+        trackMemoryLeak(synthesizer, file: file, line: line)
+        trackMemoryLeak(spokenReplies, file: file, line: line)
         trackMemoryLeak(viewModel, file: file, line: line)
-        return SUT(viewModel: viewModel, chatLoader: chatLoader, lineLoader: lineLoader, factsLoader: factsLoader, settings: settings, transcriptLoader: transcriptLoader, audioSession: audioSession)
+        return SUT(viewModel: viewModel, chatLoader: chatLoader, lineLoader: lineLoader, factsLoader: factsLoader, settings: settings, transcriptLoader: transcriptLoader, audioSession: audioSession, synthesizer: synthesizer, defaults: defaults)
     }
 
     /// Loaded, then listening.
@@ -910,6 +1145,22 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         sut.factsLoader.completeLoad(with: facts ?? makeFacts())
         sut.lineLoader.complete(with: "Hey!")
         sut.viewModel.micTap()
+        return sut
+    }
+
+    /// Loaded, listened, and a final transcript sent; the reply is pending.
+    private func makeSpokenTurnSUT(
+        personality: PlantPersonality? = nil,
+        actionHandler: @escaping (PlantChatAction) -> Void = { _ in },
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> SUT {
+        let sut = makeSUT(savedPersonality: personality, actionHandler: actionHandler, file: file, line: line)
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts())
+        sut.lineLoader.complete(with: "Hey!")
+        sut.viewModel.micTap()
+        sut.transcriptLoader.sendFinal("Hi")
         return sut
     }
 

@@ -10,6 +10,8 @@ final class PlantChatStore<Face: View>: ObservableObject {
     @Published var messages: [PlantChatBubbleView] = []
     @Published var isReplying: Bool = false
     @Published var personalityMenu: PlantChatPersonalityMenuView?
+    @Published var personality: PlantPersonality?
+    @Published var isSpeakingReplies: Bool = true
     @Published var draft: String = ""
     @Published var activity: PlantChatActivity = .idle
     /// The words heard so far; `nil` until the first ones arrive.

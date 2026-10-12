@@ -89,6 +89,27 @@ final class PlantChatUIITests: PlantChatiOSXCTestCase {
         XCTAssertEqual(sut.personalityOptions.filter(\.isSelected).map(\.label), ["Dramatic"])
     }
 
+    func test_personalityMenu_showsSpeakRepliesOnByDefaultAndTogglingSavesIt() {
+        let (sut, _, _, _, defaults) = makeSUT()
+        sut.simulateAppear()
+
+        XCTAssertEqual(sut.speakReplies?.label, "Speak replies")
+        XCTAssertEqual(sut.speakReplies?.isOn, true)
+
+        sut.simulateSpeakRepliesToggle()
+
+        XCTAssertEqual(defaults.savedBools["plant.chat.spokenReplies.enabled"], false)
+        XCTAssertEqual(sut.speakReplies?.isOn, false)
+    }
+
+    func test_personalityMenu_showsSavedSpeakRepliesSetting() {
+        let (sut, _, _, _, _) = makeSUT(spokenRepliesEnabled: false)
+
+        sut.simulateAppear()
+
+        XCTAssertEqual(sut.speakReplies?.isOn, false)
+    }
+
     func test_selectingPersonality_savesItRestartsChatAndGreetsAgain() {
         let (sut, chatLoader, lineLoader, factsLoader, defaults) = makeSUT()
         sut.simulateAppear()
@@ -175,6 +196,27 @@ final class PlantChatUIITests: PlantChatiOSXCTestCase {
         XCTAssertEqual(chatLoader.sentTexts, ["How are you?"])
         XCTAssertEqual(sut.bubbles.map(\.text), ["Hi!", "How are you?", "…"])
         XCTAssertEqual(sut.bubbles.map(\.isLive), [false, false, false])
+    }
+
+    func test_micLabel_whileSpeaking_isInterrupt() {
+        let transcriptLoader = TranscriptLoaderStub()
+        let synthesizer = SynthesizerSpy()
+        let (sut, chatLoader, _, factsLoader, _) = makeSUT(transcriptLoader: transcriptLoader, synthesizer: synthesizer)
+        sut.simulateAppear()
+        factsLoader.completeLoad(with: makeFacts())
+        XCTAssertEqual(sut.micLabel, "Talk to Sprout")
+        sut.simulateMicTap()
+        XCTAssertEqual(sut.micLabel, "Stop listening")
+        transcriptLoader.sendFinal("How are you?")
+
+        chatLoader.complete(with: "Thirsty!")
+
+        XCTAssertEqual(synthesizer.speeches, ["Thirsty!"])
+        XCTAssertEqual(sut.micLabel, "Interrupt Sprout")
+
+        synthesizer.finish()
+
+        XCTAssertEqual(sut.micLabel, "Talk to Sprout")
     }
 
     func test_mic_isDisabledWhileThinking() {

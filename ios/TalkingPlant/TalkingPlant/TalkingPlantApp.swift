@@ -96,6 +96,8 @@ struct TalkingPlantApp: App {
             settings: settings,
             transcriptLoader: TranscriberPlantTranscriptLoader(client: Self.makeTranscriberClient()),
             audioSession: AVAudioSessionPlantAudioSessionClient(),
+            synthesizer: AVSpeechPlantSynthesizerClient(),
+            spokenReplies: PlantSpokenReplySettings(defaults: defaults),
             plantName: plantName,
             face: PlantFaceUIComposer.composed,
             actionHandler: { [weak navigation] action in

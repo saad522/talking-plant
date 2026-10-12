@@ -55,3 +55,5 @@
 "plant.chat.mic.preparing.notice" = "Still getting ready to listen. Try again in a moment.";
 "plant.chat.mic.failure.notice" = "I couldn't hear you. Try again.";
 "plant.chat.mic.busy.notice" = "The microphone is busy, maybe on a call. Try again later.";
+"plant.chat.mic.interrupt.label" = "Interrupt %@";
+"plant.chat.speakReplies.label" = "Speak replies";

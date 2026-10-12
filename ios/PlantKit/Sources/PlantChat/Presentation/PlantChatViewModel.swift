@@ -14,6 +14,8 @@ public final class PlantChatViewModel {
     private let settings: PlantPersonalitySettings
     private let transcriptLoader: PlantTranscriptLoader
     private let audioSession: PlantAudioSessionClient
+    private let synthesizer: PlantSynthesizerClient
+    private let spokenReplies: PlantSpokenReplySettings
     private let plantName: String
     private let currentDate: () -> Date
     private let actionHandler: (PlantChatAction) -> Void
@@ -30,6 +32,10 @@ public final class PlantChatViewModel {
     private var isAudioSessionActive: Bool = false
     /// Changes whenever listening ends, so late transcripts of an earlier turn are dropped.
     private var listening: Int = 0
+    /// Changes whenever speech starts or is cut off, so the end of an earlier utterance is dropped.
+    private var speech: Int = 0
+    /// Whether the reply being waited for will be spoken.
+    private var speaksPendingReply: Bool = false
 
     public let personalities: [PlantPersonalityViewModel] = PlantPersonality.allCases.map(PlantPersonalityViewModel.init)
 
@@ -41,8 +47,12 @@ public final class PlantChatViewModel {
     public let stopListeningLabel: String = String.localised(key: "plant.chat.mic.stop.label")
     public let keyboardLabel: String = String.localised(key: "plant.chat.keyboard.label")
     public let endLabel: String = String.localised(key: "plant.chat.end.label")
+    public let speakRepliesLabel: String = String.localised(key: "plant.chat.speakReplies.label")
     public var talkLabel: String {
         String(format: String.localised(key: "plant.chat.mic.talk.label"), plantName)
+    }
+    public var interruptLabel: String {
+        String(format: String.localised(key: "plant.chat.mic.interrupt.label"), plantName)
     }
     public var unavailableLabel: String {
         String(format: String.localised(key: "plant.chat.unavailable.notice"), plantName)
@@ -58,6 +68,7 @@ public final class PlantChatViewModel {
     public var loadedTranscript: Observer<String>?
     public var loadedInputMode: Observer<PlantChatInputMode>?
     public var loadedMicrophoneNotice: Observer<PlantChatMicrophoneNoticeViewModel?>?
+    public var loadedSpokenReplies: Observer<Bool>?
 
     public init(
         chatLoader: PlantChatLoader,
@@ -66,6 +77,8 @@ public final class PlantChatViewModel {
         settings: PlantPersonalitySettings,
         transcriptLoader: PlantTranscriptLoader,
         audioSession: PlantAudioSessionClient,
+        synthesizer: PlantSynthesizerClient,
+        spokenReplies: PlantSpokenReplySettings,
         plantName: String,
         currentDate: @escaping () -> Date = Date.init,
         actionHandler: @escaping (PlantChatAction) -> Void
@@ -76,6 +89,8 @@ public final class PlantChatViewModel {
         self.settings = settings
         self.transcriptLoader = transcriptLoader
         self.audioSession = audioSession
+        self.synthesizer = synthesizer
+        self.spokenReplies = spokenReplies
         self.plantName = plantName
         self.currentDate = currentDate
         self.actionHandler = actionHandler
@@ -91,6 +106,7 @@ public final class PlantChatViewModel {
         }
         appeared = true
         loadedPersonality?(settings.load())
+        loadedSpokenReplies?(spokenReplies.isEnabled)
         factsLoader.subscribe { [weak self] in
             self?.loadFacts()
         }
@@ -101,16 +117,17 @@ public final class PlantChatViewModel {
 
     public func send(_ text: String) {
         guard activity != .listening else { return }
-        submit(text)
+        submit(text, speaksReply: false)
     }
 
     /// The one path for typed and spoken turns.
     @discardableResult
-    private func submit(_ text: String) -> Bool {
+    private func submit(_ text: String, speaksReply: Bool) -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard text.isEmpty == false, isReplying == false else { return false }
 
         append(text, from: .user)
+        speaksPendingReply = speaksReply
         isReplying = true
         loadedTyping?(true)
         setActivity(.thinking)
@@ -121,8 +138,14 @@ public final class PlantChatViewModel {
             self.isReplying = false
             self.append(text, from: .plant)
             self.loadedTyping?(false)
-            self.deactivateAudioSession()
-            self.setActivity(.idle)
+            let spoken = self.speaksPendingReply ? PlantSpeechText.clean(text) : ""
+            self.speaksPendingReply = false
+            if spoken.isEmpty {
+                self.deactivateAudioSession()
+                self.setActivity(.idle)
+            } else {
+                self.speak(spoken)
+            }
         }
         guard let facts = latestFacts else {
             reply(PlantChatTemplate.reply(facts: nil))
@@ -170,8 +193,21 @@ public final class PlantChatViewModel {
             }
         case .listening:
             transcriptLoader.stop()
-        case .thinking, .speaking:
+        case .speaking:
+            cancelSpeech()
+            startListening()
+        case .thinking:
             break
+        }
+    }
+
+    public func setSpokenReplies(_ isEnabled: Bool) {
+        spokenReplies.save(isEnabled: isEnabled)
+        loadedSpokenReplies?(isEnabled)
+        guard isEnabled == false else { return }
+        speaksPendingReply = false
+        if activity == .speaking {
+            stopVoice()
         }
     }
 
@@ -242,11 +278,14 @@ public final class PlantChatViewModel {
     }
 
     private func startListening() {
-        guard audioSession.activate() else {
-            showFailureNotice(.audio)
-            return
+        // Cutting speech off keeps the session, so music doesn't resume between the two.
+        if isAudioSessionActive == false {
+            guard audioSession.activate() else {
+                showFailureNotice(.audio)
+                return
+            }
+            isAudioSessionActive = true
         }
-        isAudioSessionActive = true
         loadedMicrophoneNotice?(nil)
         setActivity(.listening)
         listening += 1
@@ -263,7 +302,7 @@ public final class PlantChatViewModel {
             loadedTranscript?(transcript.text)
         case .success(let transcript):
             finishListening()
-            if submit(transcript.text) == false {
+            if submit(transcript.text, speaksReply: spokenReplies.isEnabled) == false {
                 deactivateAudioSession()
                 setActivity(.idle)
             }
@@ -277,23 +316,46 @@ public final class PlantChatViewModel {
 
     private func handle(_ event: PlantAudioSessionEvent) {
         switch (event, activity) {
-        case (.interruptionBegan, .listening), (.outputDeviceLost, .listening):
+        case (.interruptionBegan, .listening), (.outputDeviceLost, .listening),
+             (.interruptionBegan, .speaking), (.outputDeviceLost, .speaking):
             stopVoice()
         case (.interruptionBegan, .thinking):
+            speaksPendingReply = false
             deactivateAudioSession()
         default:
             break
         }
     }
 
-    /// Ends the turn without sending anything.
+    /// Ends the turn without sending anything. A reply still on its way is shown, not spoken.
     private func stopVoice() {
+        speaksPendingReply = false
         if activity == .listening {
             finishListening()
             transcriptLoader.cancel()
             setActivity(.idle)
         }
+        if activity == .speaking {
+            cancelSpeech()
+            setActivity(.idle)
+        }
         deactivateAudioSession()
+    }
+
+    private func speak(_ text: String) {
+        speech += 1
+        let speech = speech
+        setActivity(.speaking)
+        synthesizer.speak(text, style: settings.load().speechStyle) { [weak self] in
+            guard let self, self.speech == speech else { return }
+            self.deactivateAudioSession()
+            self.setActivity(.idle)
+        }
+    }
+
+    private func cancelSpeech() {
+        speech += 1
+        synthesizer.stop()
     }
 
     private func finishListening() {

@@ -19,7 +19,8 @@ public final class FoundationModelsPlantLanguageModelClient: PlantLanguageModelC
 
     public func makeSession(instructions: String, canReadHistory: Bool) -> PlantLanguageModelSession {
         let tools: [any Tool] = canReadHistory ? [PlantHistoryTool(historyLoader: historyLoader)] : []
-        return Session(LanguageModelSession(tools: tools, instructions: instructions))
+        let options = GenerationOptions(temperature: canReadHistory ? 0.8 : nil)
+        return Session(LanguageModelSession(tools: tools, instructions: instructions), options: options)
     }
 
     /// Loads the model ahead of the first message.
@@ -30,15 +31,17 @@ public final class FoundationModelsPlantLanguageModelClient: PlantLanguageModelC
 
     private final class Session: PlantLanguageModelSession {
         private let session: LanguageModelSession
+        private let options: GenerationOptions
 
-        init(_ session: LanguageModelSession) {
+        init(_ session: LanguageModelSession, options: GenerationOptions) {
             self.session = session
+            self.options = options
         }
 
         func respond(to prompt: String, completion: @escaping (PlantLanguageModelSession.Result) -> Void) {
             Task { @MainActor in
                 do {
-                    completion(.success(try await session.respond(to: prompt).content))
+                    completion(.success(try await session.respond(to: prompt, options: options).content))
                 } catch let error as LanguageModelSession.GenerationError {
                     if case .exceededContextWindowSize = error {
                         completion(.failure(PlantLanguageModelError.contextTooLong))

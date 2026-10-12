@@ -48,6 +48,14 @@ extension PlantChatView where Face == FaceStub {
         (try? inspect().find(PlantChatPersonalityMenuView.self).actualView().options) ?? []
     }
 
+    var speakReplies: PlantChatPersonalityMenuView.SpeakReplies? {
+        try? inspect().find(PlantChatPersonalityMenuView.self).actualView().speakReplies
+    }
+
+    var micLabel: String? {
+        try? inspect().find(PlantChatVoiceControlsView.self).actualView().micLabel
+    }
+
     var canSend: Bool {
         (try? inspect().find(PlantChatInputView.self).actualView().canSend) ?? false
     }
@@ -89,6 +97,10 @@ extension PlantChatView where Face == FaceStub {
 
     func simulateBackTap() {
         try? inspect().find(PlantChatHeaderView.self).find(ViewType.Button.self).tap()
+    }
+
+    func simulateSpeakRepliesToggle() {
+        try? inspect().find(ViewType.Menu.self).find(ViewType.Toggle.self).tap()
     }
 
     func simulatePersonalitySelection(_ label: String) {

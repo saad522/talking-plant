@@ -135,6 +135,81 @@ final class LanguageModelPlantChatLoaderTests: PlantChatXCTestCase {
         XCTAssertEqual(client.sessions[1].prompts.count, 2)
     }
 
+    func test_send_retriesWithNewSessionWhenReplyRepeatsOneOfTheLastReplies() {
+        let (sut, client, _) = makeSUT()
+        let facts = makeFacts()
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("One", facts: facts) { _ in }
+        client.sessions[0].complete(with: "I'm fine, thank you.")
+        sut.send("Do you need water?", facts: facts) { results.append($0) }
+        client.sessions[0].complete(with: "  im FINE thank you ", at: 1)
+        client.sessions[1].complete(with: "Not at all, I'm at 24%.")
+
+        XCTAssertEqual(client.sessions.count, 2)
+        XCTAssertEqual(client.sessions[1].prompts, [PlantVoicePrompt.message("Do you need water?", facts: facts)])
+        XCTAssertEqual(try? results.first?.get(), "Not at all, I'm at 24%.")
+        XCTAssertEqual(results.count, 1)
+    }
+
+    func test_send_deliversTemplateWhenReplyRepeatsAgainAfterRetry() {
+        let (sut, client, _) = makeSUT()
+        let facts = makeFacts()
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("One", facts: facts) { _ in }
+        client.sessions[0].complete(with: "I'm fine.")
+        sut.send("Two", facts: facts) { results.append($0) }
+        client.sessions[0].complete(with: "I'm fine!", at: 1)
+        client.sessions[1].complete(with: "i'm fine")
+
+        XCTAssertEqual(client.sessions.count, 2)
+        XCTAssertEqual(try? results.first?.get(), PlantChatTemplate.reply(facts: facts))
+        XCTAssertEqual(results.count, 1)
+    }
+
+    func test_send_doesNotRetryWhenReplyDiffersFromTheLastReplies() {
+        let (sut, client, _) = makeSUT()
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("One", facts: makeFacts()) { _ in }
+        client.sessions[0].complete(with: "I'm fine.")
+        sut.send("Two", facts: makeFacts()) { results.append($0) }
+        client.sessions[0].complete(with: "I love the light!", at: 1)
+
+        XCTAssertEqual(client.sessions.count, 1)
+        XCTAssertEqual(try? results.first?.get(), "I love the light!")
+    }
+
+    func test_send_comparesOnlyWithTheLastThreeReplies() {
+        let (sut, client, _) = makeSUT()
+        var results: [PlantChatLoader.Result] = []
+
+        ["A", "B", "C", "D"].enumerated().forEach { index, reply in
+            sut.send(reply, facts: makeFacts()) { _ in }
+            client.sessions[0].complete(with: reply, at: index)
+        }
+        sut.send("Again", facts: makeFacts()) { results.append($0) }
+        client.sessions[0].complete(with: "a", at: 4)
+
+        XCTAssertEqual(client.sessions.count, 1)
+        XCTAssertEqual(try? results.first?.get(), "a")
+    }
+
+    func test_reset_forgetsRecentReplies() {
+        let (sut, client, _) = makeSUT()
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("One", facts: makeFacts()) { _ in }
+        client.sessions[0].complete(with: "I'm fine.")
+        sut.reset()
+        sut.send("Two", facts: makeFacts()) { results.append($0) }
+        client.sessions[1].complete(with: "I'm fine.")
+
+        XCTAssertEqual(client.sessions.count, 2)
+        XCTAssertEqual(try? results.first?.get(), "I'm fine.")
+    }
+
     func test_reset_makesNextSendStartNewSession() {
         let (sut, client, _) = makeSUT()
 

@@ -11,6 +11,8 @@ public enum PlantChatUIComposer {
         settings: PlantPersonalitySettings,
         transcriptLoader: PlantTranscriptLoader,
         audioSession: PlantAudioSessionClient,
+        synthesizer: PlantSynthesizerClient,
+        spokenReplies: PlantSpokenReplySettings,
         plantName: String,
         face: @escaping (PlantMood) -> Face,
         actionHandler: @escaping (PlantChatAction) -> Void
@@ -23,6 +25,8 @@ public enum PlantChatUIComposer {
             settings: settings,
             transcriptLoader: transcriptLoader,
             audioSession: audioSession,
+            synthesizer: synthesizer,
+            spokenReplies: spokenReplies,
             plantName: plantName,
             actionHandler: actionHandler
         )
@@ -69,7 +73,13 @@ public enum PlantChatUIComposer {
         }
 
         viewModel.loadedPersonality = { [weak store, weak viewModel] personality in
-            store?.personalityMenu = makeMenu(current: personality, viewModel: viewModel)
+            store?.personality = personality
+            refreshMenu(store: store, viewModel: viewModel)
+        }
+
+        viewModel.loadedSpokenReplies = { [weak store, weak viewModel] isEnabled in
+            store?.isSpeakingReplies = isEnabled
+            refreshMenu(store: store, viewModel: viewModel)
         }
 
         return PlantChatView(store: store, viewModel: viewModel)
@@ -83,7 +93,12 @@ public enum PlantChatUIComposer {
         )
     }
 
-    private static func makeMenu(current: PlantPersonality, viewModel: PlantChatViewModel?) -> PlantChatPersonalityMenuView {
+    private static func refreshMenu<Face: View>(store: PlantChatStore<Face>?, viewModel: PlantChatViewModel?) {
+        guard let store, let current = store.personality else { return }
+        store.personalityMenu = makeMenu(current: current, isSpeakingReplies: store.isSpeakingReplies, viewModel: viewModel)
+    }
+
+    private static func makeMenu(current: PlantPersonality, isSpeakingReplies: Bool, viewModel: PlantChatViewModel?) -> PlantChatPersonalityMenuView {
         PlantChatPersonalityMenuView(
             accessibilityLabel: viewModel?.personalityLabel ?? "",
             options: (viewModel?.personalities ?? []).map { option in
@@ -93,7 +108,12 @@ public enum PlantChatUIComposer {
                     isSelected: option.personality == current,
                     select: { [weak viewModel] in viewModel?.select(option.personality) }
                 )
-            }
+            },
+            speakReplies: PlantChatPersonalityMenuView.SpeakReplies(
+                label: viewModel?.speakRepliesLabel ?? "",
+                isOn: isSpeakingReplies,
+                set: { [weak viewModel] in viewModel?.setSpokenReplies($0) }
+            )
         )
     }
 }

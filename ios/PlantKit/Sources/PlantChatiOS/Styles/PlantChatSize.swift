@@ -25,4 +25,11 @@ enum PlantChatSize {
     static let sendButton: CGFloat = 48
     static let inputSpacing: CGFloat = 10
     static let inputHorizontalPadding: CGFloat = 16
+
+    static let voiceControlsSpacing: CGFloat = 28
+    static let voiceSideButton: CGFloat = 56
+    static let micButton: CGFloat = 84
+    static let micBorder: CGFloat = 6
+    static let inputMicButton: CGFloat = 48
+    static let liveBubbleOpacity: Double = 0.6
 }

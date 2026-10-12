@@ -9,6 +9,8 @@ class PlantChatiOSXCTestCase: XCTestCase {
     func makeSUT(
         savedPersonality: PlantPersonality? = nil,
         isAvailable: Bool = true,
+        transcriptLoader: TranscriptLoaderStub = TranscriptLoaderStub(),
+        audioSession: AudioSessionSpy = AudioSessionSpy(),
         actionHandler: @escaping (PlantChatAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -32,8 +34,8 @@ class PlantChatiOSXCTestCase: XCTestCase {
             lineLoader: lineLoader,
             factsLoader: factsLoader,
             settings: PlantPersonalitySettings(defaults: defaults),
-            transcriptLoader: TranscriptLoaderStub(),
-            audioSession: AudioSessionStub(),
+            transcriptLoader: transcriptLoader,
+            audioSession: audioSession,
             plantName: "Sprout",
             face: { FaceStub(mood: $0) },
             actionHandler: actionHandler
@@ -42,6 +44,8 @@ class PlantChatiOSXCTestCase: XCTestCase {
         trackMemoryLeak(lineLoader, file: file, line: line)
         trackMemoryLeak(factsLoader, file: file, line: line)
         trackMemoryLeak(defaults, file: file, line: line)
+        trackMemoryLeak(transcriptLoader, file: file, line: line)
+        trackMemoryLeak(audioSession, file: file, line: line)
         return (sut, chatLoader, lineLoader, factsLoader, defaults)
     }
 
@@ -159,16 +163,52 @@ class PlantChatiOSXCTestCase: XCTestCase {
 
     @MainActor
     final class TranscriptLoaderStub: PlantTranscriptLoader {
+        enum Message: Equatable {
+            case requestAuthorization
+            case prepare
+            case start
+            case stop
+            case cancel
+        }
+
         var authorization: PlantSpeechAuthorization = .authorized
-        func requestAuthorization(completion: @escaping (PlantSpeechAuthorization) -> Void) {}
-        func prepare() {}
-        func start(update: @escaping (PlantTranscriptLoader.Result) -> Void) {}
-        func stop() {}
-        func cancel() {}
+        private(set) var messages: [Message] = []
+
+        private var authorizationCompletions: [(PlantSpeechAuthorization) -> Void] = []
+        func requestAuthorization(completion: @escaping (PlantSpeechAuthorization) -> Void) {
+            messages.append(.requestAuthorization)
+            authorizationCompletions.append(completion)
+        }
+
+        func prepare() {
+            messages.append(.prepare)
+        }
+
+        private var updates: [(PlantTranscriptLoader.Result) -> Void] = []
+        func start(update: @escaping (PlantTranscriptLoader.Result) -> Void) {
+            messages.append(.start)
+            updates.append(update)
+        }
+
+        func stop() {
+            messages.append(.stop)
+        }
+
+        func cancel() {
+            messages.append(.cancel)
+        }
+
+        func sendPartial(_ text: String, at index: Int = 0) {
+            updates[index](.success(PlantTranscript(text: text, isFinal: false)))
+        }
+
+        func sendFinal(_ text: String, at index: Int = 0) {
+            updates[index](.success(PlantTranscript(text: text, isFinal: true)))
+        }
     }
 
     @MainActor
-    final class AudioSessionStub: PlantAudioSessionClient {
+    final class AudioSessionSpy: PlantAudioSessionClient {
         func activate() -> Bool { true }
         func deactivate() {}
         func subscribe(update: @escaping (PlantAudioSessionEvent) -> Void) {}

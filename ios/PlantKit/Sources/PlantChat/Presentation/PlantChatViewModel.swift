@@ -39,6 +39,8 @@ public final class PlantChatViewModel {
     public let sendLabel: String = String.localised(key: "plant.chat.send.label")
     public let listeningLabel: String = String.localised(key: "plant.chat.listening.label")
     public let stopListeningLabel: String = String.localised(key: "plant.chat.mic.stop.label")
+    public let keyboardLabel: String = String.localised(key: "plant.chat.keyboard.label")
+    public let endLabel: String = String.localised(key: "plant.chat.end.label")
     public var talkLabel: String {
         String(format: String.localised(key: "plant.chat.mic.talk.label"), plantName)
     }

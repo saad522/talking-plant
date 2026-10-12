@@ -4,6 +4,7 @@ import SwiftUI
 public struct PlantChatView<Face: View>: View {
     @ObservedObject private var store: PlantChatStore<Face>
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
     private let viewModel: PlantChatViewModel
 
     init(store: PlantChatStore<Face>, viewModel: PlantChatViewModel) {
@@ -24,17 +25,12 @@ public struct PlantChatView<Face: View>: View {
             )
             face
             store.notice
+            store.microphoneNotice
             messages
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            PlantChatInputView(
-                placeholder: viewModel.placeholderLabel,
-                sendLabel: viewModel.sendLabel,
-                text: $store.draft,
-                canSend: canSend,
-                send: send
-            )
-            .background(color.background)
+            input
+                .background(color.background)
         }
         .background { color.background.ignoresSafeArea() }
         .environment(\.plantChatColor, color)
@@ -43,6 +39,34 @@ public struct PlantChatView<Face: View>: View {
         .toolbar(.hidden, for: .navigationBar)
         #endif
         .onAppear(perform: viewModel.appear)
+        .onDisappear(perform: viewModel.disappear)
+        .onChange(of: scenePhase) { if scenePhase != .active { viewModel.disappear() } }
+    }
+
+    @ViewBuilder
+    private var input: some View {
+        switch store.inputMode {
+        case .voice:
+            PlantChatVoiceControlsView(
+                activity: store.activity,
+                keyboardLabel: viewModel.keyboardLabel,
+                micLabel: store.activity == .listening ? viewModel.stopListeningLabel : viewModel.talkLabel,
+                endLabel: viewModel.endLabel,
+                keyboard: viewModel.keyboardTap,
+                mic: viewModel.micTap,
+                end: viewModel.endTap
+            )
+        case .keyboard:
+            PlantChatInputView(
+                placeholder: viewModel.placeholderLabel,
+                sendLabel: viewModel.sendLabel,
+                text: $store.draft,
+                canSend: canSend,
+                voiceLabel: viewModel.talkLabel,
+                send: send,
+                voice: viewModel.voiceTap
+            )
+        }
     }
 
     @ViewBuilder
@@ -61,6 +85,9 @@ public struct PlantChatView<Face: View>: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: PlantChatSize.bubbleSpacing) {
                     ForEach(store.messages) { $0 }
+                    if store.activity == .listening {
+                        PlantChatBubbleView(id: -2, text: store.liveTranscript ?? viewModel.listeningLabel, sender: .user, isLive: true)
+                    }
                     if store.isReplying {
                         PlantChatBubbleView(id: -1, text: "…", sender: .plant)
                     }
@@ -70,6 +97,7 @@ public struct PlantChatView<Face: View>: View {
             }
             .onChange(of: store.messages.count) { scrollToBottom(proxy) }
             .onChange(of: store.isReplying) { scrollToBottom(proxy) }
+            .onChange(of: store.liveTranscript) { scrollToBottom(proxy) }
         }
     }
 

@@ -96,14 +96,16 @@ public enum PlantVoicePrompt {
 
     // MARK: - Private helpers
 
-    /// The extra rules for home lines and notifications. A greeting only has its length limit.
+    /// The extra rules for home lines, notifications and greetings. A greeting must also say how the plant feels.
     private static func rules(for purpose: PlantVoiceLineRequest.Purpose, facts: PlantVoiceFacts) -> String {
-        guard purpose != .greeting else { return "" }
         var rules = [
             "Speak as the plant, in the first person.",
             "Never say \"your plant\".",
             "Never thank or reply to the person."
         ]
+        if purpose == .greeting {
+            rules.append("Say how you feel right now, based on your mood: if you need something (like water), ask for it; if you are happy, sound happy.")
+        }
         if facts.isSleeping {
             rules.append("Sound sleepy.")
         }

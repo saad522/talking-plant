@@ -154,11 +154,11 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
         XCTAssertEqual(Set(texts).count, purposes.count)
     }
 
-    func test_line_givesHomeAndNotificationTheirRules() {
-        [PlantVoiceLineRequest.Purpose.home, .notification].forEach { purpose in
+    func test_line_givesEveryPurposeTheFirstPersonRules() {
+        [PlantVoiceLineRequest.Purpose.home, .notification, .greeting].forEach { purpose in
             let text = PlantVoicePrompt.line(makeFacts(), purpose: purpose)
 
-            XCTAssertTrue(text.contains("at most 10 words, with no numbers"), "\(purpose)")
+            XCTAssertTrue(text.contains("with no numbers"), "\(purpose)")
             XCTAssertTrue(text.contains("Speak as the plant, in the first person."), "\(purpose)")
             XCTAssertTrue(text.contains("Never say \"your plant\"."), "\(purpose)")
             XCTAssertTrue(text.contains("Never thank or reply to the person."), "\(purpose)")
@@ -172,12 +172,34 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
         }
     }
 
+    func test_line_keepsHomeAndNotificationToTenWords() {
+        [PlantVoiceLineRequest.Purpose.home, .notification].forEach { purpose in
+            XCTAssertTrue(PlantVoicePrompt.line(makeFacts(), purpose: purpose).contains("at most 10 words, with no numbers"), "\(purpose)")
+        }
+    }
+
     func test_line_keepsGreetingToTwelveWordsWithoutTenWordRule() {
         let text = PlantVoicePrompt.line(makeFacts(), purpose: .greeting)
 
         XCTAssertTrue(text.contains("at most 12 words, with no numbers"))
         XCTAssertFalse(text.contains("10 words"))
         XCTAssertFalse(text.contains("Sound sleepy."))
+    }
+
+    func test_line_makesGreetingSayHowPlantFeelsForHappyAndProblemMood() {
+        [PlantMood.happy, .thirsty].forEach { mood in
+            let text = PlantVoicePrompt.line(makeFacts(mood: mood), purpose: .greeting)
+
+            XCTAssertTrue(text.contains("Say how you feel right now, based on your mood"), "\(mood)")
+            XCTAssertTrue(text.contains("if you need something (like water), ask for it; if you are happy, sound happy."), "\(mood)")
+            XCTAssertTrue(text.contains("Mood: \(mood == .happy ? "happy: everything is fine" : "thirsty: your SOIL is dry")"), "\(mood)")
+        }
+    }
+
+    func test_line_doesNotGiveHomeAndNotificationTheGreetingMoodRule() {
+        [PlantVoiceLineRequest.Purpose.home, .notification].forEach { purpose in
+            XCTAssertFalse(PlantVoicePrompt.line(makeFacts(), purpose: purpose).contains("Say how you feel right now"), "\(purpose)")
+        }
     }
 
     // MARK: - history

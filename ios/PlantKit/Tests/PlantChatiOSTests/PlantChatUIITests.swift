@@ -117,4 +117,120 @@ final class PlantChatUIITests: PlantChatiOSXCTestCase {
 
         XCTAssertEqual(actions, [.backTap])
     }
+
+    // MARK: - Voice
+
+    func test_voiceMode_showsThreeButtonsAndNoTextField() {
+        let (sut, _, _, _, _) = makeSUT()
+
+        sut.simulateAppear()
+
+        XCTAssertTrue(sut.hasVoiceControls)
+        XCTAssertFalse(sut.hasTextField)
+    }
+
+    func test_keyboardTap_showsTextFieldAndItsMicReturnsToVoiceMode() {
+        let (sut, _, _, _, _) = makeSUT()
+        sut.simulateAppear()
+
+        sut.simulateKeyboardTap()
+
+        XCTAssertTrue(sut.hasTextField)
+        XCTAssertFalse(sut.hasVoiceControls)
+
+        sut.simulateVoiceTap()
+
+        XCTAssertTrue(sut.hasVoiceControls)
+        XCTAssertFalse(sut.hasTextField)
+    }
+
+    func test_micTap_startsListeningAndShowsLiveBubbleThenPartialText() {
+        let transcriptLoader = TranscriptLoaderStub()
+        let (sut, _, _, _, _) = makeSUT(transcriptLoader: transcriptLoader)
+        sut.simulateAppear()
+
+        sut.simulateMicTap()
+
+        XCTAssertEqual(transcriptLoader.messages, [.prepare, .start])
+        XCTAssertEqual(sut.bubbles.map(\.text), ["Listening…"])
+        XCTAssertEqual(sut.bubbles.map(\.sender), [.user])
+        XCTAssertEqual(sut.bubbles.map(\.isLive), [true])
+
+        transcriptLoader.sendPartial("How are")
+
+        XCTAssertEqual(sut.bubbles.map(\.text), ["How are"])
+    }
+
+    func test_finalTranscript_rendersYourBubbleThenTyping() {
+        let transcriptLoader = TranscriptLoaderStub()
+        let (sut, chatLoader, lineLoader, factsLoader, _) = makeSUT(transcriptLoader: transcriptLoader)
+        sut.simulateAppear()
+        factsLoader.completeLoad(with: makeFacts())
+        lineLoader.complete(with: "Hi!")
+        sut.simulateMicTap()
+        transcriptLoader.sendPartial("How are you")
+
+        transcriptLoader.sendFinal("How are you?")
+
+        XCTAssertEqual(chatLoader.sentTexts, ["How are you?"])
+        XCTAssertEqual(sut.bubbles.map(\.text), ["Hi!", "How are you?", "…"])
+        XCTAssertEqual(sut.bubbles.map(\.isLive), [false, false, false])
+    }
+
+    func test_mic_isDisabledWhileThinking() {
+        let transcriptLoader = TranscriptLoaderStub()
+        let (sut, chatLoader, _, factsLoader, _) = makeSUT(transcriptLoader: transcriptLoader)
+        sut.simulateAppear()
+        factsLoader.completeLoad(with: makeFacts())
+        XCTAssertFalse(sut.micIsDisabled)
+        sut.simulateMicTap()
+        transcriptLoader.sendFinal("How are you?")
+
+        XCTAssertTrue(sut.micIsDisabled)
+
+        chatLoader.complete(with: "Thirsty!")
+
+        XCTAssertFalse(sut.micIsDisabled)
+    }
+
+    func test_deniedAuthorization_showsNoticeWithOpenSettingsInKeyboardMode() {
+        let transcriptLoader = TranscriptLoaderStub()
+        transcriptLoader.authorization = .denied
+        var actions: [PlantChatAction] = []
+        let (sut, _, _, _, _) = makeSUT(transcriptLoader: transcriptLoader, actionHandler: { actions.append($0) })
+
+        sut.simulateAppear()
+
+        XCTAssertNotNil(sut.microphoneNotice)
+        XCTAssertEqual(sut.microphoneNoticeButtonLabel, "Open Settings")
+        XCTAssertTrue(sut.hasTextField)
+
+        sut.simulateOpenSettingsTap()
+
+        XCTAssertEqual(actions, [.openSettings])
+    }
+
+    func test_restrictedAndUnsupported_showNoticeWithoutButtonInKeyboardMode() {
+        for authorization in [PlantSpeechAuthorization.restricted, .unsupported] {
+            let transcriptLoader = TranscriptLoaderStub()
+            transcriptLoader.authorization = authorization
+            let (sut, _, _, _, _) = makeSUT(transcriptLoader: transcriptLoader)
+
+            sut.simulateAppear()
+
+            XCTAssertNotNil(sut.microphoneNotice, "\(authorization)")
+            XCTAssertNil(sut.microphoneNoticeButtonLabel, "\(authorization)")
+            XCTAssertTrue(sut.hasTextField, "\(authorization)")
+        }
+    }
+
+    func test_endTap_sendsBackAction() {
+        var actions: [PlantChatAction] = []
+        let (sut, _, _, _, _) = makeSUT(actionHandler: { actions.append($0) })
+        sut.simulateAppear()
+
+        sut.simulateEndTap()
+
+        XCTAssertEqual(actions, [.backTap])
+    }
 }

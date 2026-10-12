@@ -13,6 +13,8 @@ struct PlantChatColor: Equatable, Sendable {
     /// Background and text of your own bubbles: the screen's `ink`, inverted.
     let userBubble: Color
     let userBubbleText: Color
+    /// Ring around the mic button.
+    let micBorder: Color
 
     static let day = PlantChatColor(
         background: Color(hex: 0xEEF4E6),
@@ -22,7 +24,8 @@ struct PlantChatColor: Equatable, Sendable {
         primary: Color(hex: 0x237A40),
         onPrimary: Color(hex: 0xFFFFFF),
         userBubble: Color(hex: 0x1F2A24),
-        userBubbleText: Color(hex: 0xFFFFFF)
+        userBubbleText: Color(hex: 0xFFFFFF),
+        micBorder: Color(hex: 0xCFE6C8)
     )
 
     static let night = PlantChatColor(
@@ -33,7 +36,8 @@ struct PlantChatColor: Equatable, Sendable {
         primary: Color(hex: 0x7BD39A),
         onPrimary: Color(hex: 0x0F2418),
         userBubble: Color(hex: 0xEEF2F6),
-        userBubbleText: Color(hex: 0x1F2A24)
+        userBubbleText: Color(hex: 0x1F2A24),
+        micBorder: Color(hex: 0xCFE6C8)
     )
 
     init(
@@ -44,7 +48,8 @@ struct PlantChatColor: Equatable, Sendable {
         primary: Color,
         onPrimary: Color,
         userBubble: Color,
-        userBubbleText: Color
+        userBubbleText: Color,
+        micBorder: Color
     ) {
         self.background = background
         self.card = card
@@ -54,6 +59,7 @@ struct PlantChatColor: Equatable, Sendable {
         self.onPrimary = onPrimary
         self.userBubble = userBubble
         self.userBubbleText = userBubbleText
+        self.micBorder = micBorder
     }
 
     init(_ scheme: ColorScheme) {

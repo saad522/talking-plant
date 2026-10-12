@@ -46,6 +46,28 @@ public enum PlantChatUIComposer {
             store?.notice = isAvailable ? nil : PlantChatNoticeView(text: viewModel?.unavailableLabel ?? "")
         }
 
+        viewModel.loadedActivity = { [weak store] activity in
+            store?.activity = activity
+        }
+
+        viewModel.loadedTranscript = { [weak store] text in
+            store?.liveTranscript = text.isEmpty ? nil : text
+        }
+
+        viewModel.loadedInputMode = { [weak store] mode in
+            store?.inputMode = mode
+        }
+
+        viewModel.loadedMicrophoneNotice = { [weak store] notice in
+            store?.microphoneNotice = notice.map { notice in
+                PlantChatMicrophoneNoticeView(
+                    text: notice.text,
+                    settingsLabel: notice.settingsLabel,
+                    settings: notice.settingsTap
+                )
+            }
+        }
+
         viewModel.loadedPersonality = { [weak store, weak viewModel] personality in
             store?.personalityMenu = makeMenu(current: personality, viewModel: viewModel)
         }

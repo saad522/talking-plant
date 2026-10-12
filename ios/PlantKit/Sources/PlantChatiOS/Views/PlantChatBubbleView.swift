@@ -11,11 +11,14 @@ public struct PlantChatBubbleView: View, Identifiable {
     public let id: Int
     public let text: String
     public let sender: Sender
+    /// Words still being heard, shown fainter than a sent message.
+    public let isLive: Bool
 
-    init(id: Int, text: String, sender: Sender) {
+    init(id: Int, text: String, sender: Sender, isLive: Bool = false) {
         self.id = id
         self.text = text
         self.sender = sender
+        self.isLive = isLive
     }
 
     public var body: some View {
@@ -29,6 +32,7 @@ public struct PlantChatBubbleView: View, Identifiable {
                 .padding(.vertical, PlantChatSize.bubbleVerticalPadding)
                 .padding(.horizontal, PlantChatSize.bubbleHorizontalPadding)
                 .background(sender == .user ? color.userBubble : color.card, in: shape)
+                .opacity(isLive ? PlantChatSize.liveBubbleOpacity : 1)
                 .frame(maxWidth: maxWidth, alignment: sender == .user ? .trailing : .leading)
             if sender == .plant { Spacer(minLength: 0) }
         }

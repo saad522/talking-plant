@@ -94,7 +94,7 @@ struct TalkingPlantApp: App {
             lineLoader: lineLoader,
             factsLoader: factsLoader,
             settings: settings,
-            transcriptLoader: TranscriberPlantTranscriptLoader(client: SpeechAnalyzerPlantTranscriberClient()),
+            transcriptLoader: TranscriberPlantTranscriptLoader(client: Self.makeTranscriberClient()),
             audioSession: AVAudioSessionPlantAudioSessionClient(),
             plantName: plantName,
             face: PlantFaceUIComposer.composed,
@@ -158,6 +158,16 @@ struct TalkingPlantApp: App {
         }
         #endif
         return 60 * 60
+    }
+
+    /// DEBUG builds accept `-PlantSpeechUnsupported` to check keyboard-only mode in the simulator.
+    private static func makeTranscriberClient() -> PlantTranscriberClient {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-PlantSpeechUnsupported") {
+            return UnsupportedTranscriberClient()
+        }
+        #endif
+        return SpeechAnalyzerPlantTranscriberClient()
     }
 
     /// The on-device model. DEBUG builds accept `-PlantVoiceUnavailable` to check the template fallback.
@@ -262,5 +272,18 @@ private struct UnavailableLanguageModelClient: PlantLanguageModelClient {
             completion(.failure(PlantLanguageModelError.generation))
         }
     }
+}
+#endif
+
+#if DEBUG
+/// A transcriber that reports `.unsupported`, so the Talk screen is keyboard only.
+@MainActor
+struct UnsupportedTranscriberClient: PlantTranscriberClient {
+    var authorization: PlantSpeechAuthorization { .unsupported }
+    func requestAuthorization(completion: @escaping (PlantSpeechAuthorization) -> Void) { completion(.unsupported) }
+    func prepare() {}
+    func start(update: @escaping (PlantTranscriberEvent) -> Void) {}
+    func finish() {}
+    func cancel() {}
 }
 #endif

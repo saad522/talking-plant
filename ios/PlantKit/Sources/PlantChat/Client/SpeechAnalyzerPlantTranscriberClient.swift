@@ -6,6 +6,11 @@ import Speech
 @available(iOS 26, macOS 26, *)
 @MainActor
 public final class SpeechAnalyzerPlantTranscriberClient: PlantTranscriberClient {
+    private enum Kind {
+        case speech
+        case dictation
+    }
+
     private enum Transcriber {
         case speech(SpeechTranscriber)
         case dictation(DictationTranscriber)
@@ -42,7 +47,7 @@ public final class SpeechAnalyzerPlantTranscriberClient: PlantTranscriberClient 
 
     public func requestAuthorization(completion: @escaping (PlantSpeechAuthorization) -> Void) {
         Task {
-            if await resolveTranscriber() == nil {
+            if await resolveKind() == nil {
                 completion(.unsupported)
                 return
             }
@@ -50,9 +55,7 @@ public final class SpeechAnalyzerPlantTranscriberClient: PlantTranscriberClient 
                 _ = await AVAudioApplication.requestRecordPermission()
             }
             if AVAudioApplication.shared.recordPermission == .granted, SFSpeechRecognizer.authorizationStatus() == .notDetermined {
-                await withCheckedContinuation { continuation in
-                    SFSpeechRecognizer.requestAuthorization { _ in continuation.resume() }
-                }
+                await Self.requestSpeechRecognitionAuthorization()
             }
             completion(authorization)
         }
@@ -60,7 +63,7 @@ public final class SpeechAnalyzerPlantTranscriberClient: PlantTranscriberClient 
 
     public func prepare() {
         Task {
-            guard let transcriber = await resolveTranscriber() else { return }
+            guard let transcriber = await makeTranscriber() else { return }
             _ = try? await installAssets(for: transcriber)
         }
     }
@@ -94,7 +97,7 @@ public final class SpeechAnalyzerPlantTranscriberClient: PlantTranscriberClient 
 
     private func run(generation: Int, update: (PlantTranscriberEvent) -> Void) async {
         do {
-            guard let transcriber = await resolveTranscriber() else { return fail(.transcription, generation, update) }
+            guard let transcriber = await makeTranscriber() else { return fail(.transcription, generation, update) }
             guard try await installAssets(for: transcriber) else { return fail(.preparing, generation, update) }
             let analyzer = SpeechAnalyzer(modules: [transcriber.module])
             guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber.module]) else {
@@ -145,21 +148,38 @@ public final class SpeechAnalyzerPlantTranscriberClient: PlantTranscriberClient 
 
     // MARK: Models
 
-    private var cachedTranscriber: Transcriber?
+    /// Only the kind and locale are cached: a module can't be reused once its analyzer has finished.
+    private var cachedKind: (kind: Kind, locale: Locale)?
 
-    private func resolveTranscriber() async -> Transcriber? {
-        if let cachedTranscriber { return cachedTranscriber }
-        let resolved: Transcriber?
+    private func resolveKind() async -> (kind: Kind, locale: Locale)? {
+        if let cachedKind { return cachedKind }
+        let resolved: (kind: Kind, locale: Locale)?
         if SpeechTranscriber.isAvailable, let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale) {
-            resolved = .speech(SpeechTranscriber(locale: supported, preset: .progressiveTranscription))
+            resolved = (.speech, supported)
         } else if let supported = await DictationTranscriber.supportedLocale(equivalentTo: locale) {
-            resolved = .dictation(DictationTranscriber(locale: supported, preset: .progressiveShortDictation))
+            resolved = (.dictation, supported)
         } else {
             resolved = nil
         }
         isSupported = resolved != nil
-        cachedTranscriber = resolved
+        cachedKind = resolved
         return resolved
+    }
+
+    /// A fresh transcriber module, for one analyzer session.
+    private func makeTranscriber() async -> Transcriber? {
+        guard let resolved = await resolveKind() else { return nil }
+        switch resolved.kind {
+        case .speech: return .speech(SpeechTranscriber(locale: resolved.locale, preset: .progressiveTranscription))
+        case .dictation: return .dictation(DictationTranscriber(locale: resolved.locale, preset: .progressiveShortDictation))
+        }
+    }
+
+    /// Not main-actor isolated: the system calls the handler on a background queue.
+    private nonisolated static func requestSpeechRecognitionAuthorization() async {
+        await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { _ in continuation.resume() }
+        }
     }
 
     /// True when the model is installed, installing it first if needed.

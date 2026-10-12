@@ -46,6 +46,8 @@
 "plant.chat.listening.label" = "Listening…";
 "plant.chat.mic.talk.label" = "Talk to %@";
 "plant.chat.mic.stop.label" = "Stop listening";
+"plant.chat.keyboard.label" = "Type instead";
+"plant.chat.end.label" = "End";
 "plant.chat.mic.settings.label" = "Open Settings";
 "plant.chat.mic.denied.notice" = "Microphone or speech access is off. Turn it on in Settings to talk. You can still type.";
 "plant.chat.mic.restricted.notice" = "Speech is restricted on this device. You can still type.";

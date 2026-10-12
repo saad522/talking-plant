@@ -32,6 +32,8 @@ class PlantChatiOSXCTestCase: XCTestCase {
             lineLoader: lineLoader,
             factsLoader: factsLoader,
             settings: PlantPersonalitySettings(defaults: defaults),
+            transcriptLoader: TranscriptLoaderStub(),
+            audioSession: AudioSessionStub(),
             plantName: "Sprout",
             face: { FaceStub(mood: $0) },
             actionHandler: actionHandler
@@ -153,6 +155,23 @@ class PlantChatiOSXCTestCase: XCTestCase {
         func complete(with reply: String, at index: Int = 0) {
             completions[index](.success(reply))
         }
+    }
+
+    @MainActor
+    final class TranscriptLoaderStub: PlantTranscriptLoader {
+        var authorization: PlantSpeechAuthorization = .authorized
+        func requestAuthorization(completion: @escaping (PlantSpeechAuthorization) -> Void) {}
+        func prepare() {}
+        func start(update: @escaping (PlantTranscriptLoader.Result) -> Void) {}
+        func stop() {}
+        func cancel() {}
+    }
+
+    @MainActor
+    final class AudioSessionStub: PlantAudioSessionClient {
+        func activate() -> Bool { true }
+        func deactivate() {}
+        func subscribe(update: @escaping (PlantAudioSessionEvent) -> Void) {}
     }
 }
 

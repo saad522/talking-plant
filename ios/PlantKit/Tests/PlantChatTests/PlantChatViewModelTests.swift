@@ -479,6 +479,347 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         XCTAssertEqual(actions, [.backTap])
     }
 
+    // MARK: - voice: appear
+
+    func test_appear_withEachAuthorization_deliversInputModeAndNotice() {
+        let cases: [(PlantSpeechAuthorization, PlantChatInputMode?, Bool)] = [
+            (.authorized, nil, false),
+            (.notDetermined, nil, false),
+            (.denied, .keyboard, true),
+            (.restricted, .keyboard, true),
+            (.unsupported, .keyboard, true)
+        ]
+        for (authorization, mode, hasNotice) in cases {
+            let sut = makeSUT(authorization: authorization)
+            var modes: [PlantChatInputMode] = []
+            var notices: [PlantChatMicrophoneNoticeViewModel?] = []
+            sut.viewModel.loadedInputMode = { modes.append($0) }
+            sut.viewModel.loadedMicrophoneNotice = { notices.append($0) }
+
+            sut.viewModel.appear()
+
+            XCTAssertEqual(modes, mode.map { [$0] } ?? [], "\(authorization)")
+            XCTAssertEqual(notices.compactMap { $0 }.count, hasNotice ? 1 : 0, "\(authorization)")
+        }
+    }
+
+    func test_appear_preparesTranscriptOnceAndSubscribesToAudioSession() {
+        let sut = makeSUT()
+
+        sut.viewModel.appear()
+        sut.viewModel.appear()
+
+        XCTAssertEqual(sut.transcriptLoader.messages, [.prepare])
+        XCTAssertEqual(sut.audioSession.messages, [.subscribe])
+    }
+
+    // MARK: - voice: micTap
+
+    func test_micTap_whenNotDetermined_requestsAuthorization() {
+        let sut = makeLoadedSUT(authorization: .notDetermined)
+
+        sut.viewModel.micTap()
+
+        XCTAssertEqual(sut.transcriptLoader.messages, [.prepare, .requestAuthorization])
+        XCTAssertEqual(sut.audioSession.messages, [.subscribe])
+    }
+
+    func test_micTap_whenAuthorizationIsGranted_startsListening() {
+        let sut = makeLoadedSUT(authorization: .notDetermined)
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.viewModel.micTap()
+        sut.transcriptLoader.completeAuthorization(with: .authorized)
+
+        XCTAssertEqual(sut.audioSession.messages, [.subscribe, .activate])
+        XCTAssertEqual(sut.transcriptLoader.messages, [.prepare, .requestAuthorization, .start])
+        XCTAssertEqual(activities, [.listening])
+    }
+
+    func test_micTap_whenAuthorizationIsDenied_showsNoticeWithSettingsAndKeyboardMode() {
+        let sut = makeLoadedSUT(authorization: .notDetermined)
+        var modes: [PlantChatInputMode] = []
+        var notices: [PlantChatMicrophoneNoticeViewModel?] = []
+        let viewModel = sut.viewModel
+        viewModel.loadedInputMode = { modes.append($0) }
+        viewModel.loadedMicrophoneNotice = { notices.append($0) }
+
+        viewModel.micTap()
+        sut.transcriptLoader.completeAuthorization(with: .denied)
+
+        XCTAssertEqual(modes, [.keyboard])
+        XCTAssertEqual(notices.compactMap { $0 }.count, 1)
+        XCTAssertNotNil(notices.compactMap { $0 }.first?.settingsLabel)
+        XCTAssertEqual(sut.transcriptLoader.messages, [.prepare, .requestAuthorization])
+    }
+
+    func test_micTap_whenAuthorized_activatesThenStartsListening() {
+        let sut = makeLoadedSUT()
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.viewModel.micTap()
+
+        XCTAssertEqual(sut.audioSession.messages, [.subscribe, .activate])
+        XCTAssertEqual(sut.transcriptLoader.messages, [.prepare, .start])
+        XCTAssertEqual(activities, [.listening])
+    }
+
+    func test_micTap_whenActivationFails_showsNoticeAndDoesNotStart() {
+        let sut = makeLoadedSUT()
+        sut.audioSession.canActivate = false
+        var notices: [PlantChatMicrophoneNoticeViewModel?] = []
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedMicrophoneNotice = { notices.append($0) }
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.viewModel.micTap()
+
+        XCTAssertEqual(sut.transcriptLoader.messages, [.prepare])
+        XCTAssertEqual(notices.compactMap { $0 }.count, 1)
+        XCTAssertEqual(activities, [])
+    }
+
+    func test_micTap_whileListening_stopsTranscriptLoader() {
+        let sut = makeListeningSUT()
+
+        sut.viewModel.micTap()
+
+        XCTAssertEqual(sut.transcriptLoader.messages.last, .stop)
+    }
+
+    func test_micTap_whileThinking_isIgnored() {
+        let sut = makeListeningSUT()
+        sut.transcriptLoader.sendFinal("Hi")
+        let audioMessages = sut.audioSession.messages
+        let transcriptMessages = sut.transcriptLoader.messages
+
+        sut.viewModel.micTap()
+
+        XCTAssertEqual(sut.audioSession.messages, audioMessages)
+        XCTAssertEqual(sut.transcriptLoader.messages, transcriptMessages)
+    }
+
+    // MARK: - voice: transcripts
+
+    func test_partialTranscript_deliversLiveText() {
+        let sut = makeListeningSUT()
+        var received: [String] = []
+        sut.viewModel.loadedTranscript = { received.append($0) }
+
+        sut.transcriptLoader.sendPartial("Am I")
+        sut.transcriptLoader.sendPartial("Am I thirsty")
+
+        XCTAssertEqual(received, ["Am I", "Am I thirsty"])
+    }
+
+    func test_finalTranscript_sendsLikeATypedSendAndThinks() {
+        let facts = makeFacts()
+        let sut = makeListeningSUT(facts: facts)
+        var activities: [PlantChatActivity] = []
+        var transcripts: [String] = []
+        var messages: [[PlantChatMessageViewModel]] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+        sut.viewModel.loadedTranscript = { transcripts.append($0) }
+        sut.viewModel.loadedMessages = { messages.append($0) }
+
+        sut.transcriptLoader.sendFinal("  Am I thirsty? ")
+
+        XCTAssertEqual(sut.chatLoader.sends, [.init(text: "Am I thirsty?", facts: facts)])
+        XCTAssertEqual(messages.last?.map(\.text), ["Hey!", "Am I thirsty?"])
+        XCTAssertEqual(transcripts, [""])
+        XCTAssertEqual(activities, [.thinking])
+        XCTAssertEqual(sut.audioSession.messages.last, .activate)
+    }
+
+    func test_reply_toSpokenTurn_goesIdleAndDeactivates() {
+        let sut = makeListeningSUT()
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+        sut.transcriptLoader.sendFinal("Hi")
+
+        sut.chatLoader.complete(with: "Hello!")
+
+        XCTAssertEqual(activities, [.thinking, .idle])
+        XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+    }
+
+    func test_emptyFinalTranscript_goesIdleDeactivatesAndSendsNothing() {
+        let sut = makeListeningSUT()
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.transcriptLoader.sendFinal("  ")
+
+        XCTAssertEqual(activities, [.idle])
+        XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+        XCTAssertEqual(sut.chatLoader.sends, [])
+    }
+
+    func test_transcriptFailure_goesIdleDeactivatesAndShowsNotice() {
+        let errors: [TranscriberPlantTranscriptLoader.Error] = [.preparing, .transcription]
+        var texts: [String] = []
+        for error in errors {
+            let sut = makeListeningSUT()
+            var activities: [PlantChatActivity] = []
+            var notices: [PlantChatMicrophoneNoticeViewModel?] = []
+            sut.viewModel.loadedActivity = { activities.append($0) }
+            sut.viewModel.loadedMicrophoneNotice = { notices.append($0) }
+
+            sut.transcriptLoader.send(error)
+
+            XCTAssertEqual(activities, [.idle])
+            XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+            XCTAssertEqual(sut.chatLoader.sends, [])
+            texts.append(notices.compactMap { $0 }.first?.text ?? "")
+        }
+        XCTAssertFalse(texts[0].isEmpty)
+        XCTAssertNotEqual(texts[0], texts[1])
+    }
+
+    func test_interruptionOrLostOutput_whileListening_cancelsAndGoesIdle() {
+        for event in [PlantAudioSessionEvent.interruptionBegan, .outputDeviceLost] {
+            let sut = makeListeningSUT()
+            var activities: [PlantChatActivity] = []
+            var transcripts: [String] = []
+            sut.viewModel.loadedActivity = { activities.append($0) }
+            sut.viewModel.loadedTranscript = { transcripts.append($0) }
+
+            sut.audioSession.simulate(event)
+
+            XCTAssertEqual(sut.transcriptLoader.messages.last, .cancel)
+            XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+            XCTAssertEqual(activities, [.idle])
+            XCTAssertEqual(transcripts, [""])
+            XCTAssertEqual(sut.chatLoader.sends, [])
+        }
+    }
+
+    func test_transcriptAfterCancel_isIgnored() {
+        let sut = makeListeningSUT()
+        sut.audioSession.simulate(.interruptionBegan)
+
+        sut.transcriptLoader.sendFinal("Late")
+
+        XCTAssertEqual(sut.chatLoader.sends, [])
+    }
+
+    func test_interruption_whileThinking_deactivates() {
+        let sut = makeListeningSUT()
+        sut.transcriptLoader.sendFinal("Hi")
+
+        sut.audioSession.simulate(.interruptionBegan)
+
+        XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+    }
+
+    // MARK: - voice: ending
+
+    func test_endTap_whileListening_cancelsDeactivatesAndGoesBack() {
+        var actions: [PlantChatAction] = []
+        let sut = makeListeningSUT(actionHandler: { actions.append($0) })
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.viewModel.endTap()
+
+        XCTAssertEqual(sut.transcriptLoader.messages.last, .cancel)
+        XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+        XCTAssertEqual(activities, [.idle])
+        XCTAssertEqual(actions, [.backTap])
+    }
+
+    func test_disappear_whileListening_cancelsAndDeactivates() {
+        let sut = makeListeningSUT()
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.viewModel.disappear()
+
+        XCTAssertEqual(sut.transcriptLoader.messages.last, .cancel)
+        XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+        XCTAssertEqual(activities, [.idle])
+    }
+
+    func test_disappear_whenIdle_doesNotTouchAudio() {
+        let sut = makeLoadedSUT()
+
+        sut.viewModel.disappear()
+
+        XCTAssertEqual(sut.transcriptLoader.messages, [.prepare])
+        XCTAssertEqual(sut.audioSession.messages, [.subscribe])
+    }
+
+    func test_selectPersonality_whileListening_cancelsListening() {
+        let sut = makeListeningSUT()
+
+        sut.viewModel.select(.dramatic)
+
+        XCTAssertEqual(sut.transcriptLoader.messages.last, .cancel)
+        XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+    }
+
+    func test_typedSend_goesThinkingThenIdleWithoutActivatingAudio() {
+        let sut = makeLoadedSUT()
+        var activities: [PlantChatActivity] = []
+        sut.viewModel.loadedActivity = { activities.append($0) }
+
+        sut.viewModel.send("Hi")
+        sut.chatLoader.complete(with: "Hello!")
+
+        XCTAssertEqual(activities, [.thinking, .idle])
+        XCTAssertEqual(sut.audioSession.messages, [.subscribe])
+    }
+
+    // MARK: - voice: input mode
+
+    func test_keyboardTap_deliversKeyboardModeAndCancelsListening() {
+        let sut = makeListeningSUT()
+        var modes: [PlantChatInputMode] = []
+        sut.viewModel.loadedInputMode = { modes.append($0) }
+
+        sut.viewModel.keyboardTap()
+
+        XCTAssertEqual(modes, [.keyboard])
+        XCTAssertEqual(sut.transcriptLoader.messages.last, .cancel)
+    }
+
+    func test_voiceTap_whenAuthorized_deliversVoiceModeAndClearsNotice() {
+        let sut = makeLoadedSUT()
+        var modes: [PlantChatInputMode] = []
+        var notices: [PlantChatMicrophoneNoticeViewModel?] = []
+        sut.viewModel.loadedInputMode = { modes.append($0) }
+        sut.viewModel.loadedMicrophoneNotice = { notices.append($0) }
+
+        sut.viewModel.voiceTap()
+
+        XCTAssertEqual(modes, [.voice])
+        XCTAssertEqual(notices.count, 1)
+        XCTAssertNil(notices[0])
+    }
+
+    func test_voiceTap_whenDenied_staysInKeyboardModeWithNotice() {
+        let sut = makeLoadedSUT(authorization: .denied)
+        var modes: [PlantChatInputMode] = []
+        var notices: [PlantChatMicrophoneNoticeViewModel?] = []
+        sut.viewModel.loadedInputMode = { modes.append($0) }
+        sut.viewModel.loadedMicrophoneNotice = { notices.append($0) }
+
+        sut.viewModel.voiceTap()
+
+        XCTAssertEqual(modes, [.keyboard])
+        XCTAssertEqual(notices.compactMap { $0 }.count, 1)
+    }
+
+    func test_init_providesVoiceLabels() {
+        let sut = makeSUT()
+
+        XCTAssertEqual(sut.viewModel.listeningLabel, "Listening…")
+        XCTAssertEqual(sut.viewModel.stopListeningLabel, "Stop listening")
+        XCTAssertEqual(sut.viewModel.talkLabel, "Talk to Sprout")
+    }
+
     // MARK: - memory
 
     func test_appear_doesNotDeliverAfterSUTIsReleased() {
@@ -489,6 +830,8 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
             lineLoader: LineLoaderStub(),
             factsLoader: factsLoader,
             settings: settings,
+            transcriptLoader: TranscriptLoaderStub(),
+            audioSession: AudioSessionSpy(),
             plantName: "Sprout",
             actionHandler: { _ in }
         )
@@ -510,10 +853,13 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         let lineLoader: LineLoaderStub
         let factsLoader: FactsLoaderStub
         let settings: PlantPersonalitySettings
+        let transcriptLoader: TranscriptLoaderStub
+        let audioSession: AudioSessionSpy
     }
 
     private func makeSUT(
         savedPersonality: PlantPersonality? = nil,
+        authorization: PlantSpeechAuthorization = .authorized,
         currentDate: @escaping () -> Date = Date.init,
         actionHandler: @escaping (PlantChatAction) -> Void = { _ in },
         file: StaticString = #filePath,
@@ -524,6 +870,9 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         let factsLoader = FactsLoaderStub()
         let defaults = DefaultsSpy()
         let settings = PlantPersonalitySettings(defaults: defaults)
+        let transcriptLoader = TranscriptLoaderStub()
+        transcriptLoader.authorization = authorization
+        let audioSession = AudioSessionSpy()
         if let savedPersonality {
             settings.save(savedPersonality)
         }
@@ -532,6 +881,8 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
             lineLoader: lineLoader,
             factsLoader: factsLoader,
             settings: settings,
+            transcriptLoader: transcriptLoader,
+            audioSession: audioSession,
             plantName: "Sprout",
             currentDate: currentDate,
             actionHandler: actionHandler
@@ -541,17 +892,35 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         trackMemoryLeak(factsLoader, file: file, line: line)
         trackMemoryLeak(defaults, file: file, line: line)
         trackMemoryLeak(settings, file: file, line: line)
+        trackMemoryLeak(transcriptLoader, file: file, line: line)
+        trackMemoryLeak(audioSession, file: file, line: line)
         trackMemoryLeak(viewModel, file: file, line: line)
-        return SUT(viewModel: viewModel, chatLoader: chatLoader, lineLoader: lineLoader, factsLoader: factsLoader, settings: settings)
+        return SUT(viewModel: viewModel, chatLoader: chatLoader, lineLoader: lineLoader, factsLoader: factsLoader, settings: settings, transcriptLoader: transcriptLoader, audioSession: audioSession)
+    }
+
+    /// Loaded, then listening.
+    private func makeListeningSUT(
+        facts: PlantVoiceFacts? = nil,
+        actionHandler: @escaping (PlantChatAction) -> Void = { _ in },
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> SUT {
+        let sut = makeSUT(actionHandler: actionHandler, file: file, line: line)
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: facts ?? makeFacts())
+        sut.lineLoader.complete(with: "Hey!")
+        sut.viewModel.micTap()
+        return sut
     }
 
     /// Appeared, with facts loaded and the greeting "Hey!" shown.
     private func makeLoadedSUT(
         facts: PlantVoiceFacts? = nil,
+        authorization: PlantSpeechAuthorization = .authorized,
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> SUT {
-        let sut = makeSUT(file: file, line: line)
+        let sut = makeSUT(authorization: authorization, file: file, line: line)
         sut.viewModel.appear()
         sut.factsLoader.completeLoad(with: facts ?? makeFacts())
         sut.lineLoader.complete(with: "Hey!")

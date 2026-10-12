@@ -9,6 +9,8 @@ public enum PlantChatUIComposer {
         lineLoader: PlantVoiceLineLoader,
         factsLoader: PlantVoiceFactsLoader,
         settings: PlantPersonalitySettings,
+        transcriptLoader: PlantTranscriptLoader,
+        audioSession: PlantAudioSessionClient,
         plantName: String,
         face: @escaping (PlantMood) -> Face,
         actionHandler: @escaping (PlantChatAction) -> Void
@@ -19,6 +21,8 @@ public enum PlantChatUIComposer {
             lineLoader: lineLoader,
             factsLoader: factsLoader,
             settings: settings,
+            transcriptLoader: transcriptLoader,
+            audioSession: audioSession,
             plantName: plantName,
             actionHandler: actionHandler
         )

@@ -94,9 +94,14 @@ struct TalkingPlantApp: App {
             lineLoader: lineLoader,
             factsLoader: factsLoader,
             settings: settings,
+            transcriptLoader: TranscriberPlantTranscriptLoader(client: SpeechAnalyzerPlantTranscriberClient()),
+            audioSession: AVAudioSessionPlantAudioSessionClient(),
             plantName: plantName,
             face: PlantFaceUIComposer.composed,
             actionHandler: { [weak navigation] action in
+                if action == .openSettings, let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
                 navigation?.handle(action)
             }
         )
@@ -210,6 +215,7 @@ final class AppNavigation: ObservableObject {
     func handle(_ action: PlantChatAction) {
         switch action {
         case .backTap: _ = path.popLast()
+        case .openSettings: break
         }
     }
 }

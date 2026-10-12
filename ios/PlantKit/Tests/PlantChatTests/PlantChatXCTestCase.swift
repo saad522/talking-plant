@@ -383,4 +383,90 @@ class PlantChatXCTestCase: XCTestCase {
             actions[index]()
         }
     }
+
+    @MainActor
+    final class TranscriptLoaderStub: PlantTranscriptLoader {
+        enum Message: Equatable {
+            case requestAuthorization
+            case prepare
+            case start
+            case stop
+            case cancel
+        }
+
+        var authorization: PlantSpeechAuthorization = .authorized
+        private(set) var messages: [Message] = []
+
+        private var authorizationCompletions: [(PlantSpeechAuthorization) -> Void] = []
+        func requestAuthorization(completion: @escaping (PlantSpeechAuthorization) -> Void) {
+            messages.append(.requestAuthorization)
+            authorizationCompletions.append(completion)
+        }
+
+        func completeAuthorization(with authorization: PlantSpeechAuthorization, at index: Int = 0) {
+            self.authorization = authorization
+            authorizationCompletions[index](authorization)
+        }
+
+        func prepare() {
+            messages.append(.prepare)
+        }
+
+        private var updates: [(PlantTranscriptLoader.Result) -> Void] = []
+        func start(update: @escaping (PlantTranscriptLoader.Result) -> Void) {
+            messages.append(.start)
+            updates.append(update)
+        }
+
+        func stop() {
+            messages.append(.stop)
+        }
+
+        func cancel() {
+            messages.append(.cancel)
+        }
+
+        func sendPartial(_ text: String, at index: Int = 0) {
+            updates[index](.success(PlantTranscript(text: text, isFinal: false)))
+        }
+
+        func sendFinal(_ text: String, at index: Int = 0) {
+            updates[index](.success(PlantTranscript(text: text, isFinal: true)))
+        }
+
+        func send(_ error: Error, at index: Int = 0) {
+            updates[index](.failure(error))
+        }
+    }
+
+    @MainActor
+    final class AudioSessionSpy: PlantAudioSessionClient {
+        enum Message: Equatable {
+            case activate
+            case deactivate
+            case subscribe
+        }
+
+        var canActivate: Bool = true
+        private(set) var messages: [Message] = []
+
+        func activate() -> Bool {
+            messages.append(.activate)
+            return canActivate
+        }
+
+        func deactivate() {
+            messages.append(.deactivate)
+        }
+
+        private var subscriptions: [(PlantAudioSessionEvent) -> Void] = []
+        func subscribe(update: @escaping (PlantAudioSessionEvent) -> Void) {
+            messages.append(.subscribe)
+            subscriptions.append(update)
+        }
+
+        func simulate(_ event: PlantAudioSessionEvent, at index: Int = 0) {
+            subscriptions[index](event)
+        }
+    }
 }

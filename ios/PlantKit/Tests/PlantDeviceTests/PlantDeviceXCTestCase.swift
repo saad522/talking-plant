@@ -159,6 +159,7 @@ class PlantDeviceXCTestCase: XCTestCase {
     @MainActor
     final class ConnectionLoaderStub: PlantDeviceConnectionLoader {
         private var subscriptions: [(PlantConnection) -> Void] = []
+        var subscriptionCount: Int { subscriptions.count }
         func subscribe(update: @escaping (PlantConnection) -> Void) {
             subscriptions.append(update)
         }
@@ -198,6 +199,32 @@ class PlantDeviceXCTestCase: XCTestCase {
         func completeSend(with error: Error?, at index: Int = 0) {
             completions[index](error)
         }
+    }
+
+    @MainActor
+    final class PairingLoaderStub: PlantDevicePairingLoader {
+        enum Message: Equatable {
+            case subscribe
+            case pair(PlantDeviceCandidate)
+            case forget
+            case connectSaved
+        }
+
+        private(set) var messages: [Message] = []
+        private var subscriptions: [(PlantPairedDevice?) -> Void] = []
+
+        func subscribe(update: @escaping (PlantPairedDevice?) -> Void) {
+            messages.append(.subscribe)
+            subscriptions.append(update)
+        }
+
+        func simulate(_ device: PlantPairedDevice?, at index: Int = 0) {
+            subscriptions[index](device)
+        }
+
+        func pair(_ candidate: PlantDeviceCandidate) { messages.append(.pair(candidate)) }
+        func forget() { messages.append(.forget) }
+        func connectSaved() { messages.append(.connectSaved) }
     }
 
     func anyDeviceInfo() -> PlantDeviceInfo {

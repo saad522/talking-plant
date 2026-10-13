@@ -1,0 +1,32 @@
+/* PlantDevice strings. Keys follow plant.device.<thing>.<kind>. */
+
+"plant.device.title" = "Plant sensor";
+
+"plant.device.mode.section" = "Plant";
+"plant.device.mode.simulated.label" = "Simulated plant";
+"plant.device.mode.sensor.label" = "Real sensor";
+
+"plant.device.sensor.section" = "Sensor";
+"plant.device.status.label" = "Status";
+"plant.device.paired.label" = "Paired";
+"plant.device.paired.none" = "No sensor paired";
+"plant.device.firmware.label" = "Firmware";
+"plant.device.interval.label" = "Readings";
+"plant.device.interval.seconds" = "Every %d s";
+"plant.device.interval.minutes" = "Every %d min";
+
+"plant.device.connection.notPaired.label" = "No sensor paired";
+"plant.device.connection.connecting.label" = "Connecting…";
+"plant.device.connection.connected.label" = "Connected";
+"plant.device.connection.offline.label" = "Sensor offline";
+"plant.device.connection.bluetoothOff.label" = "Bluetooth is off";
+"plant.device.connection.bluetoothUnauthorized.label" = "Bluetooth not allowed";
+"plant.device.connection.bluetoothUnsupported.label" = "Bluetooth isn't available on this device";
+"plant.device.connection.incompatible.label" = "Sensor not compatible";
+
+"plant.device.readNow.label" = "Read now";
+"plant.device.pair.label" = "Pair a sensor";
+"plant.device.change.label" = "Change sensor";
+"plant.device.forget.label" = "Forget sensor";
+"plant.device.openSettings.label" = "Open Settings";
+"plant.device.command.error" = "Couldn't reach the sensor.";

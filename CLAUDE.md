@@ -135,3 +135,5 @@ make -C firmware compile
 
 Foundation Models and Bluetooth must be tested on a real iPhone; the simulator has no
 Bluetooth. Ask the human to run on-device checks.
+
+- When a prompt names a step in docs/plans/, that plan is already approved: implement the step directly, no separate plan or approval needed.

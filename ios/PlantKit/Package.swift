@@ -10,6 +10,7 @@ let package = Package(
         .library(name: "PlantMonitor", targets: ["PlantMonitor"]),
         .library(name: "PlantMonitoriOS", targets: ["PlantMonitoriOS"]),
         .library(name: "PlantDevice", targets: ["PlantDevice"]),
+        .library(name: "PlantDeviceiOS", targets: ["PlantDeviceiOS"]),
         .library(name: "PlantTestPeripheral", targets: ["PlantTestPeripheral"]),
         .library(name: "PlantHistory", targets: ["PlantHistory"]),
         .library(name: "PlantHistoryiOS", targets: ["PlantHistoryiOS"]),
@@ -25,7 +26,8 @@ let package = Package(
         .target(name: "PlantShared"),
         .target(name: "PlantMonitor", dependencies: ["PlantShared"], resources: [.process("Resources")]),
         .target(name: "PlantMonitoriOS", dependencies: ["PlantMonitor", "PlantShared"]),
-        .target(name: "PlantDevice", dependencies: ["PlantShared"]),
+        .target(name: "PlantDevice", dependencies: ["PlantShared"], resources: [.process("Resources")]),
+        .target(name: "PlantDeviceiOS", dependencies: ["PlantDevice", "PlantShared"]),
         .target(name: "PlantTestPeripheral", dependencies: ["PlantShared"]),
         .target(name: "PlantHistory", dependencies: ["PlantShared"], resources: [.process("Resources")]),
         .target(name: "PlantHistoryiOS", dependencies: ["PlantHistory", "PlantShared"]),
@@ -40,6 +42,10 @@ let package = Package(
             dependencies: ["PlantMonitoriOS", "PlantMonitor", "PlantShared", "ViewInspector"]
         ),
         .testTarget(name: "PlantDeviceTests", dependencies: ["PlantDevice", "PlantShared"]),
+        .testTarget(
+            name: "PlantDeviceiOSTests",
+            dependencies: ["PlantDeviceiOS", "PlantDevice", "PlantShared", "ViewInspector"]
+        ),
         .testTarget(name: "PlantTestPeripheralTests", dependencies: ["PlantTestPeripheral", "PlantDevice", "PlantShared"]),
         .testTarget(name: "PlantHistoryTests", dependencies: ["PlantHistory", "PlantShared"]),
         .testTarget(

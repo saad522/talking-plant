@@ -1,0 +1,150 @@
+import PlantDevice
+import PlantDeviceiOS
+import PlantShared
+import XCTest
+
+@MainActor
+class PlantDeviceiOSXCTestCase: XCTestCase {
+    func makeSUT(
+        savedMode: PlantDeviceMode? = nil,
+        actionHandler: @escaping (PlantDeviceAction) -> Void = { _ in },
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> (
+        sut: PlantDeviceView,
+        connection: ConnectionLoaderStub,
+        pairing: PairingLoaderStub,
+        info: InfoLoaderStub,
+        commands: CommandSenderStub,
+        defaults: DefaultsSpy
+    ) {
+        let connection = ConnectionLoaderStub()
+        let pairing = PairingLoaderStub()
+        let info = InfoLoaderStub()
+        let commands = CommandSenderStub()
+        let defaults = DefaultsSpy()
+        if let savedMode {
+            defaults.stub(savedMode.rawValue, forKey: "plant.device.mode")
+        }
+        let sut = PlantDeviceUIComposer.composed(
+            connectionLoader: connection,
+            pairingLoader: pairing,
+            infoLoader: info,
+            commandSender: commands,
+            settings: PlantDeviceSettings(defaults: defaults),
+            actionHandler: actionHandler
+        )
+        trackMemoryLeak(connection, file: file, line: line)
+        trackMemoryLeak(pairing, file: file, line: line)
+        trackMemoryLeak(info, file: file, line: line)
+        trackMemoryLeak(commands, file: file, line: line)
+        trackMemoryLeak(defaults, file: file, line: line)
+        return (sut, connection, pairing, info, commands, defaults)
+    }
+
+    func anyNSError() -> NSError {
+        NSError(domain: "any", code: 1)
+    }
+
+    func anyDeviceInfo(intervalSeconds: UInt16 = 300) -> PlantDeviceInfo {
+        PlantDeviceInfo(protocolVersion: 1, firmwareMajor: 0, firmwareMinor: 1, firmwarePatch: 0, capabilities: [], intervalSeconds: intervalSeconds)
+    }
+
+    func anyPairedDevice() -> PlantPairedDevice {
+        PlantPairedDevice(identifier: UUID(uuidString: "11111111-2222-3333-4444-555555555555")!, name: "TalkingPlant-TEST")
+    }
+
+    func trackMemoryLeak(_ instance: AnyObject, file: StaticString = #filePath, line: UInt = #line) {
+        addTeardownBlock { [weak instance] in
+            XCTAssertNil(instance, "Instance should be deallocated. Potential memory leak", file: file, line: line)
+        }
+    }
+
+    @MainActor
+    final class ConnectionLoaderStub: PlantDeviceConnectionLoader {
+        private var subscriptions: [(PlantConnection) -> Void] = []
+        func subscribe(update: @escaping (PlantConnection) -> Void) {
+            subscriptions.append(update)
+        }
+
+        func simulate(_ connection: PlantConnection, at index: Int = 0) {
+            subscriptions[index](connection)
+        }
+    }
+
+    @MainActor
+    final class PairingLoaderStub: PlantDevicePairingLoader {
+        enum Message: Equatable {
+            case subscribe
+            case pair(PlantDeviceCandidate)
+            case forget
+            case connectSaved
+        }
+
+        private(set) var messages: [Message] = []
+        private var subscriptions: [(PlantPairedDevice?) -> Void] = []
+
+        func subscribe(update: @escaping (PlantPairedDevice?) -> Void) {
+            messages.append(.subscribe)
+            subscriptions.append(update)
+        }
+
+        func simulate(_ device: PlantPairedDevice?, at index: Int = 0) {
+            subscriptions[index](device)
+        }
+
+        func pair(_ candidate: PlantDeviceCandidate) { messages.append(.pair(candidate)) }
+        func forget() { messages.append(.forget) }
+        func connectSaved() { messages.append(.connectSaved) }
+    }
+
+    @MainActor
+    final class InfoLoaderStub: PlantDeviceInfoLoader {
+        private(set) var loadCount = 0
+        private var completions: [(PlantDeviceInfoLoader.Result) -> Void] = []
+        func load(completion: @escaping (PlantDeviceInfoLoader.Result) -> Void) {
+            loadCount += 1
+            completions.append(completion)
+        }
+
+        func completeLoad(with info: PlantDeviceInfo, at index: Int = 0) {
+            completions[index](.success(info))
+        }
+    }
+
+    @MainActor
+    final class CommandSenderStub: PlantDeviceCommandSender {
+        private(set) var commands: [PlantDeviceCommand] = []
+        private var completions: [(PlantDeviceCommandSender.Result) -> Void] = []
+        func send(_ command: PlantDeviceCommand, completion: @escaping (PlantDeviceCommandSender.Result) -> Void) {
+            commands.append(command)
+            completions.append(completion)
+        }
+
+        func completeSend(with error: Error?, at index: Int = 0) {
+            completions[index](error)
+        }
+    }
+
+    @MainActor
+    final class DefaultsSpy: DefaultsClient {
+        private var strings: [String: String] = [:]
+
+        func stub(_ value: String, forKey key: String) {
+            strings[key] = value
+        }
+
+        func set(_ value: String, forKey key: String) { strings[key] = value }
+        func retrieveString(forKey key: String) -> String? { strings[key] }
+        func set(_ value: Double, forKey key: String) {}
+        func retrieve(forKey key: String) -> Double? { nil }
+        func set(_ value: Bool, forKey key: String) {}
+        func retrieveBool(forKey key: String) -> Bool? { nil }
+    }
+}
+
+extension String {
+    static func localised(key: String) -> String {
+        NSLocalizedString(key, tableName: "PlantDevice", bundle: PlantDeviceBundle.bundle, comment: "")
+    }
+}

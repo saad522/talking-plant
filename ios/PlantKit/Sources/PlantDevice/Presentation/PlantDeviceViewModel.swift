@@ -1,0 +1,111 @@
+import Foundation
+import PlantShared
+
+@MainActor
+public final class PlantDeviceViewModel {
+    public typealias Observer<T> = (T) -> Void
+
+    public struct ModeOption: Equatable {
+        public let mode: PlantDeviceMode
+        public let label: String
+    }
+
+    private let connectionLoader: PlantDeviceConnectionLoader
+    private let pairingLoader: PlantDevicePairingLoader
+    private let infoLoader: PlantDeviceInfoLoader
+    private let commandSender: PlantDeviceCommandSender
+    private let settings: PlantDeviceSettings
+    private let actionHandler: (PlantDeviceAction) -> Void
+    private var appeared: Bool = false
+    private var wasConnected: Bool = false
+
+    public let title: String = String.localised(key: "plant.device.title")
+    public let modeSectionLabel: String = String.localised(key: "plant.device.mode.section")
+    public let modes: [ModeOption] = [
+        ModeOption(mode: .simulated, label: String.localised(key: "plant.device.mode.simulated.label")),
+        ModeOption(mode: .sensor, label: String.localised(key: "plant.device.mode.sensor.label"))
+    ]
+    public let sensorSectionLabel: String = String.localised(key: "plant.device.sensor.section")
+    public let statusLabel: String = String.localised(key: "plant.device.status.label")
+    public let pairedLabel: String = String.localised(key: "plant.device.paired.label")
+    public let noSensorPairedLabel: String = String.localised(key: "plant.device.paired.none")
+    public let firmwareLabel: String = String.localised(key: "plant.device.firmware.label")
+    public let intervalLabel: String = String.localised(key: "plant.device.interval.label")
+    public let readNowLabel: String = String.localised(key: "plant.device.readNow.label")
+    public let pairLabel: String = String.localised(key: "plant.device.pair.label")
+    public let changeLabel: String = String.localised(key: "plant.device.change.label")
+    public let forgetLabel: String = String.localised(key: "plant.device.forget.label")
+    public let openSettingsLabel: String = String.localised(key: "plant.device.openSettings.label")
+
+    public var loadedMode: Observer<PlantDeviceMode>?
+    public var loadedConnection: Observer<PlantDeviceConnectionViewModel>?
+    public var loadedPairedDevice: Observer<PlantPairedDevice?>?
+    public var loadedInfo: Observer<PlantDeviceInfoViewModel>?
+    /// The message to show, or `nil` to clear it.
+    public var loadedCommandError: Observer<String?>?
+
+    public init(
+        connectionLoader: PlantDeviceConnectionLoader,
+        pairingLoader: PlantDevicePairingLoader,
+        infoLoader: PlantDeviceInfoLoader,
+        commandSender: PlantDeviceCommandSender,
+        settings: PlantDeviceSettings,
+        actionHandler: @escaping (PlantDeviceAction) -> Void
+    ) {
+        self.connectionLoader = connectionLoader
+        self.pairingLoader = pairingLoader
+        self.infoLoader = infoLoader
+        self.commandSender = commandSender
+        self.settings = settings
+        self.actionHandler = actionHandler
+    }
+
+    public func appear() {
+        guard appeared == false else { return }
+        appeared = true
+        loadedMode?(settings.loadMode())
+        connectionLoader.subscribe { [weak self] connection in
+            self?.update(connection)
+        }
+        pairingLoader.subscribe { [weak self] device in
+            self?.loadedPairedDevice?(device)
+        }
+    }
+
+    public func modeSelect(_ mode: PlantDeviceMode) {
+        guard mode != settings.loadMode() else { return }
+        settings.saveMode(mode)
+        loadedMode?(mode)
+        actionHandler(.modeChanged(mode))
+    }
+
+    public func pairTap() {
+        actionHandler(.pairTap)
+    }
+
+    public func forgetTap() {
+        pairingLoader.forget()
+    }
+
+    public func readNowTap() {
+        commandSender.send(.readNow) { [weak self] error in
+            self?.loadedCommandError?(error == nil ? nil : String.localised(key: "plant.device.command.error"))
+        }
+    }
+
+    public func openSettingsTap() {
+        actionHandler(.openSettings)
+    }
+
+    private func update(_ connection: PlantConnection) {
+        loadedConnection?(PlantDeviceConnectionViewModel(connection: connection))
+        let isConnected = connection == .connected
+        defer { wasConnected = isConnected }
+        guard isConnected, wasConnected == false else { return }
+        infoLoader.load { [weak self] result in
+            if case .success(let info) = result {
+                self?.loadedInfo?(PlantDeviceInfoViewModel(info: info))
+            }
+        }
+    }
+}

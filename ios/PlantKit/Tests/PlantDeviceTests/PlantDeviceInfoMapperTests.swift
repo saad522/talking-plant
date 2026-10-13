@@ -28,7 +28,15 @@ final class PlantDeviceInfoMapperTests: PlantDeviceXCTestCase {
     func test_map_throwsInvalidDataOnWrongLength() {
         for length in [0, 7, 9, 16] {
             XCTAssertThrowsError(try PlantDeviceInfoMapper.map(Data(repeating: 0x01, count: length)), "length \(length)") { error in
-                XCTAssertEqual(error as? PlantDeviceInfoMapper.Error, .invalidData, "length \(length)")
+                XCTAssertEqual(error as? PeripheralPlantDeviceInfoLoader.Error, .invalidData, "length \(length)")
+            }
+        }
+    }
+
+    func test_map_throwsInvalidDataOnUnsupportedProtocolVersion() {
+        for version in [UInt8(0), 2, 255] {
+            XCTAssertThrowsError(try PlantDeviceInfoMapper.map(makeDeviceInfoPacket(protocolVersion: version)), "version \(version)") { error in
+                XCTAssertEqual(error as? PeripheralPlantDeviceInfoLoader.Error, .invalidData, "version \(version)")
             }
         }
     }

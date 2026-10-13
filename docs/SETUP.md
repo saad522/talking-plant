@@ -17,17 +17,19 @@ arduino-cli config init
 arduino-cli config add board_manager.additional_urls \
   https://espressif.github.io/arduino-esp32/package_esp32_index.json
 arduino-cli core update-index
-arduino-cli core install esp32:esp32
-arduino-cli lib install "BH1750" "Adafruit AHTX0" "NimBLE-Arduino"
-arduino-cli lib list   # check NimBLE-Arduino is 2.x; its API differs from 1.x
+make -C firmware compile    # first run installs the pinned core and libraries from sketch.yaml
+make -C firmware test       # host tests, no board needed
 ```
 
-Upload once the board arrives:
+Upload and monitor once the board arrives:
 ```bash
-arduino-cli board list   # find the port, e.g. /dev/cu.usbmodem1101
-arduino-cli upload -p <port> --fqbn esp32:esp32:XIAO_ESP32C3 firmware/talking_plant
+arduino-cli board list                                  # e.g. /dev/cu.usbmodem1101
+arduino-cli upload -p <port> firmware/talking_plant
+arduino-cli monitor -p <port> -c baudrate=115200
 ```
-If the Serial Monitor shows nothing, enable "USB CDC On Boot" for the board.
+USB CDC On Boot is already enabled by default for this board in core 3.3.12. Logs printed
+before the monitor attaches are lost, so press RESET after opening it. If the port
+disappears (crashing sketch), hold BOOT while plugging in USB, then upload.
 
 ## 3. Repo and Xcode project
 - [ ] Create the folder `talking-plant/`, copy `CLAUDE.md` and `docs/` into it, and run

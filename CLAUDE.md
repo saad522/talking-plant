@@ -126,8 +126,11 @@ cd ios/PlantKit && xcodebuild test -scheme PlantKit-Package \
 cd ios/TalkingPlant && xcodebuild -project TalkingPlant.xcodeproj -scheme TalkingPlant \
   -destination 'platform=iOS Simulator,name=<available iPhone simulator>' build
 
+# Firmware host unit tests (no board needed)
+make -C firmware test
+
 # Firmware compile (see docs/SETUP.md for arduino-cli setup)
-arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32C3 firmware/talking_plant
+make -C firmware compile
 ```
 
 Foundation Models and Bluetooth must be tested on a real iPhone; the simulator has no

@@ -5,3 +5,4 @@ DerivedData/
 .swiftpm/
 *.xcuserstate
 .claude/settings.local.json
+firmware/build/

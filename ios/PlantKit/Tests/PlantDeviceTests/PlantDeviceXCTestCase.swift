@@ -50,8 +50,18 @@ class PlantDeviceXCTestCase: XCTestCase {
             readCompletions[index](.failure(error))
         }
 
+        private var subscriptions: [(PeripheralClient.Result) -> Void] = []
         func subscribe(to characteristic: PlantCharacteristic, update: @escaping (PeripheralClient.Result) -> Void) {
             messages.append(.subscribe(characteristic))
+            subscriptions.append(update)
+        }
+
+        func simulateUpdate(with data: Data, at index: Int = 0) {
+            subscriptions[index](.success(data))
+        }
+
+        func simulateUpdate(with error: Error, at index: Int = 0) {
+            subscriptions[index](.failure(error))
         }
 
         private var writeCompletions: [(PeripheralClient.WriteResult) -> Void] = []

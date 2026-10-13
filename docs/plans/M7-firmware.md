@@ -381,8 +381,8 @@ Target size ≈ 200 lines. Everything below is glue around section 4.
 
 ```cpp
 constexpr uint8_t kSoilPin = A0;
-constexpr plant::FirmwareVersion kFirmwareVersion{0, 1, 0};      // open question 1
-constexpr uint16_t kDefaultIntervalSeconds = 30;                 // open question 2
+constexpr plant::FirmwareVersion kFirmwareVersion{0, 1, 0};      // decision 1 (section 11)
+constexpr uint16_t kDefaultIntervalSeconds = 30;                 // decision 2 (section 11)
 constexpr int kSoilSamples = 8;                                  // averaged per reading
 ```
 
@@ -421,7 +421,7 @@ constexpr int kSoilSamples = 8;                                  // averaged per
 `takeReading()`:
 
 - Soil: average `kSoilSamples` × `analogReadMilliVolts(kSoilPin)`; always valid
-  (open question 4).
+  (see decision 4, section 11).
 - Light: if `!lightReady`, retry `begin()`. Valid when ready and `readLightLevel() >= 0`.
 - Env: if `!envReady`, retry `begin()`. Valid when `aht.getEvent(&humidity, &temp)` returns
   true.
@@ -493,7 +493,7 @@ Things noticed on the iOS side (not changed in M7):
 
 - `CoreBluetoothPeripheralClient` (M6) isn't in the repo yet, so the app can't talk to the
   board until M6 is done. The first M8 checks use a generic BLE app (nRF Connect or
-  LightBlue) — open question 5.
+  LightBlue) — decision 5 (section 11).
 - `PlantDeviceInfoMapper` reads `protocolVersion` but doesn't reject a value other than 1,
   unlike `PlantReadingMapper`. Harmless with this firmware.
 - The simulator's first read returns sequence 0 and its first notify sequence 1. The

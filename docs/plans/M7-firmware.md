@@ -258,7 +258,7 @@ struct FirmwareVersion { uint8_t major, minor, patch; };
 void encodeDeviceInfo(FirmwareVersion version, uint16_t intervalSeconds, uint8_t out[kDeviceInfoLength]);
 ```
 
-protocolVersion 1, capabilities 0 (V1), reserved 0, interval little-endian.
+Byte order per `BLE_CONTRACT.md`: protocolVersion (1), firmware major, minor, patch, capabilities (0 in V1), reserved (0), intervalSeconds (uint16 little-endian).
 
 ### 4.4 `PlantCommandParser.h`
 

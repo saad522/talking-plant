@@ -53,6 +53,7 @@ class PlantHistoryXCTestCase: XCTestCase {
         enum Message: Equatable {
             case insert(PlantReading)
             case retrieve(from: Date, to: Date)
+            case deleteAll
             case subscribe
         }
 
@@ -74,6 +75,12 @@ class PlantHistoryXCTestCase: XCTestCase {
 
         func completeRetrieval(with error: Error, at index: Int = 0) {
             retrievalCompletions[index](.failure(error))
+        }
+
+        private var deletionCompletions: [(PlantReadingStore.DeletionResult) -> Void] = []
+        func deleteAll(completion: @escaping (PlantReadingStore.DeletionResult) -> Void) {
+            messages.append(.deleteAll)
+            deletionCompletions.append(completion)
         }
 
         private var subscriptions: [() -> Void] = []

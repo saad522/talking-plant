@@ -7,6 +7,7 @@ public struct PlantDeviceView: View {
     private let viewModel: PlantDeviceViewModel
     private let showsRawReading: Bool
     private let placeholder = PlantReadingFormatter.placeholder
+    @State private var confirmsClearHistory = false
 
     init(store: PlantDeviceStore, viewModel: PlantDeviceViewModel, showsRawReading: Bool) {
         self.store = store
@@ -79,6 +80,13 @@ public struct PlantDeviceView: View {
             row(viewModel.rawFlagsLabel, store.rawReading?.flags ?? placeholder)
             row(viewModel.rawSequenceLabel, store.rawReading?.sequence ?? placeholder)
             row(viewModel.rawReceivedLabel, store.rawReading?.received ?? placeholder)
+            Button(viewModel.clearHistoryLabel, role: .destructive) { confirmsClearHistory = true }
+                .alert(viewModel.clearHistoryTitle, isPresented: $confirmsClearHistory) {
+                    Button(viewModel.clearHistoryConfirmLabel, role: .destructive, action: viewModel.clearHistoryConfirmTap)
+                    Button(viewModel.clearHistoryCancelLabel, role: .cancel) {}
+                } message: {
+                    Text(viewModel.clearHistoryMessage)
+                }
         }
     }
 

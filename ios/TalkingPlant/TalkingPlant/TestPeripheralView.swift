@@ -5,6 +5,7 @@ import SwiftUI
 /// Shown instead of the app when launched with `-PlantTestPeripheral`.
 struct TestPeripheralView: View {
     @StateObject private var peripheral = CoreBluetoothPlantTestPeripheral()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -38,6 +39,9 @@ struct TestPeripheralView: View {
             .navigationTitle("Test peripheral")
         }
         .onAppear { peripheral.start() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { peripheral.readvertiseInForeground() }
+        }
     }
 
     private var overrideBinding: Binding<Bool> {
@@ -60,6 +64,7 @@ struct TestPeripheralView: View {
         case .unsupported: "Bluetooth unsupported"
         case .unauthorized: "Bluetooth not allowed"
         case .poweredOff: "Bluetooth is off"
+        case .resetting: "Bluetooth resetting…"
         case .advertising: "Advertising"
         }
     }

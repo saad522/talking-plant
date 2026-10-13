@@ -342,6 +342,7 @@ final class AppGraphStore: ObservableObject {
         case .monitor(let action): navigation.handle(action)
         case .chat(let action): navigation.handle(action)
         case .device(.modeChanged(let mode)): switchMode(to: mode)
+        case .device(.clearSensorHistory): clearSensorHistory()
         case .device(let action): navigation.handle(action)
         }
     }
@@ -350,6 +351,11 @@ final class AppGraphStore: ObservableObject {
         guard mode != graph.mode else { return }
         graph.disconnect()
         graph = makeGraph(mode: mode)
+    }
+
+    /// DEBUG bring-up aid. Only the sensor store is cleared, never the simulated one.
+    private func clearSensorHistory() {
+        stores[.sensor]?.deleteAll { _ in }
     }
 
     private func makeGraph(mode: PlantDeviceMode) -> AppGraph {

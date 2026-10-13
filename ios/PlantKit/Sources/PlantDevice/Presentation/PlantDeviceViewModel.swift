@@ -47,6 +47,11 @@ public final class PlantDeviceViewModel {
     public let rawFlagsLabel: String = String.localised(key: "plant.device.raw.flags.label")
     public let rawSequenceLabel: String = String.localised(key: "plant.device.raw.sequence.label")
     public let rawReceivedLabel: String = String.localised(key: "plant.device.raw.received.label")
+    public let clearHistoryLabel: String = String.localised(key: "plant.device.clearHistory.label")
+    public let clearHistoryTitle: String = String.localised(key: "plant.device.clearHistory.title")
+    public let clearHistoryMessage: String = String.localised(key: "plant.device.clearHistory.message")
+    public let clearHistoryConfirmLabel: String = String.localised(key: "plant.device.clearHistory.confirm")
+    public let clearHistoryCancelLabel: String = String.localised(key: "plant.device.clearHistory.cancel")
 
     public var loadedMode: Observer<PlantDeviceMode>?
     public var loadedConnection: Observer<PlantDeviceConnectionViewModel>?
@@ -117,6 +122,10 @@ public final class PlantDeviceViewModel {
 
     public func calibrationTap() {
         actionHandler(.calibrationTap)
+    }
+
+    public func clearHistoryConfirmTap() {
+        actionHandler(.clearSensorHistory)
     }
 
     public func openSettingsTap() {

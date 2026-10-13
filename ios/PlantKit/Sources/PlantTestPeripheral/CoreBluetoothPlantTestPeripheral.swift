@@ -25,6 +25,7 @@ public final class CoreBluetoothPlantTestPeripheral: NSObject, ObservableObject 
         case unsupported
         case unauthorized
         case poweredOff
+        case resetting
         case advertising
     }
 
@@ -89,6 +90,18 @@ public final class CoreBluetoothPlantTestPeripheral: NSObject, ObservableObject 
         append(millivolts.map { "soil override \($0) mV" } ?? "soil override off")
     }
 
+    /// Advertising restarted in the background has no local name and hides the service UUID, so
+    /// nobody finds it. Call this when the app comes to the foreground to advertise in full again.
+    public func readvertiseInForeground() {
+        guard let manager, manager.state == .poweredOn, readingsCharacteristic != nil else { return }
+        append("re-advertising in foreground")
+        manager.stopAdvertising()
+        manager.startAdvertising([
+            CBAdvertisementDataLocalNameKey: Self.localName,
+            CBAdvertisementDataServiceUUIDsKey: [CBUUID(nsuuid: PlantBluetoothContract.serviceUUID)]
+        ])
+    }
+
     // MARK: - Readings
 
     private func restartTicks() {
@@ -121,18 +134,39 @@ public final class CoreBluetoothPlantTestPeripheral: NSObject, ObservableObject 
         Self.logger.info("manager state \(newState.rawValue)")
         switch newState {
         case .poweredOn:
+            // Advertising and services are gone after any power cycle: rebuild them, and show
+            // "Starting…" until the radio really advertises.
+            status = .stopped
             addService()
         case .unsupported:
+            dropServices()
             status = .unsupported
         case .unauthorized:
+            dropServices()
             status = .unauthorized
         case .poweredOff:
+            dropServices()
             status = .poweredOff
-            subscriberCount = 0
-        case .unknown, .resetting:
+        case .resetting:
+            dropServices()
+            status = .resetting
+        case .unknown:
+            dropServices()
             status = .stopped
         @unknown default:
+            dropServices()
             status = .unsupported
+        }
+    }
+
+    /// Forgets what was added to the manager. The system drops services and advertising with the
+    /// radio, and the manager removes the stale ones in `addService` when it is powered on again.
+    private func dropServices() {
+        readingsCharacteristic = nil
+        needsResend = false
+        if subscriberCount > 0 {
+            subscriberCount = 0
+            append("Bluetooth unavailable, subscribers dropped")
         }
     }
 
@@ -150,6 +184,7 @@ public final class CoreBluetoothPlantTestPeripheral: NSObject, ObservableObject 
         let service = CBMutableService(type: CBUUID(nsuuid: PlantBluetoothContract.serviceUUID), primary: true)
         service.characteristics = [readings, deviceInfo, command]
         readingsCharacteristic = readings
+        manager.stopAdvertising()
         manager.removeAllServices()
         manager.add(service)
     }
@@ -161,6 +196,7 @@ public final class CoreBluetoothPlantTestPeripheral: NSObject, ObservableObject 
             append("add service failed: \(error.localizedDescription)")
             return
         }
+        guard manager.state == .poweredOn else { return }
         manager.startAdvertising([
             CBAdvertisementDataLocalNameKey: Self.localName,
             CBAdvertisementDataServiceUUIDsKey: [CBUUID(nsuuid: PlantBluetoothContract.serviceUUID)]
@@ -173,6 +209,7 @@ public final class CoreBluetoothPlantTestPeripheral: NSObject, ObservableObject 
             append("advertising failed: \(error.localizedDescription)")
             return
         }
+        guard manager?.state == .poweredOn else { return }
         status = .advertising
         append("advertising as \(Self.localName)")
     }

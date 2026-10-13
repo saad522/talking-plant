@@ -72,6 +72,18 @@ final class PlantDeviceCalibrationUIITests: PlantDeviceiOSXCTestCase {
         XCTAssertTrue(sut.texts.contains("#43"))
     }
 
+    func test_settings_clearHistoryButtonFollowsRawSectionFlag() {
+        let label = String.localised(key: "plant.device.clearHistory.label")
+
+        let hidden = makeRawSUT(showsRawReading: false).sut
+        let shown = makeRawSUT(showsRawReading: true).sut
+        hidden.simulateAppear()
+        shown.simulateAppear()
+
+        XCTAssertFalse(hidden.hasButton(label))
+        XCTAssertTrue(shown.hasButton(label))
+    }
+
     // MARK: Calibration screen
 
     func test_calibration_showsStatusAndDefaultsWhenNotCalibrated() {

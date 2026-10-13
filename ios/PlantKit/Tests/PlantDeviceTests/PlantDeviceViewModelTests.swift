@@ -161,6 +161,15 @@ final class PlantDeviceViewModelTests: PlantDeviceXCTestCase {
         XCTAssertEqual(actions, [.openSettings])
     }
 
+    func test_clearHistoryConfirmTap_deliversClearSensorHistoryAction() {
+        var actions: [PlantDeviceAction] = []
+        let (sut, _, _, _, _, _) = makeSUT(actionHandler: { actions.append($0) })
+
+        sut.clearHistoryConfirmTap()
+
+        XCTAssertEqual(actions, [.clearSensorHistory])
+    }
+
     func test_modeSelect_savesModeAndDeliversActionOnChange() {
         var actions: [PlantDeviceAction] = []
         let (sut, _, _, _, _, defaults) = makeSUT(actionHandler: { actions.append($0) })

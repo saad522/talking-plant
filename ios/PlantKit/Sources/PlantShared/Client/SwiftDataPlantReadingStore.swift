@@ -50,6 +50,19 @@ public final class SwiftDataPlantReadingStore: PlantReadingStore {
         }))
     }
 
+    public func deleteAll(completion: @escaping (DeletionResult) -> Void) {
+        do {
+            try context.delete(model: LocalPlantReading.self)
+            try context.save()
+        } catch {
+            context.rollback()
+            return completion(error)
+        }
+
+        completion(nil)
+        subscriptions.forEach { $0() }
+    }
+
     public func subscribe(update: @escaping () -> Void) {
         subscriptions.append(update)
     }

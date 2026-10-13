@@ -103,6 +103,44 @@ final class SwiftDataPlantReadingStoreTests: PlantSharedXCTestCase {
         XCTAssertEqual(try retrieve(from: second), [])
     }
 
+    func test_deleteAll_removesEveryReading() throws {
+        let sut = try makeSUT()
+        try insert([makeReading(sequence: 1), makeReading(sequence: 2, receivedAt: morningDate().addingTimeInterval(60))], into: sut)
+
+        let error = deleteAll(from: sut)
+
+        XCTAssertNil(error)
+        XCTAssertEqual(try retrieve(from: sut), [])
+    }
+
+    func test_deleteAll_onEmptyStoreSucceeds() throws {
+        let sut = try makeSUT()
+
+        XCTAssertNil(deleteAll(from: sut))
+        XCTAssertEqual(try retrieve(from: sut), [])
+    }
+
+    func test_deleteAll_allowsInsertingAfterwards() throws {
+        let sut = try makeSUT()
+        let reading = makeReading(sequence: 9)
+        try insert([makeReading(sequence: 1)], into: sut)
+        _ = deleteAll(from: sut)
+
+        try insert([reading], into: sut)
+
+        XCTAssertEqual(try retrieve(from: sut), [reading])
+    }
+
+    func test_deleteAll_notifiesSubscribers() throws {
+        let sut = try makeSUT()
+        var updates = 0
+        sut.subscribe { updates += 1 }
+
+        _ = deleteAll(from: sut)
+
+        XCTAssertEqual(updates, 1)
+    }
+
     // MARK: - Private helpers
 
     private func makeSUT(
@@ -121,6 +159,12 @@ final class SwiftDataPlantReadingStoreTests: PlantSharedXCTestCase {
             sut.insert(reading) { insertionError = $0 }
             if let insertionError { throw insertionError }
         }
+    }
+
+    private func deleteAll(from sut: SwiftDataPlantReadingStore) -> Error? {
+        var deletionError: Error?
+        sut.deleteAll { deletionError = $0 }
+        return deletionError
     }
 
     private func retrieve(

@@ -60,5 +60,8 @@ destination turned on) that plays the sensor.
       30 s (the default is 300 s). Tick it in the scheme; an unticked entry is ignored.
 - [ ] If the pairing stops working after Bluetooth was toggled on the test device, tap
       *Forget* and pair again: Apple devices change their identifier.
+- [ ] Keep the test peripheral app in the foreground. iOS advertises without the local name
+      in the background, so the main iPhone won't find it. If it isn't found, bring the test
+      app to the front (it re-advertises on its own) or relaunch it.
 
 The checklist to run is section 9 of `docs/plans/M6-bluetooth.md`.

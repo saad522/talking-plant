@@ -367,6 +367,10 @@ device" lists what the human checks.
 - Files: `AppGraph.swift` (sensor mode: `LocalMoistureCalibrationLoader`, `calibration:
   { calibrationLoader.load() }`, `composedCalibration`, `showsRawReading` in DEBUG),
   `TalkingPlantApp.swift` (`Route.calibration`, `.calibrationTap` → push).
+- Decision 11.5, DEBUG "Clear sensor history": `PlantReadingStore.deleteAll` (SwiftData store,
+  notifies subscribers, unit tests); button with a confirmation alert in the Settings raw
+  section (sensor mode, DEBUG); `PlantDeviceAction.clearSensorHistory`, handled in
+  `AppGraphStore` by clearing only the sensor store (`PlantHistory-Sensor.store`).
 - On device (17 Pro app in sensor mode, 13 Pro test peripheral, optional
   `-PlantReadingInterval 30`):
   1. Settings shows *Moisture calibration · Not calibrated*. The raw section fills; sequence
@@ -384,7 +388,11 @@ device" lists what the human checks.
      "No reading from the sensor" after 10 s.
   9. Switch to Simulated → calibration row hidden, simulated moisture unchanged from before
      M8. Switch back → calibration kept.
-  10. No crash and no `Incorrect actor executor` / `dispatch_assert_queue` in the console.
+  10. *Clear sensor history* → confirm → home and History empty out for the sensor; switch
+      to Simulated → its history is unchanged.
+  11. Test peripheral: Bluetooth off and on on the 13 Pro → status follows (off, then
+      Advertising again), nRF Connect sees it again, no relaunch needed.
+  12. No crash and no `Incorrect actor executor` / `dispatch_assert_queue` in the console.
 
 ### S8 — Firmware: full I2C scan in the boot log (yes, decision 1)
 

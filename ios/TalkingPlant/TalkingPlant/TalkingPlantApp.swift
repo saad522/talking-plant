@@ -100,7 +100,7 @@ final class AppNavigation: ObservableObject {
         case .pairTap: path.append(.devicePicker)
         case .paired: _ = path.popLast()
         case .calibrationTap: path.append(.calibration)
-        case .modeChanged, .openSettings: break
+        case .modeChanged, .openSettings, .clearSensorHistory: break
         }
     }
 

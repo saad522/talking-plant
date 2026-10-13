@@ -153,7 +153,12 @@ final class PlantDevicePresentationTests: PlantDeviceXCTestCase {
             "plant.device.raw.humidity.label",
             "plant.device.raw.flags.label",
             "plant.device.raw.sequence.label",
-            "plant.device.raw.received.label"
+            "plant.device.raw.received.label",
+            "plant.device.clearHistory.label",
+            "plant.device.clearHistory.title",
+            "plant.device.clearHistory.message",
+            "plant.device.clearHistory.confirm",
+            "plant.device.clearHistory.cancel"
         ]
 
         keys.forEach { key in

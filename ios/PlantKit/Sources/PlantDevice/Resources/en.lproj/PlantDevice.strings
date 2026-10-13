@@ -70,3 +70,8 @@
 "plant.device.raw.flags.label" = "Flags";
 "plant.device.raw.sequence.label" = "Sequence";
 "plant.device.raw.received.label" = "Received";
+"plant.device.clearHistory.label" = "Clear sensor history";
+"plant.device.clearHistory.title" = "Clear sensor history?";
+"plant.device.clearHistory.message" = "This deletes every reading stored in real sensor mode. The simulated plant's history is not touched.";
+"plant.device.clearHistory.confirm" = "Clear";
+"plant.device.clearHistory.cancel" = "Cancel";

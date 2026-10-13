@@ -36,3 +36,37 @@
 "plant.device.picker.empty.bluetoothOff" = "Turn on Bluetooth to find your plant.";
 "plant.device.picker.empty.bluetoothUnauthorized" = "Allow Bluetooth for Talking Plant in Settings to find your plant.";
 "plant.device.picker.empty.bluetoothUnsupported" = "Bluetooth isn't available on this device.";
+
+"plant.device.calibration.title" = "Moisture calibration";
+"plant.device.calibration.status.label" = "Status";
+"plant.device.calibration.status.calibrated" = "Calibrated";
+"plant.device.calibration.status.notCalibrated" = "Not calibrated";
+"plant.device.calibration.dry.label" = "Dry";
+"plant.device.calibration.wet.label" = "Wet";
+"plant.device.calibration.now.section" = "Sensor now";
+"plant.device.calibration.soil.label" = "Soil";
+"plant.device.calibration.dry.section" = "1 · Dry";
+"plant.device.calibration.dry.capture" = "Capture dry";
+"plant.device.calibration.dry.hint" = "Wipe the sensor dry and hold it in the air by its top edge.";
+"plant.device.calibration.wet.section" = "2 · Wet";
+"plant.device.calibration.wet.capture" = "Capture wet";
+"plant.device.calibration.wet.hint" = "Stand it in a glass of water up to the line. Keep the top dry.";
+"plant.device.calibration.save" = "Save calibration";
+"plant.device.calibration.reset" = "Reset to defaults";
+"plant.device.calibration.offline" = "Connect the sensor to calibrate.";
+"plant.device.calibration.error.soil" = "The soil sensor isn't reading.";
+"plant.device.calibration.error.timeout" = "No reading from the sensor. Try again.";
+"plant.device.calibration.error.missingDry" = "Capture the dry point first.";
+"plant.device.calibration.error.missingWet" = "Capture the wet point first.";
+"plant.device.calibration.error.wetNotBelowDry" = "The wet reading must be lower than the dry one. Capture both again.";
+"plant.device.calibration.error.rangeTooSmall" = "Dry and wet are too close together. Check the sensor is in air, then in water.";
+"plant.device.calibration.warning.nearLimit" = "Dry is near the top of the board's range. Check the sensor is on 3V3, not 5V.";
+
+"plant.device.raw.section" = "Raw reading";
+"plant.device.raw.soil.label" = "Soil";
+"plant.device.raw.light.label" = "Light";
+"plant.device.raw.temperature.label" = "Temperature";
+"plant.device.raw.humidity.label" = "Humidity";
+"plant.device.raw.flags.label" = "Flags";
+"plant.device.raw.sequence.label" = "Sequence";
+"plant.device.raw.received.label" = "Received";

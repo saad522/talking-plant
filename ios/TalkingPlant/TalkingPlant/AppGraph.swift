@@ -171,6 +171,8 @@ final class AppGraph {
             connectionLoader: connection,
             pairingLoader: pairing,
             infoLoader: PeripheralPlantDeviceInfoLoader(client: client),
+            calibrationLoader: LocalMoistureCalibrationLoader(defaults: defaults),
+            rawReadingLoader: PeripheralPlantDeviceRawReadingLoader(client: client, currentDate: currentDate),
             commandSender: commands,
             settings: deviceSettings,
             actionHandler: deviceActionHandler

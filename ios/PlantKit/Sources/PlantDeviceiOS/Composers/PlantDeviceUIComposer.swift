@@ -7,6 +7,8 @@ public enum PlantDeviceUIComposer {
         connectionLoader: PlantDeviceConnectionLoader,
         pairingLoader: PlantDevicePairingLoader,
         infoLoader: PlantDeviceInfoLoader,
+        calibrationLoader: LocalMoistureCalibrationLoader,
+        rawReadingLoader: PlantDeviceRawReadingLoader,
         commandSender: PlantDeviceCommandSender,
         settings: PlantDeviceSettings,
         actionHandler: @escaping (PlantDeviceAction) -> Void
@@ -16,6 +18,8 @@ public enum PlantDeviceUIComposer {
             connectionLoader: connectionLoader,
             pairingLoader: pairingLoader,
             infoLoader: infoLoader,
+            calibrationLoader: calibrationLoader,
+            rawReadingLoader: rawReadingLoader,
             commandSender: commandSender,
             settings: settings,
             actionHandler: actionHandler

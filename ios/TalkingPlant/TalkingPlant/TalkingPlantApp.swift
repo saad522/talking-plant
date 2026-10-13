@@ -97,7 +97,7 @@ final class AppNavigation: ObservableObject {
         switch action {
         case .pairTap: path.append(.devicePicker)
         case .paired: _ = path.popLast()
-        case .modeChanged, .openSettings: break
+        case .modeChanged, .openSettings, .calibrationTap: break
         }
     }
 

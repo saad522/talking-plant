@@ -13,6 +13,8 @@ public final class PlantDeviceViewModel {
     private let connectionLoader: PlantDeviceConnectionLoader
     private let pairingLoader: PlantDevicePairingLoader
     private let infoLoader: PlantDeviceInfoLoader
+    private let calibrationLoader: LocalMoistureCalibrationLoader
+    private let rawReadingLoader: PlantDeviceRawReadingLoader
     private let commandSender: PlantDeviceCommandSender
     private let settings: PlantDeviceSettings
     private let actionHandler: (PlantDeviceAction) -> Void
@@ -36,11 +38,23 @@ public final class PlantDeviceViewModel {
     public let changeLabel: String = String.localised(key: "plant.device.change.label")
     public let forgetLabel: String = String.localised(key: "plant.device.forget.label")
     public let openSettingsLabel: String = String.localised(key: "plant.device.openSettings.label")
+    public let calibrationLabel: String = String.localised(key: "plant.device.calibration.title")
+    public let rawSectionLabel: String = String.localised(key: "plant.device.raw.section")
+    public let rawSoilLabel: String = String.localised(key: "plant.device.raw.soil.label")
+    public let rawLightLabel: String = String.localised(key: "plant.device.raw.light.label")
+    public let rawTemperatureLabel: String = String.localised(key: "plant.device.raw.temperature.label")
+    public let rawHumidityLabel: String = String.localised(key: "plant.device.raw.humidity.label")
+    public let rawFlagsLabel: String = String.localised(key: "plant.device.raw.flags.label")
+    public let rawSequenceLabel: String = String.localised(key: "plant.device.raw.sequence.label")
+    public let rawReceivedLabel: String = String.localised(key: "plant.device.raw.received.label")
 
     public var loadedMode: Observer<PlantDeviceMode>?
     public var loadedConnection: Observer<PlantDeviceConnectionViewModel>?
     public var loadedPairedDevice: Observer<PlantPairedDevice?>?
     public var loadedInfo: Observer<PlantDeviceInfoViewModel>?
+    /// "Calibrated" or "Not calibrated".
+    public var loadedCalibrationStatus: Observer<String>?
+    public var loadedRawReading: Observer<PlantDeviceRawReadingViewModel>?
     /// The message to show, or `nil` to clear it.
     public var loadedCommandError: Observer<String?>?
 
@@ -48,6 +62,8 @@ public final class PlantDeviceViewModel {
         connectionLoader: PlantDeviceConnectionLoader,
         pairingLoader: PlantDevicePairingLoader,
         infoLoader: PlantDeviceInfoLoader,
+        calibrationLoader: LocalMoistureCalibrationLoader,
+        rawReadingLoader: PlantDeviceRawReadingLoader,
         commandSender: PlantDeviceCommandSender,
         settings: PlantDeviceSettings,
         actionHandler: @escaping (PlantDeviceAction) -> Void
@@ -55,12 +71,15 @@ public final class PlantDeviceViewModel {
         self.connectionLoader = connectionLoader
         self.pairingLoader = pairingLoader
         self.infoLoader = infoLoader
+        self.calibrationLoader = calibrationLoader
+        self.rawReadingLoader = rawReadingLoader
         self.commandSender = commandSender
         self.settings = settings
         self.actionHandler = actionHandler
     }
 
     public func appear() {
+        loadedCalibrationStatus?(PlantDeviceCalibrationStatusViewModel(calibration: calibrationLoader.load()).status)
         guard appeared == false else { return }
         appeared = true
         loadedMode?(settings.loadMode())
@@ -69,6 +88,9 @@ public final class PlantDeviceViewModel {
         }
         pairingLoader.subscribe { [weak self] device in
             self?.loadedPairedDevice?(device)
+        }
+        rawReadingLoader.subscribe { [weak self] result in
+            self?.receive(result)
         }
     }
 
@@ -93,6 +115,10 @@ public final class PlantDeviceViewModel {
         }
     }
 
+    public func calibrationTap() {
+        actionHandler(.calibrationTap)
+    }
+
     public func openSettingsTap() {
         actionHandler(.openSettings)
     }
@@ -106,6 +132,15 @@ public final class PlantDeviceViewModel {
             if case .success(let info) = result {
                 self?.loadedInfo?(PlantDeviceInfoViewModel(info: info))
             }
+        }
+        rawReadingLoader.load { [weak self] result in
+            self?.receive(result)
+        }
+    }
+
+    private func receive(_ result: PlantDeviceRawReadingLoader.Result) {
+        if case .success(let reading) = result {
+            loadedRawReading?(PlantDeviceRawReadingViewModel(reading: reading))
         }
     }
 }

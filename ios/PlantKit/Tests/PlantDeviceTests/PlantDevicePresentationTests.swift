@@ -49,6 +49,51 @@ final class PlantDevicePresentationTests: PlantDeviceXCTestCase {
         XCTAssertFalse(PlantDeviceConnectionViewModel(connection: .bluetoothUnsupported).showsOpenSettings)
     }
 
+    func test_rawReadingViewModel_formatsEveryField() {
+        let components = DateComponents(year: 2026, month: 10, day: 13, hour: 14, minute: 3, second: 15)
+        let receivedAt = Calendar.current.date(from: components)!
+
+        let sut = PlantDeviceRawReadingViewModel(reading: anyRawReading(sequence: 42, receivedAt: receivedAt))
+
+        XCTAssertEqual(sut.soil, "2,431 mV")
+        XCTAssertEqual(sut.light, "312 lx")
+        XCTAssertEqual(sut.temperature, "23.41 °C")
+        XCTAssertEqual(sut.humidity, "48.20 %")
+        XCTAssertEqual(sut.flags, "0x07")
+        XCTAssertEqual(sut.sequence, "#42")
+        XCTAssertEqual(sut.received, "14:03:15")
+    }
+
+    func test_rawReadingViewModel_showsPlaceholderForMissingFields() {
+        let reading = PlantDeviceRawReading(
+            soilMillivolts: nil, lux: nil, temperature: nil, humidity: nil,
+            flags: 0x00, sequence: 0, receivedAt: Date(timeIntervalSince1970: 0)
+        )
+
+        let sut = PlantDeviceRawReadingViewModel(reading: reading)
+
+        XCTAssertEqual([sut.soil, sut.light, sut.temperature, sut.humidity], ["–", "–", "–", "–"])
+        XCTAssertEqual(sut.flags, "0x00")
+    }
+
+    func test_rawReadingViewModel_formatsFlagsAsTwoHexDigits() {
+        XCTAssertEqual(PlantDeviceRawReadingViewModel(reading: anyRawReading(flags: 0x0A)).flags, "0x0A")
+    }
+
+    func test_calibrationStatusViewModel_describesCalibration() {
+        let calibrated = PlantDeviceCalibrationStatusViewModel(calibration: MoistureCalibration(dryMillivolts: 2_447, wetMillivolts: 1_062)!)
+        let placeholder = PlantDeviceCalibrationStatusViewModel(calibration: .placeholder)
+
+        XCTAssertEqual(calibrated.status, "Calibrated")
+        XCTAssertEqual(calibrated.dry, "2,447 mV")
+        XCTAssertEqual(calibrated.wet, "1,062 mV")
+        XCTAssertTrue(calibrated.isCalibrated)
+        XCTAssertEqual(placeholder.status, "Not calibrated")
+        XCTAssertEqual(placeholder.dry, "2,450 mV")
+        XCTAssertEqual(placeholder.wet, "1,050 mV")
+        XCTAssertFalse(placeholder.isCalibrated)
+    }
+
     func test_strings_haveValueForEveryKey() {
         let keys = [
             "plant.device.title",
@@ -76,7 +121,39 @@ final class PlantDevicePresentationTests: PlantDeviceXCTestCase {
             "plant.device.change.label",
             "plant.device.forget.label",
             "plant.device.openSettings.label",
-            "plant.device.command.error"
+            "plant.device.command.error",
+            "plant.device.calibration.title",
+            "plant.device.calibration.status.label",
+            "plant.device.calibration.status.calibrated",
+            "plant.device.calibration.status.notCalibrated",
+            "plant.device.calibration.dry.label",
+            "plant.device.calibration.wet.label",
+            "plant.device.calibration.now.section",
+            "plant.device.calibration.soil.label",
+            "plant.device.calibration.dry.section",
+            "plant.device.calibration.dry.capture",
+            "plant.device.calibration.dry.hint",
+            "plant.device.calibration.wet.section",
+            "plant.device.calibration.wet.capture",
+            "plant.device.calibration.wet.hint",
+            "plant.device.calibration.save",
+            "plant.device.calibration.reset",
+            "plant.device.calibration.offline",
+            "plant.device.calibration.error.soil",
+            "plant.device.calibration.error.timeout",
+            "plant.device.calibration.error.missingDry",
+            "plant.device.calibration.error.missingWet",
+            "plant.device.calibration.error.wetNotBelowDry",
+            "plant.device.calibration.error.rangeTooSmall",
+            "plant.device.calibration.warning.nearLimit",
+            "plant.device.raw.section",
+            "plant.device.raw.soil.label",
+            "plant.device.raw.light.label",
+            "plant.device.raw.temperature.label",
+            "plant.device.raw.humidity.label",
+            "plant.device.raw.flags.label",
+            "plant.device.raw.sequence.label",
+            "plant.device.raw.received.label"
         ]
 
         keys.forEach { key in

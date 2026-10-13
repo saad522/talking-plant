@@ -222,6 +222,34 @@ class PlantDeviceXCTestCase: XCTestCase {
     }
 
     @MainActor
+    final class RawReadingLoaderStub: PlantDeviceRawReadingLoader {
+        private(set) var loadCount = 0
+        private var loadCompletions: [(PlantDeviceRawReadingLoader.Result) -> Void] = []
+        func load(completion: @escaping (PlantDeviceRawReadingLoader.Result) -> Void) {
+            loadCount += 1
+            loadCompletions.append(completion)
+        }
+
+        func completeLoad(with reading: PlantDeviceRawReading, at index: Int = 0) {
+            loadCompletions[index](.success(reading))
+        }
+
+        private var subscriptions: [(PlantDeviceRawReadingLoader.Result) -> Void] = []
+        var subscriptionCount: Int { subscriptions.count }
+        func subscribe(update: @escaping (PlantDeviceRawReadingLoader.Result) -> Void) {
+            subscriptions.append(update)
+        }
+
+        func simulate(_ reading: PlantDeviceRawReading, at index: Int = 0) {
+            subscriptions[index](.success(reading))
+        }
+
+        func simulate(error: Error, at index: Int = 0) {
+            subscriptions[index](.failure(error))
+        }
+    }
+
+    @MainActor
     final class CommandSenderStub: PlantDeviceCommandSender {
         private(set) var commands: [PlantDeviceCommand] = []
         private var completions: [(PlantDeviceCommandSender.Result) -> Void] = []
@@ -285,6 +313,23 @@ class PlantDeviceXCTestCase: XCTestCase {
 
     func anyDeviceInfo() -> PlantDeviceInfo {
         PlantDeviceInfo(protocolVersion: 1, firmwareMajor: 0, firmwareMinor: 1, firmwarePatch: 0, capabilities: [], intervalSeconds: 30)
+    }
+
+    func anyRawReading(
+        soilMillivolts: Int? = 2_431,
+        sequence: UInt32 = 1,
+        flags: UInt8 = 0x07,
+        receivedAt: Date = Date(timeIntervalSince1970: 0)
+    ) -> PlantDeviceRawReading {
+        PlantDeviceRawReading(
+            soilMillivolts: soilMillivolts,
+            lux: 312,
+            temperature: 23.41,
+            humidity: 48.2,
+            flags: flags,
+            sequence: sequence,
+            receivedAt: receivedAt
+        )
     }
 
     func anyIdentifier() -> UUID {

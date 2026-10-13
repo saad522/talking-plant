@@ -201,6 +201,8 @@ final class PlantDeviceViewModelTests: PlantDeviceXCTestCase {
             connectionLoader: connection,
             pairingLoader: pairing,
             infoLoader: info,
+            calibrationLoader: LocalMoistureCalibrationLoader(defaults: DefaultsSpy()),
+            rawReadingLoader: RawReadingLoaderStub(),
             commandSender: commands,
             settings: PlantDeviceSettings(defaults: DefaultsSpy()),
             actionHandler: { _ in }
@@ -215,9 +217,78 @@ final class PlantDeviceViewModelTests: PlantDeviceXCTestCase {
         XCTAssertNil(weakSUT, "Expect to release all references of SUT")
     }
 
+    func test_appear_deliversCalibrationStatusOnEveryAppear() {
+        let (sut, _, _, _, _, defaults) = makeSUT()
+        var statuses: [String] = []
+        sut.loadedCalibrationStatus = { statuses.append($0) }
+
+        sut.appear()
+        defaults.stub(2400.0, forKey: LocalMoistureCalibrationLoader.dryKey)
+        defaults.stub(1100.0, forKey: LocalMoistureCalibrationLoader.wetKey)
+        sut.appear()
+
+        XCTAssertEqual(statuses, ["Not calibrated", "Calibrated"])
+    }
+
+    func test_appear_subscribesToRawReadingsOnce() {
+        let raw = RawReadingLoaderStub()
+        let (sut, _, _, _, _, _) = makeSUT(raw: raw)
+
+        sut.appear()
+        sut.appear()
+
+        XCTAssertEqual(raw.subscriptionCount, 1)
+    }
+
+    func test_calibrationTap_deliversCalibrationTapAction() {
+        var actions: [PlantDeviceAction] = []
+        let (sut, _, _, _, _, _) = makeSUT(actionHandler: { actions.append($0) })
+
+        sut.calibrationTap()
+
+        XCTAssertEqual(actions, [.calibrationTap])
+    }
+
+    func test_connection_loadsRawReadingOnEachTransitionIntoConnected() {
+        let raw = RawReadingLoaderStub()
+        let (sut, connection, _, _, _, _) = makeSUT(raw: raw)
+        var received: [PlantDeviceRawReadingViewModel] = []
+        sut.loadedRawReading = { received.append($0) }
+        sut.appear()
+
+        connection.simulate(.connecting)
+        XCTAssertEqual(raw.loadCount, 0)
+
+        connection.simulate(.connected)
+        connection.simulate(.connected)
+        XCTAssertEqual(raw.loadCount, 1)
+
+        raw.completeLoad(with: anyRawReading(sequence: 7))
+        XCTAssertEqual(received.map(\.sequence), ["#7"])
+
+        connection.simulate(.connecting)
+        connection.simulate(.connected)
+        XCTAssertEqual(raw.loadCount, 2)
+    }
+
+    func test_rawReadingNotify_deliversRawReadingViewModel() {
+        let raw = RawReadingLoaderStub()
+        let (sut, _, _, _, _, _) = makeSUT(raw: raw)
+        var received: [PlantDeviceRawReadingViewModel] = []
+        sut.loadedRawReading = { received.append($0) }
+        sut.appear()
+
+        raw.simulate(anyRawReading(sequence: 1))
+        raw.simulate(error: anyNSError())
+        raw.simulate(anyRawReading(sequence: 2))
+
+        XCTAssertEqual(received.map(\.sequence), ["#1", "#2"])
+    }
+
     // MARK: - Private helpers
 
     private func makeSUT(
+        raw: RawReadingLoaderStub = RawReadingLoaderStub(),
         actionHandler: @escaping (PlantDeviceAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -238,10 +309,13 @@ final class PlantDeviceViewModelTests: PlantDeviceXCTestCase {
             connectionLoader: connection,
             pairingLoader: pairing,
             infoLoader: info,
+            calibrationLoader: LocalMoistureCalibrationLoader(defaults: defaults),
+            rawReadingLoader: raw,
             commandSender: commands,
             settings: PlantDeviceSettings(defaults: defaults),
             actionHandler: actionHandler
         )
+        trackMemoryLeak(raw, file: file, line: line)
         trackMemoryLeak(connection, file: file, line: line)
         trackMemoryLeak(pairing, file: file, line: line)
         trackMemoryLeak(info, file: file, line: line)

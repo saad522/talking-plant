@@ -30,6 +30,8 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
             connectionLoader: connection,
             pairingLoader: pairing,
             infoLoader: info,
+            calibrationLoader: LocalMoistureCalibrationLoader(defaults: defaults),
+            rawReadingLoader: RawReadingLoaderStub(),
             commandSender: commands,
             settings: PlantDeviceSettings(defaults: defaults),
             actionHandler: actionHandler
@@ -109,6 +111,34 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
 
         func completeLoad(with info: PlantDeviceInfo, at index: Int = 0) {
             completions[index](.success(info))
+        }
+    }
+
+    @MainActor
+    final class RawReadingLoaderStub: PlantDeviceRawReadingLoader {
+        private(set) var loadCount = 0
+        private var loadCompletions: [(PlantDeviceRawReadingLoader.Result) -> Void] = []
+        func load(completion: @escaping (PlantDeviceRawReadingLoader.Result) -> Void) {
+            loadCount += 1
+            loadCompletions.append(completion)
+        }
+
+        func completeLoad(with reading: PlantDeviceRawReading, at index: Int = 0) {
+            loadCompletions[index](.success(reading))
+        }
+
+        private var subscriptions: [(PlantDeviceRawReadingLoader.Result) -> Void] = []
+        var subscriptionCount: Int { subscriptions.count }
+        func subscribe(update: @escaping (PlantDeviceRawReadingLoader.Result) -> Void) {
+            subscriptions.append(update)
+        }
+
+        func simulate(_ reading: PlantDeviceRawReading, at index: Int = 0) {
+            subscriptions[index](.success(reading))
+        }
+
+        func simulate(error: Error, at index: Int = 0) {
+            subscriptions[index](.failure(error))
         }
     }
 

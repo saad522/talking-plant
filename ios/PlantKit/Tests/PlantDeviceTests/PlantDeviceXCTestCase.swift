@@ -140,10 +140,13 @@ class PlantDeviceXCTestCase: XCTestCase {
         enum Message: Equatable {
             case setString(String, forKey: String)
             case retrieveString(forKey: String)
+            case setDouble(Double, forKey: String)
+            case retrieveDouble(forKey: String)
         }
 
         private(set) var messages: [Message] = []
         private var strings: [String: String] = [:]
+        private var doubles: [String: Double] = [:]
 
         func stub(_ value: String, forKey key: String) {
             strings[key] = value
@@ -159,8 +162,20 @@ class PlantDeviceXCTestCase: XCTestCase {
             return strings[key]
         }
 
-        func set(_ value: Double, forKey key: String) {}
-        func retrieve(forKey key: String) -> Double? { nil }
+        func stub(_ value: Double, forKey key: String) {
+            doubles[key] = value
+        }
+
+        func set(_ value: Double, forKey key: String) {
+            messages.append(.setDouble(value, forKey: key))
+            doubles[key] = value
+        }
+
+        func retrieve(forKey key: String) -> Double? {
+            messages.append(.retrieveDouble(forKey: key))
+            return doubles[key]
+        }
+
         func set(_ value: Bool, forKey key: String) {}
         func retrieveBool(forKey key: String) -> Bool? { nil }
     }

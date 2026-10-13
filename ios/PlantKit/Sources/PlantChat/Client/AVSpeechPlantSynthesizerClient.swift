@@ -13,7 +13,7 @@ public final class AVSpeechPlantSynthesizerClient: NSObject, PlantSynthesizerCli
     public func speak(_ text: String, style: PlantSpeechStyle, completion: @escaping () -> Void) {
         stop()
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: style.language) ?? AVSpeechSynthesisVoice(language: "en-US")
+        utterance.voice = AVSpeechVoiceCatalog.avVoice(for: style)
         utterance.rate = style.rate
         utterance.pitchMultiplier = 1
         current = (ObjectIdentifier(utterance), completion)

@@ -50,6 +50,15 @@ class PlantChatXCTestCase: XCTestCase {
         )
     }
 
+    func makeVoice(
+        identifier: String = "voice",
+        name: String = "Voice",
+        language: String = "en-US",
+        quality: PlantSynthesisVoice.Quality = .standard
+    ) -> PlantSynthesisVoice {
+        PlantSynthesisVoice(identifier: identifier, name: name, language: language, quality: quality)
+    }
+
     func trackMemoryLeak(_ instance: AnyObject, file: StaticString = #filePath, line: UInt = #line) {
         addTeardownBlock { [weak instance] in
             XCTAssertNil(instance, "Instance should be deallocated. Potential memory leak", file: file, line: line)

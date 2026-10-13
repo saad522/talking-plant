@@ -27,6 +27,8 @@ final class AppGraph {
     let chat: PlantChatView<PlantFaceView>
     let device: PlantDeviceView
     let devicePicker: PlantDevicePickerView
+    /// A new calibration screen each time it is pushed, so it starts from the saved values.
+    let makeCalibration: () -> PlantDeviceCalibrationView
     #if DEBUG
     let simulatedPlant: SimulatedPeripheralClient?
     #endif
@@ -50,7 +52,8 @@ final class AppGraph {
         let sensor: CoreBluetoothPeripheralClient?
         let client: any PeripheralClient & PeripheralConnectionClient
         let currentDate: () -> Date
-        let calibration: MoistureCalibration
+        let calibration: () -> MoistureCalibration
+        let calibrationLoader = LocalMoistureCalibrationLoader(defaults: defaults)
         switch mode {
         case .simulated:
             // The simulated clock continues from the last saved reading and the soil from its saved value.
@@ -62,14 +65,14 @@ final class AppGraph {
             sensor = nil
             client = plant
             currentDate = { plant.currentDate }
-            calibration = SimulatedPeripheralClient.calibration
+            calibration = { SimulatedPeripheralClient.calibration }
         case .sensor:
             let central = CoreBluetoothPeripheralClient()
             simulated = nil
             sensor = central
             client = central
             currentDate = Date.init
-            calibration = .placeholder
+            calibration = { calibrationLoader.load() }
         }
         self.sensor = sensor
         #if DEBUG
@@ -77,7 +80,7 @@ final class AppGraph {
         #endif
 
         let readings = LocalPlantReadingDecorator(
-            decoratee: PeripheralPlantReadingLoader(client: client, calibration: { calibration }, currentDate: currentDate),
+            decoratee: PeripheralPlantReadingLoader(client: client, calibration: calibration, currentDate: currentDate),
             store: store
         )
         let health = LocalPlantHealthLoader(
@@ -171,12 +174,22 @@ final class AppGraph {
             connectionLoader: connection,
             pairingLoader: pairing,
             infoLoader: PeripheralPlantDeviceInfoLoader(client: client),
-            calibrationLoader: LocalMoistureCalibrationLoader(defaults: defaults),
+            calibrationLoader: calibrationLoader,
             rawReadingLoader: PeripheralPlantDeviceRawReadingLoader(client: client, currentDate: currentDate),
             commandSender: commands,
             settings: deviceSettings,
+            showsRawReading: Self.showsRawReading,
             actionHandler: deviceActionHandler
         )
+        makeCalibration = {
+            PlantDeviceUIComposer.composedCalibration(
+                calibrationLoader: calibrationLoader,
+                rawReadingLoader: PeripheralPlantDeviceRawReadingLoader(client: client, currentDate: currentDate),
+                connectionLoader: connection,
+                commandSender: commands,
+                schedule: SimulatedPeripheralClient.repeatingTimer
+            )
+        }
         devicePicker = PlantDeviceUIComposer.composedPicker(
             scanLoader: PeripheralPlantDeviceScanLoader(client: client),
             connectionLoader: connection,
@@ -219,6 +232,15 @@ final class AppGraph {
     }
 
     // MARK: - Helpers
+
+    /// The raw sensor values are a bring-up aid, so only DEBUG builds show them.
+    private static var showsRawReading: Bool {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
+    }
 
     /// Five minutes between readings. DEBUG builds accept `-PlantReadingInterval <seconds>`.
     private static var readingInterval: UInt16 {

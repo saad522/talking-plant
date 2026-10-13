@@ -65,6 +65,7 @@ struct TalkingPlantApp: App {
                     case .chat: graph.chat
                     case .device: graph.device
                     case .devicePicker: graph.devicePicker
+                    case .calibration: graph.makeCalibration()
                     }
                 }
         }
@@ -80,6 +81,7 @@ final class AppNavigation: ObservableObject {
         case chat
         case device
         case devicePicker
+        case calibration
     }
 
     @Published var path: [Route] = []
@@ -97,7 +99,8 @@ final class AppNavigation: ObservableObject {
         switch action {
         case .pairTap: path.append(.devicePicker)
         case .paired: _ = path.popLast()
-        case .modeChanged, .openSettings, .calibrationTap: break
+        case .calibrationTap: path.append(.calibration)
+        case .modeChanged, .openSettings: break
         }
     }
 

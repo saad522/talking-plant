@@ -47,4 +47,29 @@ public enum PlantDeviceUIComposer {
 
         return PlantDeviceView(store: store, viewModel: viewModel)
     }
+
+    public static func composedPicker(
+        scanLoader: PlantDeviceScanLoader,
+        connectionLoader: PlantDeviceConnectionLoader,
+        pairingLoader: PlantDevicePairingLoader,
+        actionHandler: @escaping (PlantDeviceAction) -> Void
+    ) -> PlantDevicePickerView {
+        let store = PlantDevicePickerStore()
+        let viewModel = PlantDevicePickerViewModel(
+            scanLoader: scanLoader,
+            connectionLoader: connectionLoader,
+            pairingLoader: pairingLoader,
+            actionHandler: actionHandler
+        )
+
+        viewModel.loadedCandidates = { [weak store] candidates in
+            store?.candidates = candidates
+        }
+
+        viewModel.loadedEmptyText = { [weak store] text in
+            store?.emptyText = text
+        }
+
+        return PlantDevicePickerView(store: store, viewModel: viewModel)
+    }
 }

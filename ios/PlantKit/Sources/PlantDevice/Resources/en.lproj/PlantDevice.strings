@@ -30,3 +30,9 @@
 "plant.device.forget.label" = "Forget sensor";
 "plant.device.openSettings.label" = "Open Settings";
 "plant.device.command.error" = "Couldn't reach the sensor.";
+
+"plant.device.picker.title" = "Choose a sensor";
+"plant.device.picker.empty.looking" = "Looking for your plant…";
+"plant.device.picker.empty.bluetoothOff" = "Turn on Bluetooth to find your plant.";
+"plant.device.picker.empty.bluetoothUnauthorized" = "Allow Bluetooth for Talking Plant in Settings to find your plant.";
+"plant.device.picker.empty.bluetoothUnsupported" = "Bluetooth isn't available on this device.";

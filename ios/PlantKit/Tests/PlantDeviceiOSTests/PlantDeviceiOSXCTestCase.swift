@@ -127,6 +127,28 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
     }
 
     @MainActor
+    final class ScanLoaderStub: PlantDeviceScanLoader {
+        enum Message: Equatable {
+            case start
+            case stop
+        }
+
+        private(set) var messages: [Message] = []
+        private var handlers: [(PlantDeviceCandidate) -> Void] = []
+
+        func start(update: @escaping (PlantDeviceCandidate) -> Void) {
+            messages.append(.start)
+            handlers.append(update)
+        }
+
+        func stop() { messages.append(.stop) }
+
+        func simulate(_ candidate: PlantDeviceCandidate, at index: Int = 0) {
+            handlers[index](candidate)
+        }
+    }
+
+    @MainActor
     final class DefaultsSpy: DefaultsClient {
         private var strings: [String: String] = [:]
 

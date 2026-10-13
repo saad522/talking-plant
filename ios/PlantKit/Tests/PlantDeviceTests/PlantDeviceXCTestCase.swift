@@ -227,6 +227,28 @@ class PlantDeviceXCTestCase: XCTestCase {
         func connectSaved() { messages.append(.connectSaved) }
     }
 
+    @MainActor
+    final class ScanLoaderStub: PlantDeviceScanLoader {
+        enum Message: Equatable {
+            case start
+            case stop
+        }
+
+        private(set) var messages: [Message] = []
+        private var handlers: [(PlantDeviceCandidate) -> Void] = []
+
+        func start(update: @escaping (PlantDeviceCandidate) -> Void) {
+            messages.append(.start)
+            handlers.append(update)
+        }
+
+        func stop() { messages.append(.stop) }
+
+        func simulate(_ candidate: PlantDeviceCandidate, at index: Int = 0) {
+            handlers[index](candidate)
+        }
+    }
+
     func anyDeviceInfo() -> PlantDeviceInfo {
         PlantDeviceInfo(protocolVersion: 1, firmwareMajor: 0, firmwareMinor: 1, firmwarePatch: 0, capabilities: [], intervalSeconds: 30)
     }

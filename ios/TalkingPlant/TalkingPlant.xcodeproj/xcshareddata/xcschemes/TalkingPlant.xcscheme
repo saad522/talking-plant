@@ -77,11 +77,11 @@
       <CommandLineArguments>
          <CommandLineArgument
             argument = "-PlantTestPeripheral"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-PlantReadingInterval 30"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
       </CommandLineArguments>
    </LaunchAction>

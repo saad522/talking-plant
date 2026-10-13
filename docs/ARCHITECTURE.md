@@ -42,7 +42,7 @@ ios/
     ├── Package.swift
     ├── Sources/
     │   ├── PlantShared/               # used by more than one feature
-    │   │   ├── Contract/              # PlantBluetoothContract, PlantCharacteristic
+    │   │   ├── Contract/              # PlantBluetoothContract, PlantCharacteristic, PlantReadingPacket
     │   │   ├── Client/                # PeripheralClient, PeripheralConnectionClient, SimulatedPeripheralClient,
     │   │   │                          # CoreBluetoothPeripheralClient, PlantReadingStore, SwiftDataPlantReadingStore
     │   │   ├── Domain/                # MoistureCalibration, PlantReading
@@ -415,6 +415,11 @@ private extension Array where Element == UInt8 {
 Adjust `moisturePercent(soilMillivolts:)` to the parameter type of the existing
 `MoistureCalibration`; don't change the calibration's behavior.
 
+Note (M8): the 16-byte decoding in `RemoteReading` now lives in
+`PlantShared/Contract/PlantReadingPacket`, because `PlantDevice` (raw reading, calibration
+capture) needs the same fields. The mapper uses the packet and keeps the conversion to the
+domain model; the example above shows the shape, not the current code.
+
 ### 4.5 Persistence: decorators
 
 Local storage is added by **decorating** a loader that implements the same protocol, with
@@ -423,7 +428,8 @@ conversions. Examples planned:
 
 - `LocalPlantReadingDecorator` (M3): forwards readings and stores each one in the history
   store.
-- `LocalMoistureCalibrationLoader` (M8): reads and saves calibration through `DefaultsClient`.
+- `LocalMoistureCalibrationLoader` (M8, implemented): reads and saves calibration through
+  `DefaultsClient`; an invalid or missing saved pair falls back to the placeholder.
 
 Other decorators follow the same idea: `InMemory…Decorator` for caching, `…Composite`
 for "try primary, then fall back to secondary".
@@ -1396,5 +1402,5 @@ extension String {
 | M5 | `PlantChat` / `PlantChatiOS`: Foundation Models voice, notifications, chat, template fallback |
 | M6 | `CoreBluetoothPeripheralClient` + `PeripheralConnectionClient` (PlantShared); `PlantDevice` / `PlantDeviceiOS`: connection, pairing, Device Info, commands, Settings and device picker; connection state in the Monitor header; simulated/real mode and one store file per mode in the composition root; DEBUG `PlantTestPeripheral` |
 | M7 | Firmware (unchanged) |
-| M8 | `PlantDeviceiOS` calibration screen + `LocalMoistureCalibrationLoader` |
+| M8 | `PlantDeviceiOS` calibration screen + `LocalMoistureCalibrationLoader`; `PlantReadingPacket` promoted to PlantShared; DEBUG raw-reading section and "Clear sensor history"; test peripheral soil override; firmware I2C scan; bring-up guide `docs/BRINGUP.md` |
 | M9 | `PlantCheckup` / `PlantCheckupiOS`: leaf check-up from a photo. Vision plant segmentation, deterministic color analysis (green / yellow / brown ratios, dark spots) and diagnosis rules combining the photo result with sensor history (all unit-tested), saved past check-ups. Foundation Models only phrases the result as "this might be…" with a suggestion. Later: Create ML classifier on our own labeled photos, optional pot camera (XIAO ESP32S3 Sense) |

@@ -63,5 +63,10 @@ destination turned on) that plays the sensor.
 - [ ] Keep the test peripheral app in the foreground. iOS advertises without the local name
       in the background, so the main iPhone won't find it. If it isn't found, bring the test
       app to the front (it re-advertises on its own) or relaunch it.
+- [ ] Soil override (for the calibration flow): on the test peripheral screen, tick
+      *Override soil*, then *Air 2450* or *Water 1050*, or drag the slider. Readings now
+      carry that soil value (and the soil-valid flag), so *Capture dry* / *Capture wet* in the
+      main app's Moisture calibration screen can be tried without a board. Untick it to go
+      back to the simulated value.
 
 The checklist to run is section 9 of `docs/plans/M6-bluetooth.md`.

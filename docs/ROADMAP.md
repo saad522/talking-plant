@@ -88,6 +88,10 @@ One milestone per Claude Code session. Each ends with passing tests and a short 
 - `PlantDeviceiOS` calibration screen + `LocalMoistureCalibrationLoader` (via
   `DefaultsClient`); replace placeholder calibration defaults.
 - End-to-end: real board → app → mood → voice.
+- **Status:** Part A done (plan `docs/plans/M8-bringup.md`, S1–S9): calibration screen and
+  loader, raw-reading section, test peripheral soil override, firmware I2C scan, and
+  `docs/BRINGUP.md`. Waiting for the board: bring-up day, then S10 applies the measured
+  values and closes the open M6/M7 decisions.
 
 ## M9 — Leaf check-up
 - `PlantCheckup` / `PlantCheckupiOS` slices.

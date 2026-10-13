@@ -37,7 +37,7 @@ talking-plant/
         ├── Package.swift
         ├── Sources/
         │   ├── PlantShared/                    # used by more than one feature
-        │   │   ├── Contract/                   # PlantBluetoothContract, PlantCharacteristic
+        │   │   ├── Contract/                   # PlantBluetoothContract, PlantCharacteristic, PlantReadingPacket
         │   │   ├── Client/                     # PeripheralClient + implementations, PlantReadingStore
         │   │   ├── Domain/                     # MoistureCalibration, PlantReading
         │   │   └── Presentation/               # PlantReadingFormatter

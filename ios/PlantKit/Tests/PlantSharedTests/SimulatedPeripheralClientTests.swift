@@ -42,6 +42,39 @@ final class SimulatedPeripheralClientTests: PlantSharedXCTestCase {
         }
     }
 
+    func test_subscribeState_deliversConnectedImmediately() {
+        let (sut, _) = makeSUT()
+        var states: [PeripheralConnectionState] = []
+
+        sut.subscribe(state: { states.append($0) })
+
+        XCTAssertEqual(states, [.connected])
+    }
+
+    func test_scan_deliversNothing() {
+        let (sut, _) = makeSUT()
+        var advertisements: [PeripheralAdvertisement] = []
+
+        sut.scan { advertisements.append($0) }
+        sut.stopScan()
+
+        XCTAssertEqual(advertisements, [])
+    }
+
+    func test_connectAndDisconnect_doNotDisturbReadings() {
+        let (sut, schedule) = makeSUT()
+        let packets = subscribe(sut)
+        var states: [PeripheralConnectionState] = []
+        sut.subscribe(state: { states.append($0) })
+
+        sut.connect(to: UUID(), name: "TalkingPlant-1234")
+        sut.disconnect()
+        schedule.tick()
+
+        XCTAssertEqual(packets().map(\.sequence), [0, 1])
+        XCTAssertEqual(states, [.connected])
+    }
+
     func test_subscribe_deliversCurrentPacketImmediately() {
         let (sut, _) = makeSUT()
 

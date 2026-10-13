@@ -6,6 +6,11 @@ public enum PlantCharacteristic: Equatable, Sendable, CaseIterable {
     case deviceInfo
     case command
 
+    public init?(uuid: UUID) {
+        guard let match = Self.allCases.first(where: { $0.uuid == uuid }) else { return nil }
+        self = match
+    }
+
     public var uuid: UUID {
         switch self {
         case .readings: UUID(uuidString: "7697A002-5F72-4B79-B7A4-6632379F2F13")!

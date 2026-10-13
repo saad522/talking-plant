@@ -6,7 +6,7 @@ import Foundation
 /// `currentDate` is the simulated clock; inject it as the loaders' `currentDate` in simulated mode.
 /// With `defaults`, the soil value is saved on every change and restored on the next launch.
 @MainActor
-public final class SimulatedPeripheralClient: PeripheralClient {
+public final class SimulatedPeripheralClient: PeripheralClient, PeripheralConnectionClient {
     /// Calls `tick` every `interval` seconds until `tick` returns `false`.
     public typealias Schedule = @MainActor (_ interval: TimeInterval, _ tick: @escaping @MainActor @Sendable () -> Bool) -> Void
 
@@ -86,6 +86,19 @@ public final class SimulatedPeripheralClient: PeripheralClient {
     public func write(_ data: Data, to characteristic: PlantCharacteristic, completion: @escaping (PeripheralClient.WriteResult) -> Void) {
         completion(Error.unsupportedCharacteristic)
     }
+
+    /// Always connected, never finds anything to pair with.
+    public func subscribe(state update: @escaping (PeripheralConnectionState) -> Void) {
+        update(.connected)
+    }
+
+    public func scan(update: @escaping (PeripheralAdvertisement) -> Void) {}
+
+    public func stopScan() {}
+
+    public func connect(to identifier: UUID, name: String) {}
+
+    public func disconnect() {}
 
     /// Resets the soil to wet. The next reading reflects it.
     public func water() {

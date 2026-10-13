@@ -32,7 +32,9 @@ Sent on every reading (notify) and available on read (latest reading).
 | 6 | 2 | int16 | temperatureCenti | °C × 100 | 2350 = 23.50 °C |
 | 8 | 2 | uint16 | humidityCenti | %RH × 100 | 5520 = 55.20 % |
 | 10 | 2 | uint16 | batteryMillivolts | mV | 0 when not measured (battery sense is a V2 feature) |
-| 12 | 4 | uint32 | sequence | count | +1 per reading; resets to 0 on reboot |
+| 12 | 4 | uint32 | sequence | count | +1 per reading; the first reading after boot is 0 |
+
+Humidity is only clamped to the uint16 range (no clamp to 0–100 %).
 
 A field is only meaningful when its flag bit is set. When a sensor fails to read, the
 firmware clears its flag and sends 0 for that field.
@@ -57,7 +59,7 @@ lux 1000, temperature 23.50 °C, humidity 55.20 %, battery not measured, sequenc
 | 3 | 1 | uint8 | firmwarePatch | |
 | 4 | 1 | uint8 | capabilities | bit0 pump, bit1 display, bit2 batterySense (all 0 in V1) |
 | 5 | 1 | uint8 | reserved | 0 |
-| 6 | 2 | uint16 | intervalSeconds | Current reading interval |
+| 6 | 2 | uint16 | intervalSeconds | Current reading interval. Not kept across reboots: the board starts at its default and the app re-sends SET_INTERVAL on connect |
 
 ## Command characteristic
 
@@ -69,6 +71,9 @@ First byte is the opcode. Unknown opcodes are ignored by the firmware.
 | `0x02` | SET_INTERVAL | uint16 seconds | Firmware clamps to 10–3600 |
 | `0x10` | PUMP_RUN | uint16 milliseconds | V2. Firmware clamps to max 10000 ms; ignored without pump capability |
 | `0x11` | PUMP_STOP | none | V2. Stops the pump immediately |
+
+A command write shorter than its opcode needs (for example SET_INTERVAL with fewer than
+2 payload bytes) is ignored. Bytes after the expected payload are ignored.
 
 The firmware enforces the pump time limit itself, so a bug in the app can never flood
 the plant.

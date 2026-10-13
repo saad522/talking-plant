@@ -78,6 +78,8 @@ One milestone per Claude Code session. Each ends with passing tests and a short 
 - `firmware/talking_plant/talking_plant.ino` implementing `BLE_CONTRACT.md` exactly
   (NimBLE-Arduino 2.x, BH1750, Adafruit AHTX0), Mode A, Serial logging.
 - **Done when:** compiles with arduino-cli. Can be done before the parts arrive.
+- **Status:** sketch (sensors, schedule, BLE service, commands, logs) compiles and the host
+  tests pass (plan `docs/plans/M7-firmware.md`, S1–S5). Not yet run on a board; see M8.
 
 ## M8 — Hardware bring-up (when parts arrive)
 - `PlantDeviceiOS` calibration screen + `LocalMoistureCalibrationLoader` (via

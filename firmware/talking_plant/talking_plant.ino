@@ -1,7 +1,11 @@
 #include <Adafruit_AHTX0.h>
 #include <BH1750.h>
+#include <NimBLEDevice.h>
 #include <Wire.h>
 
+#include <atomic>
+
+#include "src/PlantCommandParser.h"
 #include "src/PlantContract.h"
 #include "src/PlantDeviceInfoEncoder.h"
 #include "src/PlantReadingEncoder.h"
@@ -27,6 +31,65 @@ bool envReady = false;
 
 plant::ReadingSchedule schedule(kDefaultIntervalSeconds);
 plant::ReadingSequence sequence;
+
+NimBLECharacteristic* readings = nullptr;
+NimBLECharacteristic* deviceInfo = nullptr;
+
+// Set from the NimBLE host task, handled in loop(). Callbacks never touch I2C or the ADC.
+std::atomic<bool> readNowRequested{false};
+std::atomic<uint16_t> requestedInterval{0};  // 0 = none
+
+void publishDeviceInfo() {
+  uint8_t info[plant::kDeviceInfoLength];
+  plant::encodeDeviceInfo(kFirmwareVersion, schedule.intervalSeconds(), info);
+  deviceInfo->setValue(info, sizeof(info));
+}
+
+class ServerCallbacks : public NimBLEServerCallbacks {
+  void onConnect(NimBLEServer*, NimBLEConnInfo& connInfo) override {
+    Serial.printf("[ble] connected %s\n", connInfo.getAddress().toString().c_str());
+  }
+  void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int reason) override {
+    Serial.printf("[ble] disconnected, reason 0x%02X, advertising\n", reason);
+  }
+};
+
+class ReadingsCallbacks : public NimBLECharacteristicCallbacks {
+  void onSubscribe(NimBLECharacteristic*, NimBLEConnInfo&, uint16_t subValue) override {
+    Serial.printf("[ble] readings %s\n", subValue & 1 ? "subscribed" : "unsubscribed");
+  }
+};
+
+class CommandCallbacks : public NimBLECharacteristicCallbacks {
+  void onWrite(NimBLECharacteristic* characteristic, NimBLEConnInfo&) override {
+    const NimBLEAttValue value = characteristic->getValue();
+    const plant::Command command = plant::parseCommand(value.data(), value.size());
+    switch (command.type) {
+      case plant::CommandType::ReadNow:
+        Serial.println("[cmd] READ_NOW");
+        readNowRequested = true;
+        break;
+      case plant::CommandType::SetInterval:
+        Serial.printf("[cmd] SET_INTERVAL %u s\n", command.value);
+        requestedInterval = command.value;
+        break;
+      case plant::CommandType::PumpRun:
+        Serial.printf("[cmd] PUMP_RUN %u ms ignored, no pump\n", command.value);
+        break;
+      case plant::CommandType::PumpStop:
+        Serial.println("[cmd] PUMP_STOP ignored, no pump");
+        break;
+      case plant::CommandType::Ignored:
+        if (value.size() > 0) Serial.printf("[cmd] ignored %02X\n", value.data()[0]);
+        else Serial.println("[cmd] ignored (empty)");
+        break;
+    }
+  }
+};
+
+ServerCallbacks serverCallbacks;
+ReadingsCallbacks readingsCallbacks;
+CommandCallbacks commandCallbacks;
 
 bool probe(uint8_t address) {
   Wire.beginTransmission(address);
@@ -66,6 +129,8 @@ void takeReading() {
   const uint32_t number = sequence.take();
   uint8_t packet[plant::kReadingLength];
   plant::encodeReading(sample, number, packet);
+  readings->setValue(packet, sizeof(packet));  // before notify, so a read returns the latest
+  readings->notify();
 
   Serial.printf("[read] #%lu soil ", static_cast<unsigned long>(number));
   if (sample.soilValid) Serial.printf("%lu mV", static_cast<unsigned long>(sample.soilMillivolts));
@@ -101,12 +166,49 @@ void setup() {
   envReady = aht.begin();
   delay(200);  // the BH1750's first measurement needs to exist
 
-  Serial.printf("[boot] talking_plant fw %u.%u.%u interval %u s\n", kFirmwareVersion.major,
-                kFirmwareVersion.minor, kFirmwareVersion.patch, schedule.intervalSeconds());
+  NimBLEDevice::init("");
+  char name[plant::kLocalNameSize];
+  plant::makeLocalName(NimBLEDevice::getAddress().getVal(), name);
+  NimBLEDevice::setDeviceName(name);  // GAP name matches the advertised one
+
+  NimBLEServer* server = NimBLEDevice::createServer();
+  server->setCallbacks(&serverCallbacks);
+  server->advertiseOnDisconnect(true);
+
+  NimBLEService* service = server->createService(plant::kServiceUUID);
+  readings = service->createCharacteristic(plant::kReadingsUUID,
+                                           NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+  readings->setCallbacks(&readingsCallbacks);
+  deviceInfo = service->createCharacteristic(plant::kDeviceInfoUUID, NIMBLE_PROPERTY::READ);
+  NimBLECharacteristic* command =
+      service->createCharacteristic(plant::kCommandUUID, NIMBLE_PROPERTY::WRITE);
+  command->setCallbacks(&commandCallbacks);
+  publishDeviceInfo();
+  service->start();
+
+  takeReading();  // sequence 0, so a read never returns an empty value
+
+  // Scan response first: the name goes there because flags + UUID + name exceed 31 bytes.
+  NimBLEAdvertising* advertising = NimBLEDevice::getAdvertising();
+  advertising->enableScanResponse(true);
+  advertising->setName(name);
+  advertising->addServiceUUID(plant::kServiceUUID);
+  advertising->start();
+
+  Serial.printf("[boot] %s fw %u.%u.%u addr %s interval %u s\n", name, kFirmwareVersion.major,
+                kFirmwareVersion.minor, kFirmwareVersion.patch,
+                NimBLEDevice::getAddress().toString().c_str(), schedule.intervalSeconds());
 }
 
 void loop() {
-  if (schedule.isDue(millis())) {
+  const uint16_t interval = requestedInterval.exchange(0);
+  if (interval != 0) {
+    const uint16_t previous = schedule.intervalSeconds();
+    schedule.setIntervalSeconds(interval);
+    publishDeviceInfo();
+    Serial.printf("[cmd] interval %u s -> %u s\n", previous, schedule.intervalSeconds());
+  }
+  if (readNowRequested.exchange(false) || schedule.isDue(millis())) {
     takeReading();
   }
   delay(10);

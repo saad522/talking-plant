@@ -75,4 +75,8 @@ TEST(test_parseCommand_ignoresTrailingBytes) {
     const auto command = parse(0x02, 0x2C, 0x01, 0xAA);
     CHECK(command.type == plant::CommandType::SetInterval);
     CHECK_EQ(command.value, 300);
+    const auto pumpRun = parse(0x10, 0x10, 0x27, 0xAA, 0xBB);
+    CHECK(pumpRun.type == plant::CommandType::PumpRun);
+    CHECK_EQ(pumpRun.value, 10000);
+    CHECK(parse(0x11, 0xAA).type == plant::CommandType::PumpStop);
 }

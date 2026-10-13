@@ -80,13 +80,21 @@ final class PlantChatUIITests: PlantChatiOSXCTestCase {
         XCTAssertEqual(sut.notice, "Sprout's voice needs Apple Intelligence. Replies are simple for now.")
     }
 
-    func test_personalityMenu_listsEveryPersonalityWithSavedOneChecked() {
+    func test_personalityMenu_listsAvailablePersonalitiesWithSavedOneChecked() {
+        let (sut, _, _, _, _) = makeSUT(savedPersonality: .chillSurfer)
+
+        sut.simulateAppear()
+
+        XCTAssertEqual(sut.personalityOptions.map(\.label), ["Cheerful", "Chill surfer", "Polite butler"])
+        XCTAssertEqual(sut.personalityOptions.filter(\.isSelected).map(\.label), ["Chill surfer"])
+    }
+
+    func test_personalityMenu_checksCheerfulWhenSavedPersonalityIsHidden() {
         let (sut, _, _, _, _) = makeSUT(savedPersonality: .dramatic)
 
         sut.simulateAppear()
 
-        XCTAssertEqual(sut.personalityOptions.map(\.label), ["Cheerful", "Dramatic", "Grumpy grandma", "Chill surfer", "Polite butler"])
-        XCTAssertEqual(sut.personalityOptions.filter(\.isSelected).map(\.label), ["Dramatic"])
+        XCTAssertEqual(sut.personalityOptions.filter(\.isSelected).map(\.label), ["Cheerful"])
     }
 
     func test_personalityMenu_showsSpeakRepliesOnByDefaultAndTogglingSavesIt() {

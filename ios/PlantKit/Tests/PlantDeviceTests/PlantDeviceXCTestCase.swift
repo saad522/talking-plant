@@ -87,8 +87,14 @@ class PlantDeviceXCTestCase: XCTestCase {
             stateSubscriptions[index](state)
         }
 
+        private var scanHandlers: [(PeripheralAdvertisement) -> Void] = []
         func scan(update: @escaping (PeripheralAdvertisement) -> Void) {
             messages.append(.scan)
+            scanHandlers.append(update)
+        }
+
+        func simulateAdvertisement(_ advertisement: PeripheralAdvertisement, at index: Int = 0) {
+            scanHandlers[index](advertisement)
         }
 
         func stopScan() {
@@ -118,5 +124,87 @@ class PlantDeviceXCTestCase: XCTestCase {
         func fire(at index: Int = 0) -> Bool {
             ticks[index]()
         }
+    }
+
+    @MainActor
+    final class DefaultsSpy: DefaultsClient {
+        enum Message: Equatable {
+            case setString(String, forKey: String)
+            case retrieveString(forKey: String)
+        }
+
+        private(set) var messages: [Message] = []
+        private var strings: [String: String] = [:]
+
+        func stub(_ value: String, forKey key: String) {
+            strings[key] = value
+        }
+
+        func set(_ value: String, forKey key: String) {
+            messages.append(.setString(value, forKey: key))
+            strings[key] = value
+        }
+
+        func retrieveString(forKey key: String) -> String? {
+            messages.append(.retrieveString(forKey: key))
+            return strings[key]
+        }
+
+        func set(_ value: Double, forKey key: String) {}
+        func retrieve(forKey key: String) -> Double? { nil }
+        func set(_ value: Bool, forKey key: String) {}
+        func retrieveBool(forKey key: String) -> Bool? { nil }
+    }
+
+    @MainActor
+    final class ConnectionLoaderStub: PlantDeviceConnectionLoader {
+        private var subscriptions: [(PlantConnection) -> Void] = []
+        func subscribe(update: @escaping (PlantConnection) -> Void) {
+            subscriptions.append(update)
+        }
+
+        func simulate(_ connection: PlantConnection, at index: Int = 0) {
+            subscriptions[index](connection)
+        }
+    }
+
+    @MainActor
+    final class InfoLoaderStub: PlantDeviceInfoLoader {
+        private(set) var loadCount = 0
+        private var completions: [(PlantDeviceInfoLoader.Result) -> Void] = []
+        func load(completion: @escaping (PlantDeviceInfoLoader.Result) -> Void) {
+            loadCount += 1
+            completions.append(completion)
+        }
+
+        func completeLoad(with info: PlantDeviceInfo, at index: Int = 0) {
+            completions[index](.success(info))
+        }
+
+        func completeLoad(with error: Error, at index: Int = 0) {
+            completions[index](.failure(error))
+        }
+    }
+
+    @MainActor
+    final class CommandSenderStub: PlantDeviceCommandSender {
+        private(set) var commands: [PlantDeviceCommand] = []
+        private var completions: [(PlantDeviceCommandSender.Result) -> Void] = []
+        func send(_ command: PlantDeviceCommand, completion: @escaping (PlantDeviceCommandSender.Result) -> Void) {
+            commands.append(command)
+            completions.append(completion)
+        }
+
+        func completeSend(with error: Error?, at index: Int = 0) {
+            completions[index](error)
+        }
+    }
+
+    func anyDeviceInfo() -> PlantDeviceInfo {
+        PlantDeviceInfo(protocolVersion: 1, firmwareMajor: 0, firmwareMinor: 1, firmwarePatch: 0, capabilities: [], intervalSeconds: 30)
+    }
+
+    func anyIdentifier() -> UUID {
+        UUID(uuidString: "11111111-2222-3333-4444-555555555555")!
     }
 }

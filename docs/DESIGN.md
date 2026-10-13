@@ -239,3 +239,15 @@ Opened by "Talk to <name>" on the home screen.
 - **Bottom (M5):** a text field with a round send button.
 - **Bottom (M5b):** the voice controls replace the text field: a 56 pt keyboard button, an
   84 pt mic button (`primary`, 6 pt `#CFE6C8` border), and a 56 pt end button (`ink`).
+  - **Mic states:** idle and speaking show `mic.fill` (a tap while speaking interrupts);
+    listening shows `stop.fill` (a tap stops and sends); thinking shows `ellipsis` and is
+    disabled.
+  - **Live transcript bubble:** while listening, a "your" bubble at 60% opacity is last in
+    the list. It reads "Listening…" until the first words arrive, and is replaced by the
+    real bubble when the turn is sent.
+  - **Keyboard mode:** the M5 text field with a round send button, plus a 48 pt round mic
+    button on its left that returns to voice mode.
+  - **Microphone notice:** a small `card` row under the Sprout, in the same place as the
+    unavailable notice, with an "Open Settings" text button when permission is denied. It
+    clears on the next mic tap.
+  - **Speak replies:** a toggle under the personalities in the sliders menu.

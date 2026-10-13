@@ -87,7 +87,7 @@ Later features follow the same pattern: `PlantChat` / `PlantChatiOS`, `PlantDevi
 | Target | May import |
 |---|---|
 | `PlantShared` | Foundation (and CoreBluetooth / SwiftData inside `Client/` only) |
-| `PlantX` (Feature) | Foundation, `PlantShared` (and a system framework such as FoundationModels or UserNotifications inside its own `Client/` folder only) |
+| `PlantX` (Feature) | Foundation, `PlantShared` (and a system framework such as FoundationModels, UserNotifications, Speech or AVFoundation inside its own `Client/` folder only) |
 | `PlantXiOS` | SwiftUI, `PlantX`, `PlantShared` |
 | `PlantXTests` | XCTest, `PlantX`, `PlantShared` |
 | `PlantXiOSTests` | XCTest, ViewInspector, `PlantXiOS`, `PlantX`, `PlantShared` |

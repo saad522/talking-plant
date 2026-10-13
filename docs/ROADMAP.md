@@ -53,6 +53,16 @@ One milestone per Claude Code session. Each ends with passing tests and a short 
 - Chat screen; a tool lets the model fetch history summaries.
 - Template fallback when the model is unavailable.
 - **Done when:** works on a real iPhone, and the fallback works in the simulator.
+- **Status notes:**
+  - The grumpy grandma and dramatic personalities are hidden for now.
+  - Chat quality guards were added: reply guard, status intent, mood check, repetition.
+
+## M5b — Voice chat
+- Part of `PlantChat` / `PlantChatiOS`. Plan: `docs/plans/M5b-voice.md`.
+- Tap the mic to talk (on-device speech recognition, auto-stop on silence); voice-in
+  replies are spoken back, with a "Speak replies" mute.
+- Keyboard mode, microphone notices, and the template fallback still work.
+- **Done when:** talking and spoken replies work on a real iPhone.
 
 ## M6 — Real Bluetooth client
 - `CoreBluetoothPeripheralClient` in PlantShared: scan by service UUID, connect,
@@ -94,4 +104,4 @@ One milestone per Claude Code session. Each ends with passing tests and a short 
 
 ## Later
 Low-power Mode B, V2 parts (pump, display, battery sense), species identification with
-the camera, voice chat, widgets, multiple plants, enclosure.
+the camera, widgets, multiple plants, enclosure.

@@ -14,7 +14,12 @@ public struct PlantMonitorView<Face: View>: View {
     public var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: PlantMonitorSize.screenSpacing) {
-                PlantMonitorHeaderView(title: store.title, subtitle: store.subtitle)
+                PlantMonitorHeaderView(
+                    title: store.title,
+                    subtitle: store.subtitle,
+                    settingsLabel: viewModel.settingsLabel,
+                    settingsAction: viewModel.settingsTap
+                )
                 PlantMonitorSceneView(store: store)
                 actions
             }

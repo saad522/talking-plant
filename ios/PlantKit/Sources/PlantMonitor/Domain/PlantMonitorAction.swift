@@ -5,4 +5,5 @@ public enum PlantMonitorAction: Equatable {
     case talkTap
     case waterTap
     case dismissed
+    case settingsTap
 }

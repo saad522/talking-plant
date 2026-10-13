@@ -11,12 +11,14 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
-    ) -> (sut: PlantMonitorView<FaceStub>, loader: LoaderStub, healthLoader: HealthLoaderStub) {
+    ) -> (sut: PlantMonitorView<FaceStub>, loader: LoaderStub, healthLoader: HealthLoaderStub, connectionLoader: ConnectionLoaderStub) {
         let loader = LoaderStub()
         let healthLoader = HealthLoaderStub()
+        let connectionLoader = ConnectionLoaderStub()
         let sut = PlantMonitorUIComposer.composed(
             with: loader,
             healthLoader: healthLoader,
+            connectionLoader: connectionLoader,
             speechLoader: speechLoader,
             plantName: "Sprout",
             room: "Living room",
@@ -25,8 +27,9 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         )
         trackMemoryLeak(loader, file: file, line: line)
         trackMemoryLeak(healthLoader, file: file, line: line)
+        trackMemoryLeak(connectionLoader, file: file, line: line)
         trackMemoryLeak(speechLoader, file: file, line: line)
-        return (sut, loader, healthLoader)
+        return (sut, loader, healthLoader, connectionLoader)
     }
 
     func anyNSError() -> NSError {
@@ -106,6 +109,25 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
 
         func simulateUpdate(at index: Int = 0) {
             subscriptions[index]()
+        }
+    }
+
+    @MainActor
+    final class ConnectionLoaderStub: PlantConnectionLoader {
+        enum Message: Equatable {
+            case subscribeConnection
+        }
+
+        var messages: [Message] = []
+
+        private var subscriptions: [(PlantConnection) -> Void] = []
+        func subscribe(update: @escaping (PlantConnection) -> Void) {
+            messages.append(.subscribeConnection)
+            subscriptions.append(update)
+        }
+
+        func complete(with connection: PlantConnection, at index: Int = 0) {
+            subscriptions[index](connection)
         }
     }
 

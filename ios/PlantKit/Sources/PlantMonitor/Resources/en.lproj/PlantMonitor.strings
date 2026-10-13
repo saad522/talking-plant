@@ -24,7 +24,16 @@
 "plant.monitor.sleeping.label" = "Sleeping";
 "plant.monitor.talk.label" = "Talk to %@";
 "plant.monitor.water.label" = "Water";
+"plant.monitor.settings.label" = "Settings";
 "plant.monitor.header.subtitle" = "%@ · %@";
+
+"plant.monitor.connection.notPaired.label" = "No sensor paired";
+"plant.monitor.connection.connecting.label" = "Connecting…";
+"plant.monitor.connection.offline.label" = "Sensor offline";
+"plant.monitor.connection.bluetoothOff.label" = "Bluetooth is off";
+"plant.monitor.connection.bluetoothUnauthorized.label" = "Bluetooth not allowed";
+"plant.monitor.connection.bluetoothUnsupported.label" = "Bluetooth isn't available on this device";
+"plant.monitor.connection.incompatible.label" = "Sensor not compatible";
 
 "plant.monitor.mood.happy.speech" = "Feeling great today!";
 "plant.monitor.mood.thirsty.speech" = "I could use a drink soon.";

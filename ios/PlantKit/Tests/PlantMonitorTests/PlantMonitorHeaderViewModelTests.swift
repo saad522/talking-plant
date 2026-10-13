@@ -27,4 +27,42 @@ final class PlantMonitorHeaderViewModelTests: PlantMonitorXCTestCase {
 
         XCTAssertEqual(sut.subtitle, "Living room · Sleeping")
     }
+
+    func test_init_deliversMoodWhenConnectedOrUnknown() {
+        [nil, PlantConnection.connected].forEach { connection in
+            let sut = PlantMonitorHeaderViewModel(name: "Sprout", room: "Living room", mood: .happy, connection: connection)
+
+            XCTAssertEqual(sut.subtitle, "Living room · Happy", "\(String(describing: connection))")
+        }
+    }
+
+    func test_init_deliversConnectionLabelInsteadOfMood() {
+        let expected: [(PlantConnection, String)] = [
+            (.notPaired, "No sensor paired"),
+            (.connecting, "Connecting…"),
+            (.offline, "Sensor offline"),
+            (.bluetoothOff, "Bluetooth is off"),
+            (.bluetoothUnauthorized, "Bluetooth not allowed"),
+            (.bluetoothUnsupported, "Bluetooth isn't available on this device"),
+            (.incompatible, "Sensor not compatible"),
+        ]
+
+        expected.forEach { connection, label in
+            let sut = PlantMonitorHeaderViewModel(name: "Sprout", room: "Living room", mood: .happy, connection: connection)
+
+            XCTAssertEqual(sut.subtitle, "Living room · \(label)", "\(connection)")
+        }
+    }
+
+    func test_init_deliversConnectionLabelWithoutMood() {
+        let sut = PlantMonitorHeaderViewModel(name: "Sprout", room: "Living room", mood: nil, connection: .connecting)
+
+        XCTAssertEqual(sut.subtitle, "Living room · Connecting…")
+    }
+
+    func test_init_deliversConnectionLabelInsteadOfSleeping() {
+        let sut = PlantMonitorHeaderViewModel(name: "Sprout", room: "Living room", mood: .happy, isSleeping: true, connection: .offline)
+
+        XCTAssertEqual(sut.subtitle, "Living room · Sensor offline")
+    }
 }

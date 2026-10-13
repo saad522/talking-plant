@@ -118,6 +118,13 @@ final class PlantMonitorSceneViewModelTests: PlantMonitorXCTestCase {
         XCTAssertEqual(sut.header(name: "Sprout", room: "Living room").subtitle, "Living room · Sleeping")
     }
 
+    func test_header_deliversConnectionSubtitle() {
+        let sut = PlantMonitorSceneViewModel(reading: makeReading(), mood: .happy, connection: .connecting)
+
+        XCTAssertEqual(sut.connection, .connecting)
+        XCTAssertEqual(sut.header(name: "Sprout", room: "Living room").subtitle, "Living room · Connecting…")
+    }
+
     func test_sleepingFaceMood_isTooDark_whichPlantFaceDrawsAsAsleep() {
         // PlantFaceTests pins `.tooDark` to the asleep state. PlantMonitor can't import PlantFace.
         XCTAssertEqual(PlantMonitorSceneViewModel.sleepingFaceMood, .tooDark)

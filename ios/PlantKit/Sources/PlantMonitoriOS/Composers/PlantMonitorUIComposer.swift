@@ -7,6 +7,7 @@ public enum PlantMonitorUIComposer {
     public static func composed<Face: View>(
         with loader: PlantReadingLoader,
         healthLoader: PlantHealthLoader,
+        connectionLoader: PlantConnectionLoader,
         speechLoader: PlantSpeechLoader,
         plantName: String,
         room: String,
@@ -17,6 +18,7 @@ public enum PlantMonitorUIComposer {
         let viewModel = PlantMonitorViewModel(
             loader: loader,
             healthLoader: healthLoader,
+            connectionLoader: connectionLoader,
             speechLoader: speechLoader,
             plantName: plantName,
             actionHandler: actionHandler
@@ -33,8 +35,8 @@ public enum PlantMonitorUIComposer {
 
         viewModel.loadedScene = { [weak store, weak viewModel] scene in
             store?.palette = palette(for: scene.scene)
+            store?.subtitle = scene.header(name: plantName, room: room).subtitle
             if let faceMood = scene.faceMood {
-                store?.subtitle = scene.header(name: plantName, room: room).subtitle
                 store?.face = face(faceMood)
             }
             store?.window = PlantMonitorWindowView(celestial: scene.scene == .night ? .moon : .sun)

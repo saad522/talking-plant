@@ -16,6 +16,7 @@ public final class PlantMonitorSceneViewModel {
 
     public let reading: PlantReading?
     public let mood: PlantMood?
+    public let connection: PlantConnection?
     public let scene: PlantMonitorScene
     /// A happy plant at night sleeps. Any other mood stays awake to show itself.
     public let isSleeping: Bool
@@ -26,9 +27,10 @@ public final class PlantMonitorSceneViewModel {
     /// The chips that get the warning style. They follow the mood, not the scene.
     public let warnings: [PlantSensorKind]
 
-    public init(reading: PlantReading?, mood: PlantMood?) {
+    public init(reading: PlantReading?, mood: PlantMood?, connection: PlantConnection? = nil) {
         self.reading = reading
         self.mood = mood
+        self.connection = connection
         let isDark = (reading?.lux.map { $0 < Self.nightLux } ?? false) || mood == .offline
         let isThirsty = mood == .thirsty || mood == .veryThirsty
         self.isWaterPrimary = isThirsty
@@ -52,6 +54,6 @@ public final class PlantMonitorSceneViewModel {
     }
 
     public func header(name: String, room: String) -> PlantMonitorHeaderViewModel {
-        PlantMonitorHeaderViewModel(name: name, room: room, mood: mood, isSleeping: isSleeping)
+        PlantMonitorHeaderViewModel(name: name, room: room, mood: mood, isSleeping: isSleeping, connection: connection)
     }
 }

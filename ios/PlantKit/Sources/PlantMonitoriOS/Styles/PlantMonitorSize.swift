@@ -4,6 +4,9 @@ import SwiftUI
 enum PlantMonitorSize {
     static let screenSpacing: CGFloat = 16
     static let headerPadding: CGFloat = 20
+    static let headerSpacing: CGFloat = 12
+    /// DESIGN.md section 4: a 44 pt round settings button.
+    static let settingsButton: CGFloat = 44
     static let actionsPadding: CGFloat = 20
     static let actionsSpacing: CGFloat = 10
 

@@ -50,6 +50,84 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         XCTAssertEqual(received, [anyNSError()])
     }
 
+    func test_init_doesNotMessageConnectionLoader() {
+        let connectionLoader = ConnectionLoaderStub()
+        _ = makeSUTWithSpeech(connectionLoader: connectionLoader)
+
+        XCTAssertEqual(connectionLoader.messages, [])
+    }
+
+    func test_appear_subscribesToConnectionOnce() {
+        let connectionLoader = ConnectionLoaderStub()
+        let (sut, _, _, _) = makeSUTWithSpeech(connectionLoader: connectionLoader)
+
+        sut.appear()
+        sut.appear()
+
+        XCTAssertEqual(connectionLoader.messages, [.subscribeConnection])
+    }
+
+    func test_appear_deliversSceneWithLatestConnection() {
+        let connectionLoader = ConnectionLoaderStub()
+        let (sut, _, _, _) = makeSUTWithSpeech(connectionLoader: connectionLoader)
+        var received: [PlantConnection?] = []
+        sut.loadedScene = { received.append($0.connection) }
+
+        sut.appear()
+        connectionLoader.complete(with: .connecting)
+        connectionLoader.complete(with: .connected)
+
+        XCTAssertEqual(received, [.connecting, .connected])
+    }
+
+    func test_connectionUpdate_keepsReadingAndMood() {
+        let connectionLoader = ConnectionLoaderStub()
+        let (sut, loader, healthLoader, _) = makeSUTWithSpeech(connectionLoader: connectionLoader)
+        let reading = makeReading()
+        var scenes: [PlantMonitorSceneViewModel] = []
+        sut.loadedScene = { scenes.append($0) }
+
+        sut.appear()
+        loader.completeSubscription(with: reading)
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        connectionLoader.complete(with: .offline)
+
+        XCTAssertEqual(scenes.last?.reading, reading)
+        XCTAssertEqual(scenes.last?.mood, .thirsty)
+        XCTAssertEqual(scenes.last?.connection, .offline)
+    }
+
+    func test_connectionUpdate_doesNotRequestSpeechAgain() {
+        let connectionLoader = ConnectionLoaderStub()
+        let (sut, _, healthLoader, speechLoader) = makeSUTWithSpeech(connectionLoader: connectionLoader)
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        connectionLoader.complete(with: .offline)
+
+        XCTAssertEqual(speechLoader.messages.count, 1)
+    }
+
+    func test_appear_doesNotDeliverConnectionAfterSUTIsReleased() {
+        let connectionLoader = ConnectionLoaderStub()
+        var sut: PlantMonitorViewModel? = PlantMonitorViewModel(
+            loader: LoaderStub(),
+            healthLoader: HealthLoaderStub(),
+            connectionLoader: connectionLoader,
+            speechLoader: SpeechLoaderStub(),
+            plantName: "Sprout",
+            actionHandler: { _ in }
+        )
+        var received: [PlantConnection?] = []
+        sut?.loadedScene = { received.append($0.connection) }
+
+        sut?.appear()
+        sut = nil
+        connectionLoader.complete(with: .connecting)
+
+        XCTAssertEqual(received, [])
+    }
+
     func test_init_doesNotMessageHealthLoader() {
         let (_, _, healthLoader) = makeSUT()
 
@@ -122,6 +200,7 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         var sut: PlantMonitorViewModel? = PlantMonitorViewModel(
             loader: LoaderStub(),
             healthLoader: healthLoader,
+            connectionLoader: ConnectionLoaderStub(),
             speechLoader: SpeechLoaderStub(),
             plantName: "Sprout",
             actionHandler: { _ in }
@@ -152,6 +231,21 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         sut.talkTap()
 
         XCTAssertEqual(actions, [.talkTap])
+    }
+
+    func test_settingsTap_deliversSettingsTapAction() {
+        var actions: [PlantMonitorAction] = []
+        let (sut, _, _) = makeSUT(actionHandler: { actions.append($0) })
+
+        sut.settingsTap()
+
+        XCTAssertEqual(actions, [.settingsTap])
+    }
+
+    func test_init_hasLocalisedSettingsLabel() {
+        let (sut, _, _) = makeSUT()
+
+        XCTAssertEqual(sut.settingsLabel, String.localised(key: "plant.monitor.settings.label"))
     }
 
     func test_waterTap_deliversWaterTapAction() {
@@ -226,7 +320,7 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
 
     func test_appear_doesNotDeliverAfterSUTIsReleased() {
         let loader = LoaderStub()
-        var sut: PlantMonitorViewModel? = PlantMonitorViewModel(loader: loader, healthLoader: HealthLoaderStub(), speechLoader: SpeechLoaderStub(), plantName: "Sprout", actionHandler: { _ in })
+        var sut: PlantMonitorViewModel? = PlantMonitorViewModel(loader: loader, healthLoader: HealthLoaderStub(), connectionLoader: ConnectionLoaderStub(), speechLoader: SpeechLoaderStub(), plantName: "Sprout", actionHandler: { _ in })
         var received: [PlantReading] = []
         sut?.loadedReading = { received.append($0) }
 
@@ -358,6 +452,7 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         var sut: PlantMonitorViewModel? = PlantMonitorViewModel(
             loader: LoaderStub(),
             healthLoader: healthLoader,
+            connectionLoader: ConnectionLoaderStub(),
             speechLoader: speechLoader,
             plantName: "Sprout",
             actionHandler: { _ in }
@@ -385,6 +480,7 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
     }
 
     private func makeSUTWithSpeech(
+        connectionLoader: ConnectionLoaderStub = ConnectionLoaderStub(),
         actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -395,10 +491,12 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         let sut = PlantMonitorViewModel(
             loader: loader,
             healthLoader: healthLoader,
+            connectionLoader: connectionLoader,
             speechLoader: speechLoader,
             plantName: "Sprout",
             actionHandler: actionHandler
         )
+        trackMemoryLeak(connectionLoader, file: file, line: line)
         trackMemoryLeak(loader, file: file, line: line)
         trackMemoryLeak(healthLoader, file: file, line: line)
         trackMemoryLeak(speechLoader, file: file, line: line)

@@ -6,13 +6,13 @@ import XCTest
 @MainActor
 final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     func test_init_doesNotMessageLoader() {
-        let (_, loader, _) = makeSUT()
+        let (_, loader, _, _) = makeSUT()
 
         XCTAssertEqual(loader.messages, [])
     }
 
     func test_init_displaysLoadingWithoutChipsOrError() {
-        let (sut, _, _) = makeSUT()
+        let (sut, _, _, _) = makeSUT()
 
         XCTAssertTrue(sut.isLoading)
         XCTAssertEqual(sut.renderedChips().count, 0)
@@ -20,7 +20,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_init_rendersTitleAndRoomBeforeMoodLoads() {
-        let (sut, _, _) = makeSUT()
+        let (sut, _, _, _) = makeSUT()
 
         XCTAssertEqual(sut.title, "Sprout")
         XCTAssertEqual(sut.subtitle, "Living room")
@@ -28,14 +28,61 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_init_rendersSunAndNoButtonsYet() {
-        let (sut, _, _) = makeSUT()
+        let (sut, _, _, _) = makeSUT()
 
         XCTAssertEqual(sut.celestial, .sun)
         XCTAssertEqual(sut.renderedButtons().count, 0)
     }
 
+    func test_appear_subscribesToConnectionOnce() {
+        let (sut, _, _, connectionLoader) = makeSUT()
+
+        sut.simulateAppear()
+        sut.simulateAppear()
+
+        XCTAssertEqual(connectionLoader.messages, [.subscribeConnection])
+    }
+
+    func test_connection_rendersConnectingSubtitleBeforeAnyReading() {
+        let (sut, _, _, connectionLoader) = makeSUT()
+
+        sut.simulateAppear()
+        connectionLoader.complete(with: .connecting)
+
+        XCTAssertEqual(sut.subtitle, "Living room · Connecting…")
+        XCTAssertTrue(sut.isLoading)
+    }
+
+    func test_connection_rendersConnectionInsteadOfMood() {
+        let (sut, loader, healthLoader, connectionLoader) = makeSUT()
+
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading())
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        connectionLoader.complete(with: .offline)
+        XCTAssertEqual(sut.subtitle, "Living room · Sensor offline")
+
+        connectionLoader.complete(with: .connected)
+        XCTAssertEqual(sut.subtitle, "Living room · Thirsty")
+    }
+
+    func test_settingsButton_deliversSettingsTapAction() {
+        var invokedActions: [PlantMonitorAction] = []
+        let (sut, _, _, _) = makeSUT(actionHandler: { invokedActions.append($0) })
+
+        sut.simulateTapOnSettings()
+
+        XCTAssertEqual(invokedActions, [.settingsTap])
+    }
+
+    func test_settingsButton_hasLocalisedAccessibilityLabel() {
+        let (sut, _, _, _) = makeSUT()
+
+        XCTAssertEqual(sut.settingsLabel, String.localised(key: "plant.monitor.settings.label"))
+    }
+
     func test_appear_subscribesToReadingsOnce() {
-        let (sut, loader, _) = makeSUT()
+        let (sut, loader, _, _) = makeSUT()
 
         sut.simulateAppear()
         sut.simulateAppear()
@@ -44,7 +91,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_rendersThreeChipsWithValuesOnReading() {
-        let (sut, loader, _) = makeSUT()
+        let (sut, loader, _, _) = makeSUT()
         let reading = makeReading(moisture: 42, lux: 1_200, temperature: 21.5, humidity: 60)
 
         sut.simulateAppear()
@@ -61,7 +108,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_rendersLatestReadingOnEveryUpdate() {
-        let (sut, loader, _) = makeSUT()
+        let (sut, loader, _, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading(moisture: 42))
@@ -71,7 +118,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_rendersPlaceholdersForMissingValues() {
-        let (sut, loader, _) = makeSUT()
+        let (sut, loader, _, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading(moisture: nil, lux: nil, temperature: nil, humidity: nil))
@@ -80,7 +127,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_rendersMoistureWarningWhenThirsty() {
-        let (sut, loader, healthLoader) = makeSUT()
+        let (sut, loader, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading())
@@ -91,7 +138,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_rendersNoWarningWhenHappy() {
-        let (sut, loader, healthLoader) = makeSUT()
+        let (sut, loader, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading())
@@ -101,7 +148,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_rendersHumidityChipWithWarningForDryAir() {
-        let (sut, loader, healthLoader) = makeSUT()
+        let (sut, loader, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading(moisture: 42, lux: 1_200, humidity: 20))
@@ -113,7 +160,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_keepsLoadingWhenOnlyMoodArrives() {
-        let (sut, _, healthLoader) = makeSUT()
+        let (sut, _, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []))
@@ -123,7 +170,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_displaysConnectivityErrorOnFailure() {
-        let (sut, loader, _) = makeSUT()
+        let (sut, loader, _, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: PeripheralPlantReadingLoader.Error.connectivity)
@@ -137,7 +184,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_displaysGeneralErrorOnOtherFailure() {
-        let (sut, loader, _) = makeSUT()
+        let (sut, loader, _, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: PeripheralPlantReadingLoader.Error.invalidData)
@@ -149,7 +196,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_hidesErrorOnNextReading() {
-        let (sut, loader, _) = makeSUT()
+        let (sut, loader, _, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: anyNSError())
@@ -162,7 +209,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     func test_error_deliversDismissedAction() {
         let exp = expectation(description: "wait for action")
         var invokedActions: [PlantMonitorAction] = []
-        let (sut, loader, _) = makeSUT(actionHandler: {
+        let (sut, loader, _, _) = makeSUT(actionHandler: {
             invokedActions.append($0)
             exp.fulfill()
         })
@@ -176,7 +223,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_init_doesNotMessageHealthLoaderOrRenderMood() {
-        let (sut, _, healthLoader) = makeSUT()
+        let (sut, _, healthLoader, _) = makeSUT()
 
         XCTAssertEqual(healthLoader.messages, [])
         XCTAssertNil(sut.renderedFace())
@@ -184,7 +231,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_loadsAndSubscribesToHealthOnce() {
-        let (sut, _, healthLoader) = makeSUT()
+        let (sut, _, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         sut.simulateAppear()
@@ -193,7 +240,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_appear_rendersFaceBubbleAndSubtitleOnceHealthLoads() {
-        let (sut, _, healthLoader) = makeSUT()
+        let (sut, _, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
@@ -205,7 +252,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
 
     func test_appear_replacesTemplateBubbleWithGeneratedLine() {
         let speechLoader = SpeechLoaderStub()
-        let (sut, _, healthLoader) = makeSUT(speechLoader: speechLoader)
+        let (sut, _, healthLoader, _) = makeSUT(speechLoader: speechLoader)
 
         sut.simulateAppear()
         healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
@@ -224,7 +271,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
         ]
 
         issues.forEach { mood, issues in
-            let (sut, _, healthLoader) = makeSUT()
+            let (sut, _, healthLoader, _) = makeSUT()
 
             sut.simulateAppear()
             healthLoader.completeLoad(with: PlantHealth(score: 50, issues: issues))
@@ -234,7 +281,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_healthUpdate_rendersNewFaceBubbleAndSubtitle() {
-        let (sut, _, healthLoader) = makeSUT()
+        let (sut, _, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []))
@@ -247,7 +294,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_healthLoadFailure_keepsLastMood() {
-        let (sut, _, healthLoader) = makeSUT()
+        let (sut, _, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
@@ -259,7 +306,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_scene_rendersSleepingPlantWhenHappyAtNight() {
-        let (sut, loader, healthLoader) = makeSUT()
+        let (sut, loader, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading(lux: 3))
@@ -271,7 +318,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_scene_wakesPlantToComplainAtNight() {
-        let (sut, loader, healthLoader) = makeSUT()
+        let (sut, loader, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading(lux: 3))
@@ -283,7 +330,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_scene_rendersSunByDayAndMoonAtNight() {
-        let (sut, loader, _) = makeSUT()
+        let (sut, loader, _, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading(lux: 1_000))
@@ -294,7 +341,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_scene_rendersMoonWhenOffline() {
-        let (sut, _, healthLoader) = makeSUT()
+        let (sut, _, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         healthLoader.completeLoad(with: PlantHealth(score: 0, issues: [.offline]))
@@ -303,7 +350,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_scene_rendersTalkAsPrimaryButtonByDay() {
-        let (sut, loader, healthLoader) = makeSUT()
+        let (sut, loader, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading())
@@ -314,7 +361,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_scene_rendersWaterAsPrimaryButtonWhenThirsty() {
-        let (sut, loader, healthLoader) = makeSUT()
+        let (sut, loader, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading())
@@ -325,7 +372,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
     }
 
     func test_scene_rendersWaterAsPrimaryButtonAtNightWhenThirsty() {
-        let (sut, loader, healthLoader) = makeSUT()
+        let (sut, loader, healthLoader, _) = makeSUT()
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading(lux: 0))
@@ -338,7 +385,7 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
 
     func test_buttons_deliverActions() {
         var invokedActions: [PlantMonitorAction] = []
-        let (sut, loader, _) = makeSUT(actionHandler: { invokedActions.append($0) })
+        let (sut, loader, _, _) = makeSUT(actionHandler: { invokedActions.append($0) })
 
         sut.simulateAppear()
         loader.completeSubscription(with: makeReading())

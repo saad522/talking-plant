@@ -15,6 +15,14 @@ extension PlantMonitorView where Face == FaceStub {
         try? inspect().find(PlantMonitorHeaderView.self).actualView().subtitle
     }
 
+    var settingsLabel: String? {
+        try? inspect().find(PlantMonitorHeaderView.self).actualView().settingsLabel
+    }
+
+    func simulateTapOnSettings() {
+        try? inspect().find(PlantMonitorHeaderView.self).find(ViewType.Button.self).tap()
+    }
+
     var bubbleText: String? {
         try? inspect().find(PlantSpeechBubbleView.self).actualView().text
     }

@@ -233,6 +233,25 @@ class PlantMonitorXCTestCase: XCTestCase {
     }
 
     @MainActor
+    final class ConnectionLoaderStub: PlantConnectionLoader {
+        enum Message: Equatable {
+            case subscribeConnection
+        }
+
+        var messages: [Message] = []
+
+        private var subscriptions: [(PlantConnection) -> Void] = []
+        func subscribe(update: @escaping (PlantConnection) -> Void) {
+            messages.append(.subscribeConnection)
+            subscriptions.append(update)
+        }
+
+        func complete(with connection: PlantConnection, at index: Int = 0) {
+            subscriptions[index](connection)
+        }
+    }
+
+    @MainActor
     final class ScheduleSpy {
         private(set) var intervals: [TimeInterval] = []
         private var ticks: [@MainActor @Sendable () -> Bool] = []

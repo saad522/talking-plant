@@ -7,11 +7,13 @@ public final class PlantMonitorViewModel {
 
     private let loader: PlantReadingLoader
     private let healthLoader: PlantHealthLoader
+    private let connectionLoader: PlantConnectionLoader
     private let speechLoader: PlantSpeechLoader
     private let actionHandler: (PlantMonitorAction) -> Void
     private var appeared: Bool = false
     private var latestReading: PlantReading?
     private var latestMood: PlantMood?
+    private var latestConnection: PlantConnection?
     private var speechKey: SpeechKey?
 
     /// A new line is only asked for when the mood or the scene changes.
@@ -22,6 +24,7 @@ public final class PlantMonitorViewModel {
 
     public let historyLabel: String = String.localised(key: "plant.monitor.history.label")
     public let waterLabel: String = String.localised(key: "plant.monitor.water.label")
+    public let settingsLabel: String = String.localised(key: "plant.monitor.settings.label")
     public let talkLabel: String
 
     public var loadedReading: Observer<PlantReading>?
@@ -34,6 +37,7 @@ public final class PlantMonitorViewModel {
     public init(
         loader: PlantReadingLoader,
         healthLoader: PlantHealthLoader,
+        connectionLoader: PlantConnectionLoader,
         speechLoader: PlantSpeechLoader,
         plantName: String,
         actionHandler: @escaping (PlantMonitorAction) -> Void
@@ -41,6 +45,7 @@ public final class PlantMonitorViewModel {
         self.talkLabel = String(format: String.localised(key: "plant.monitor.talk.label"), plantName)
         self.loader = loader
         self.healthLoader = healthLoader
+        self.connectionLoader = connectionLoader
         self.speechLoader = speechLoader
         self.actionHandler = actionHandler
     }
@@ -62,6 +67,10 @@ public final class PlantMonitorViewModel {
         healthLoader.subscribe { [weak self] in
             self?.loadHealth()
         }
+        connectionLoader.subscribe { [weak self] connection in
+            self?.latestConnection = connection
+            self?.loadScene()
+        }
     }
 
     public func historyTap() {
@@ -76,8 +85,12 @@ public final class PlantMonitorViewModel {
         actionHandler(.waterTap)
     }
 
+    public func settingsTap() {
+        actionHandler(.settingsTap)
+    }
+
     private func loadScene() {
-        let scene = PlantMonitorSceneViewModel(reading: latestReading, mood: latestMood)
+        let scene = PlantMonitorSceneViewModel(reading: latestReading, mood: latestMood, connection: latestConnection)
         loadedScene?(scene)
         loadSpeech(for: scene)
     }

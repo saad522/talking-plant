@@ -15,6 +15,9 @@ import PlantHistoryiOS
 import PlantMonitor
 import PlantMonitoriOS
 import PlantShared
+#if DEBUG
+import PlantTestPeripheral
+#endif
 import SwiftUI
 
 @main
@@ -130,22 +133,34 @@ struct TalkingPlantApp: App {
 
     var body: some Scene {
         WindowGroup {
-            NavigationStack(path: $navigation.path) {
-                monitor
-                    #if DEBUG
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Water") { simulatedPlant.water() }
-                        }
-                    }
-                    #endif
-                    .navigationDestination(for: AppNavigation.Route.self) { route in
-                        switch route {
-                        case .history: history
-                        case .chat: chat
-                        }
-                    }
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-PlantTestPeripheral") {
+                TestPeripheralView()
+            } else {
+                appContent
             }
+            #else
+            appContent
+            #endif
+        }
+    }
+
+    private var appContent: some View {
+        NavigationStack(path: $navigation.path) {
+            monitor
+                #if DEBUG
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Water") { simulatedPlant.water() }
+                    }
+                }
+                #endif
+                .navigationDestination(for: AppNavigation.Route.self) { route in
+                    switch route {
+                    case .history: history
+                    case .chat: chat
+                    }
+                }
         }
     }
 

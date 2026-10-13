@@ -16,6 +16,7 @@
 		4AC489200D799203005E9A99 /* PlantFaceiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC489200C799203005E9A99 /* PlantFaceiOS */; };
 		4AC489200F799203005E9A99 /* PlantChat in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC489200E799203005E9A99 /* PlantChat */; };
 		4AC4892011799203005E9A99 /* PlantChatiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892010799203005E9A99 /* PlantChatiOS */; };
+		4AEE8E24307E7EDA00DE30FA /* PlantTestPeripheral in Frameworks */ = {isa = PBXBuildFile; productRef = 4AEE8E23307E7EDA00DE30FA /* PlantTestPeripheral */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,6 +80,7 @@
 			files = (
 				4AC4892001799203005E9A99 /* PlantShared in Frameworks */,
 				4AC4892003799203005E9A99 /* PlantMonitor in Frameworks */,
+				4AEE8E24307E7EDA00DE30FA /* PlantTestPeripheral in Frameworks */,
 				4AC4892005799203005E9A99 /* PlantMonitoriOS in Frameworks */,
 				4AC4892007799203005E9A99 /* PlantDevice in Frameworks */,
 				4AC4892009799203005E9A99 /* PlantHistory in Frameworks */,
@@ -112,6 +114,7 @@
 				4A69B562307973AF00235D0E /* TalkingPlant */,
 				4A69B570307973B100235D0E /* TalkingPlantTests */,
 				4A69B57A307973B100235D0E /* TalkingPlantUITests */,
+				4AEE8E22307E7EDA00DE30FA /* Frameworks */,
 				4A69B561307973AF00235D0E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -124,6 +127,13 @@
 				4A69B577307973B100235D0E /* TalkingPlantUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		4AEE8E22307E7EDA00DE30FA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -155,6 +165,7 @@
 				4AC489200C799203005E9A99 /* PlantFaceiOS */,
 				4AC489200E799203005E9A99 /* PlantChat */,
 				4AC4892010799203005E9A99 /* PlantChatiOS */,
+				4AEE8E23307E7EDA00DE30FA /* PlantTestPeripheral */,
 			);
 			productName = TalkingPlant;
 			productReference = 4A69B560307973AF00235D0E /* TalkingPlant.app */;
@@ -682,6 +693,11 @@
 		4AC4892010799203005E9A99 /* PlantChatiOS */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PlantChatiOS;
+		};
+		4AEE8E23307E7EDA00DE30FA /* PlantTestPeripheral */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4AC4891B30799203005E9A99 /* XCLocalSwiftPackageReference "../PlantKit" */;
+			productName = PlantTestPeripheral;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

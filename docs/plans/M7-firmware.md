@@ -462,6 +462,7 @@ advertising because of a sensor.
 ```
 [boot] TalkingPlant-0EF1 fw 0.1.0 addr aa:bb:cc:dd:0e:f1 interval 30 s
 [i2c] 0x23 BH1750 ok, 0x38 AHT20 missing
+[i2c] found: 0x23
 [read] #0 soil 2500 mV, lux 1000, env --, flags 0x03 | 01 03 C4 09 E8 03 00 00 00 00 00 00 00 00 00 00
 [ble] connected 5a:3c:..:..
 [ble] readings subscribed

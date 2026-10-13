@@ -161,6 +161,15 @@ void setup() {
   Serial.printf("[i2c] 0x%02X BH1750 %s, 0x%02X AHT20 %s\n", kLightAddress,
                 probe(kLightAddress) ? "ok" : "missing", kEnvAddress,
                 probe(kEnvAddress) ? "ok" : "missing");
+  Serial.print("[i2c] found:");
+  bool anyFound = false;
+  for (uint8_t address = 0x08; address <= 0x77; address++) {
+    if (probe(address)) {
+      Serial.printf(" 0x%02X", address);
+      anyFound = true;
+    }
+  }
+  Serial.println(anyFound ? "" : " none");
 
   lightReady = lightMeter.begin();
   envReady = aht.begin();

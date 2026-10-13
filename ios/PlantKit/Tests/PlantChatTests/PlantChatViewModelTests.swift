@@ -817,7 +817,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
 
         sut.chatLoader.complete(with: "*sighs* Water, please 🌱")
 
-        XCTAssertEqual(sut.synthesizer.speeches, [.init(text: "Water, please", style: PlantPersonality.politeButler.speechStyle)])
+        XCTAssertEqual(sut.synthesizer.speeches, [.init(text: "Water, please", style: PlantPersonality.politeButler.speechStyle.adjusted(for: .happy))])
         XCTAssertEqual(activities, [.speaking])
         XCTAssertEqual(sut.audioSession.messages.filter { $0 == .deactivate }.count, 0)
 
@@ -825,6 +825,14 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
 
         XCTAssertEqual(activities, [.speaking, .idle])
         XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
+    }
+
+    func test_reply_toSpokenTurn_whileThirsty_isSpokenWithTheMoodAdjustedStyle() {
+        let sut = makeSpokenTurnSUT(personality: .politeButler, mood: .thirsty)
+
+        sut.chatLoader.complete(with: "Water, please")
+
+        XCTAssertEqual(sut.synthesizer.speeches, [.init(text: "Water, please", style: PlantPersonality.politeButler.speechStyle.adjusted(for: .thirsty))])
     }
 
     func test_reply_toSpokenTurn_showsTheOriginalTextEvenWhenSpoken() {
@@ -1151,13 +1159,14 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
     /// Loaded, listened, and a final transcript sent; the reply is pending.
     private func makeSpokenTurnSUT(
         personality: PlantPersonality? = nil,
+        mood: PlantMood = .happy,
         actionHandler: @escaping (PlantChatAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> SUT {
         let sut = makeSUT(savedPersonality: personality, actionHandler: actionHandler, file: file, line: line)
         sut.viewModel.appear()
-        sut.factsLoader.completeLoad(with: makeFacts())
+        sut.factsLoader.completeLoad(with: makeFacts(mood: mood))
         sut.lineLoader.complete(with: "Hey!")
         sut.viewModel.micTap()
         sut.transcriptLoader.sendFinal("Hi")

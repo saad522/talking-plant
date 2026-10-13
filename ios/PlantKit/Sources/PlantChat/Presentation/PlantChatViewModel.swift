@@ -346,7 +346,7 @@ public final class PlantChatViewModel {
         speech += 1
         let speech = speech
         setActivity(.speaking)
-        synthesizer.speak(text, style: settings.load().speechStyle) { [weak self] in
+        synthesizer.speak(text, style: settings.load().speechStyle.adjusted(for: latestFacts?.mood)) { [weak self] in
             guard let self, self.speech == speech else { return }
             self.deactivateAudioSession()
             self.setActivity(.idle)

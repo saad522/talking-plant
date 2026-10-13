@@ -15,7 +15,7 @@ public final class AVSpeechPlantSynthesizerClient: NSObject, PlantSynthesizerCli
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: style.language) ?? AVSpeechSynthesisVoice(language: "en-US")
         utterance.rate = style.rate
-        utterance.pitchMultiplier = style.pitch
+        utterance.pitchMultiplier = 1
         current = (ObjectIdentifier(utterance), completion)
         synthesizer.speak(utterance)
     }

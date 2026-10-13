@@ -73,6 +73,9 @@ One milestone per Claude Code session. Each ends with passing tests and a short 
 - Simulated readings are stamped with the simulated clock (ahead of real time), so keep
   them apart from real history, e.g. one store file per mode.
 - **Done when:** builds, and the human verifies on device once the board exists.
+- **Status:** implemented (plan `docs/plans/M6-bluetooth.md`, S1–S10). The on-device
+  checklist (plan section 9) passed against the DEBUG test peripheral (`PlantTestPeripheral`,
+  see `docs/SETUP.md`). Not yet run against the real board; see M8.
 
 ## M7 — Firmware (unchanged)
 - `firmware/talking_plant/talking_plant.ino` implementing `BLE_CONTRACT.md` exactly

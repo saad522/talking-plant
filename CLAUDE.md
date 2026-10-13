@@ -48,21 +48,26 @@ talking-plant/
         │   │   ├── Presentation/
         │   │   └── Resources/en.lproj/PlantMonitor.strings
         │   ├── PlantMonitoriOS/                # UI: Stores, Views, Composers, Styles
-        │   ├── PlantDevice/                    # Feature: device info, commands, calibration, pairing
-        │   │   ├── Domain/                     # PlantDeviceInfo, PlantDeviceCommand
-        │   │   └── API/                        # PlantDeviceInfoMapper, PlantDeviceCommandMapper
+        │   ├── PlantDevice/                    # Feature: device info, commands, calibration, pairing, settings
+        │   │   ├── Domain/                     # PlantDeviceInfo, PlantDeviceCommand, loader protocols
+        │   │   ├── API/                        # mappers, connection / pairing / scan loaders
+        │   │   ├── Persistence/                # PlantDeviceSettings (mode, paired device)
+        │   │   └── Presentation/
+        │   ├── PlantDeviceiOS/                 # UI: Settings and the device picker
         │   ├── PlantHistory/                   # Feature: stored readings, downsampling
-        │   └── PlantHistoryiOS/                # UI: Swift Charts
+        │   ├── PlantHistoryiOS/                # UI: Swift Charts
+        │   └── PlantTestPeripheral/            # DEBUG only: fake sensor over real Bluetooth
         └── Tests/
             ├── PlantSharedTests/
             ├── PlantMonitorTests/              # unit tests, macOS
             ├── PlantMonitoriOSTests/           # integration tests from the UIComposer
             ├── PlantDeviceTests/
+            ├── PlantDeviceiOSTests/
             ├── PlantHistoryTests/
             └── PlantHistoryiOSTests/
 ```
 
-Later features follow the same pattern (`PlantChat` / `PlantChatiOS`, `PlantDeviceiOS`). Folders appear when their first file does.
+Later features follow the same pattern (`PlantChat` / `PlantChatiOS`, `PlantCheckup` / `PlantCheckupiOS`). Folders appear when their first file does.
 
 ## Architecture rules
 

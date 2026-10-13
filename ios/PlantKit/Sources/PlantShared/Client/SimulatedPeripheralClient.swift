@@ -98,6 +98,8 @@ public final class SimulatedPeripheralClient: PeripheralClient, PeripheralConnec
 
     public func connect(to identifier: UUID, name: String) {}
 
+    public func subscribe(rediscovered update: @escaping (UUID, String) -> Void) {}
+
     public func disconnect() {}
 
     /// Resets the soil to wet. The next reading reflects it.

@@ -117,6 +117,35 @@ final class PeripheralPlantDeviceConnectionLoaderTests: PlantDeviceXCTestCase {
         XCTAssertEqual(received, [.connecting, .offline, .connected])
     }
 
+    func test_subscribe_twoSubscribersEachReceiveCurrentState() {
+        let (sut, client, _) = makeSUT()
+        var first: [PlantConnection] = []
+        var second: [PlantConnection] = []
+        sut.subscribe { first.append($0) }
+        client.simulateState(.connected, at: 0)
+
+        sut.subscribe { second.append($0) }
+        client.simulateState(.connected, at: 1) // the client delivers its current state on subscribe
+
+        XCTAssertEqual(first, [.connected])
+        XCTAssertEqual(second, [.connected])
+    }
+
+    func test_subscribe_twoSubscribersDeduplicateIndependently() {
+        let (sut, client, _) = makeSUT()
+        var first: [PlantConnection] = []
+        var second: [PlantConnection] = []
+        sut.subscribe { first.append($0) }
+        sut.subscribe { second.append($0) }
+
+        client.simulateState(.poweredOff, at: 0)
+        client.simulateState(.poweredOff, at: 0)
+        client.simulateState(.poweredOff, at: 1)
+
+        XCTAssertEqual(first, [.bluetoothOff])
+        XCTAssertEqual(second, [.bluetoothOff])
+    }
+
     func test_subscribe_doesNotCreateMemoryLeaks() {
         let client = ConnectionClientSpy()
         let schedule = ScheduleSpy()

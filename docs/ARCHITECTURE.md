@@ -43,8 +43,8 @@ ios/
     ├── Sources/
     │   ├── PlantShared/               # used by more than one feature
     │   │   ├── Contract/              # PlantBluetoothContract, PlantCharacteristic
-    │   │   ├── Client/                # PeripheralClient, SimulatedPeripheralClient, CoreBluetoothPeripheralClient,
-    │   │   │                          # PlantReadingStore, SwiftDataPlantReadingStore
+    │   │   ├── Client/                # PeripheralClient, PeripheralConnectionClient, SimulatedPeripheralClient,
+    │   │   │                          # CoreBluetoothPeripheralClient, PlantReadingStore, SwiftDataPlantReadingStore
     │   │   ├── Domain/                # MoistureCalibration, PlantReading
     │   │   └── Presentation/          # PlantReadingFormatter
     │   ├── PlantMonitor/              # Feature: live readings, health, mood
@@ -58,29 +58,39 @@ ios/
     │   │   ├── Views/
     │   │   ├── Composers/
     │   │   └── Styles/                # PlantMonitorFont, PlantMonitorColor
-    │   ├── PlantDevice/               # Feature: device info, commands, calibration, pairing
+    │   ├── PlantDevice/               # Feature: device info, commands, calibration, pairing, settings
     │   │   ├── Domain/
-    │   │   └── API/
+    │   │   ├── API/
+    │   │   ├── Persistence/
+    │   │   ├── Presentation/
+    │   │   └── Resources/en.lproj/PlantDevice.strings
+    │   ├── PlantDeviceiOS/            # FeatureiOS: Settings ("Plant sensor") and the device picker
+    │   │   ├── Stores/
+    │   │   ├── Views/
+    │   │   ├── Composers/
+    │   │   └── Styles/
     │   ├── PlantHistory/              # Feature: stored readings, downsampled for charts
     │   │   ├── Domain/
     │   │   ├── API/
     │   │   ├── Presentation/
     │   │   └── Resources/en.lproj/PlantHistory.strings
-    │   └── PlantHistoryiOS/           # FeatureiOS: Swift Charts
-    │       ├── Stores/
-    │       ├── Views/
-    │       ├── Composers/
-    │       └── Styles/
+    │   ├── PlantHistoryiOS/           # FeatureiOS: Swift Charts
+    │   │   ├── Stores/
+    │   │   ├── Views/
+    │   │   ├── Composers/
+    │   │   └── Styles/
+    │   └── PlantTestPeripheral/       # DEBUG only: a fake sensor served over real Bluetooth (see SETUP.md)
     └── Tests/
         ├── PlantSharedTests/
         ├── PlantMonitorTests/         # unit tests, run on macOS
         ├── PlantMonitoriOSTests/      # integration tests from the UIComposer
         ├── PlantDeviceTests/
+        ├── PlantDeviceiOSTests/
         ├── PlantHistoryTests/
         └── PlantHistoryiOSTests/
 ```
 
-Later features follow the same pattern: `PlantChat` / `PlantChatiOS`, `PlantDeviceiOS`.
+Later features follow the same pattern: `PlantChat` / `PlantChatiOS`, `PlantCheckup` / `PlantCheckupiOS`.
 
 ### Target dependency rules
 
@@ -151,7 +161,15 @@ stays the same; these are the only deliberate differences from a Swift 5 codebas
    is gone.
 2. **Platform clients deliver on the main actor.** `CoreBluetoothPeripheralClient` creates
    its `CBCentralManager` with `queue: nil` (main queue). Its delegate methods are
-   `nonisolated` and forward with `MainActor.assumeIsolated { ... }`.
+   `nonisolated` and forward with `MainActor.assumeIsolated { ... }`. The rules (M6, from
+   the M5b crash where a closure inferred `@MainActor` was called on a background queue):
+   delegate methods first copy out Sendable values (identifiers, UUIDs, `Data`, `Int`, the
+   error) and pass only those; CoreBluetooth objects are looked up again from the client's
+   own properties; no `Task { @MainActor in }` hops in delegate methods (they could reorder
+   events); no closure-based system API in the client (use a `nonisolated static` function
+   if one is needed); all CoreBluetooth code lives in PlantKit, never in the app target
+   (its default isolation is `MainActor`); the client is created only in sensor mode,
+   because creating it shows the Bluetooth permission prompt.
 3. **Domain models are `Sendable`** in addition to `Equatable`. Structs of value types get
    this for free.
 4. **Completion handlers stay.** Loaders keep the `completion: @escaping (Result) -> Void`
@@ -250,8 +268,9 @@ Implementations:
 
 | Client | Role |
 |---|---|
-| `CoreBluetoothPeripheralClient` | The real sensor over Bluetooth (M6). |
-| `SimulatedPeripheralClient` | The fake plant used until the hardware arrives and as a demo mode. It produces **real 16-byte packets** per `BLE_CONTRACT.md`, so everything above it runs the exact production path. |
+| `PeripheralConnectionClient` | Connection side of a sensor: state (`idle`, `connecting`, `connected`, `incompatible`, Bluetooth off / unauthorized / unsupported), scan, connect, disconnect. A separate protocol from `PeripheralClient`, so reading code never sees scanning. |
+| `CoreBluetoothPeripheralClient` | The real sensor over Bluetooth (M6). Implements both protocols. No timers, no interval, no persistence: those rules live in the `PlantDevice` loaders. Reads and writes while not connected fail at once. Reconnects until `disconnect()`. A service-missing result gets one fresh discovery before it stays `incompatible`. |
+| `SimulatedPeripheralClient` | (Also a `PeripheralConnectionClient`: always connected, finds nothing.) The fake plant used until the hardware arrives and as a demo mode. It produces **real 16-byte packets** per `BLE_CONTRACT.md`, so everything above it runs the exact production path. |
 | `DefaultsClient` (+ `UserDefaultsClient`) | Small key-value storage (calibration, preferences, the simulated plant's soil value). |
 | `PlantReadingStore` (+ `SwiftDataPlantReadingStore`) | Reading history: insert, retrieve a date range, and notify subscribers after each insert. Keeps 30 days, measured from the newest reading (M3). |
 
@@ -1375,7 +1394,7 @@ extension String {
 | M3 | `PlantHistory` / `PlantHistoryiOS` + `LocalPlantReadingDecorator` with a SwiftData-backed store client (`PlantReading` and `PlantReadingFormatter` promoted to PlantShared) |
 | M4 | Health and mood in `PlantMonitor` (deterministic, unit-tested) + the mood face as an embedded component |
 | M5 | `PlantChat` / `PlantChatiOS`: Foundation Models voice, notifications, chat, template fallback |
-| M6 | `CoreBluetoothPeripheralClient` + `PlantDevice` pairing and Device Info |
+| M6 | `CoreBluetoothPeripheralClient` + `PeripheralConnectionClient` (PlantShared); `PlantDevice` / `PlantDeviceiOS`: connection, pairing, Device Info, commands, Settings and device picker; connection state in the Monitor header; simulated/real mode and one store file per mode in the composition root; DEBUG `PlantTestPeripheral` |
 | M7 | Firmware (unchanged) |
 | M8 | `PlantDeviceiOS` calibration screen + `LocalMoistureCalibrationLoader` |
 | M9 | `PlantCheckup` / `PlantCheckupiOS`: leaf check-up from a photo. Vision plant segmentation, deterministic color analysis (green / yellow / brown ratios, dark spots) and diagnosis rules combining the photo result with sensor history (all unit-tested), saved past check-ups. Foundation Models only phrases the result as "this might be…" with a suggestion. Later: Create ML classifier on our own labeled photos, optional pot camera (XIAO ESP32S3 Sense) |

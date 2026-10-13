@@ -10,6 +10,16 @@ public final class PeripheralPlantDevicePairingLoader: PlantDevicePairingLoader 
     public init(client: PeripheralConnectionClient, settings: PlantDeviceSettings) {
         self.client = client
         self.settings = settings
+        client.subscribe(rediscovered: { [weak self] identifier, name in
+            self?.rediscovered(PlantPairedDevice(identifier: identifier, name: name))
+        })
+    }
+
+    /// The client already connected to the new identifier; only save it and tell the screens.
+    private func rediscovered(_ device: PlantPairedDevice) {
+        guard settings.loadPairedDevice() != nil else { return }
+        settings.savePairedDevice(device)
+        subscriptions.forEach { $0(device) }
     }
 
     public func subscribe(update: @escaping (PlantPairedDevice?) -> Void) {

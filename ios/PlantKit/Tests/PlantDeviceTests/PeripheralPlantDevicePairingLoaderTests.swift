@@ -43,6 +43,31 @@ final class PeripheralPlantDevicePairingLoaderTests: PlantDeviceXCTestCase {
         XCTAssertEqual(received, [nil, makeDevice()])
     }
 
+    func test_rediscovered_savesNewIdentifierAndNotifies() {
+        let (sut, client, settings) = makeSUT()
+        settings.savePairedDevice(makeDevice())
+        var received: [PlantPairedDevice?] = []
+        sut.subscribe { received.append($0) }
+        let newIdentifier = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+
+        client.simulateRediscovery(newIdentifier, name: "TalkingPlant-A1B2")
+
+        let updated = PlantPairedDevice(identifier: newIdentifier, name: "TalkingPlant-A1B2")
+        XCTAssertEqual(settings.loadPairedDevice(), updated)
+        XCTAssertEqual(received, [makeDevice(), updated])
+        XCTAssertEqual(client.messages, [])
+    }
+
+    func test_rediscovered_afterForget_doesNotSave() {
+        let (sut, client, settings) = makeSUT()
+        settings.savePairedDevice(makeDevice())
+        sut.forget()
+
+        client.simulateRediscovery(UUID(), name: "TalkingPlant-A1B2")
+
+        XCTAssertNil(settings.loadPairedDevice())
+    }
+
     func test_forget_clearsDisconnectsAndNotifies() {
         let (sut, client, settings) = makeSUT()
         settings.savePairedDevice(makeDevice())

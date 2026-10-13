@@ -491,11 +491,11 @@ contract changes, the doc, both suites, the Swift decoders and the firmware chan
 
 Things noticed on the iOS side (not changed in M7):
 
-- `CoreBluetoothPeripheralClient` (M6) isn't in the repo yet, so the app can't talk to the
-  board until M6 is done. The first M8 checks use a generic BLE app (nRF Connect or
+- `CoreBluetoothPeripheralClient` (M6) is in the repo, tested against the DEBUG test
+  peripheral only. The first M8 checks can still use a generic BLE app (nRF Connect or
   LightBlue) — decision 5 (section 11).
-- `PlantDeviceInfoMapper` reads `protocolVersion` but doesn't reject a value other than 1,
-  unlike `PlantReadingMapper`. Harmless with this firmware.
+- `PlantDeviceInfoMapper` now rejects a `protocolVersion` other than 1 (M6), like
+  `PlantReadingMapper`.
 - The simulator's first read returns sequence 0 and its first notify sequence 1. The
   firmware's first reading is sequence 0, notified and readable. Both fit the app's rules
   (duplicates dropped, lower sequence = reboot).

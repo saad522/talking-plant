@@ -32,6 +32,9 @@ public protocol PeripheralConnectionClient {
     /// Connects and keeps reconnecting until `disconnect()`. `name` is the fallback
     /// when the identifier is unknown to this phone.
     func connect(to identifier: UUID, name: String)
+    /// Reports that the saved plant was found again under a new identifier (the board rotated
+    /// its address) and the client connected to it. The owner saves it so the next launch is direct.
+    func subscribe(rediscovered update: @escaping (_ identifier: UUID, _ name: String) -> Void)
     /// Cancels the connection and stops reconnecting.
     func disconnect()
 }

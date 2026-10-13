@@ -39,6 +39,10 @@ public final class CoreBluetoothPeripheralClient: NSObject, PeripheralClient, Pe
     private var target: Target?
     private var peripheral: CBPeripheral?
     private var characteristics: [PlantCharacteristic: CBCharacteristic] = [:]
+    private var incompatibleRetry = IncompatibleRetryPolicy()
+    private var reconnectFallback = ReconnectFallbackPolicy()
+    private var fallbackTask: Task<Void, Never>?
+    private var rediscoverySubscriptions: [(UUID, String) -> Void] = []
 
     private var pendingReads: [PlantCharacteristic: [(PeripheralClient.Result) -> Void]] = [:]
     private var pendingWrites: [PlantCharacteristic: [(PeripheralClient.WriteResult) -> Void]] = [:]
@@ -113,6 +117,10 @@ public final class CoreBluetoothPeripheralClient: NSObject, PeripheralClient, Pe
         updateScanning()
     }
 
+    public func subscribe(rediscovered update: @escaping (UUID, String) -> Void) {
+        rediscoverySubscriptions.append(update)
+    }
+
     public func connect(to identifier: UUID, name: String) {
         Self.logger.info("connect to \(identifier.uuidString) \(name)")
         if let peripheral, peripheral.identifier == identifier, state != .incompatible {
@@ -120,6 +128,7 @@ public final class CoreBluetoothPeripheralClient: NSObject, PeripheralClient, Pe
             return
         }
         dropPeripheral(cancel: true)
+        incompatibleRetry.reset()
         target = Target(identifier: identifier, name: name)
         startConnecting()
     }
@@ -127,6 +136,8 @@ public final class CoreBluetoothPeripheralClient: NSObject, PeripheralClient, Pe
     public func disconnect() {
         Self.logger.info("disconnect")
         target = nil
+        incompatibleRetry.reset()
+        stopFallback()
         dropPeripheral(cancel: true)
         updateScanning()
         if isPoweredOn { state = .idle }
@@ -142,6 +153,33 @@ public final class CoreBluetoothPeripheralClient: NSObject, PeripheralClient, Pe
         } else {
             Self.logger.info("identifier unknown to this phone, scanning for \(target.name)")
         }
+        updateScanning()
+        startFallbackTimer()
+    }
+
+    /// The pending connect by identifier is the first try. If it hasn't succeeded after the
+    /// delay, scan for the saved name too. A `Task` started here (not from a delegate method)
+    /// is fine for rules 3 and 4: it runs on the main actor and nothing system-owned calls it.
+    private func startFallbackTimer() {
+        fallbackTask?.cancel()
+        reconnectFallback.reset()
+        fallbackTask = Task { [weak self] in
+            try? await Task.sleep(for: ReconnectFallbackPolicy.delay)
+            guard !Task.isCancelled else { return }
+            self?.fallbackDelayElapsed()
+        }
+    }
+
+    private func fallbackDelayElapsed() {
+        guard reconnectFallback.delayElapsed(hasTarget: target != nil, isConnecting: state == .connecting) else { return }
+        Self.logger.info("pending connect is slow, scanning for \(self.target?.name ?? "")")
+        updateScanning()
+    }
+
+    private func stopFallback() {
+        fallbackTask?.cancel()
+        fallbackTask = nil
+        reconnectFallback.reset()
         updateScanning()
     }
 
@@ -171,7 +209,7 @@ public final class CoreBluetoothPeripheralClient: NSObject, PeripheralClient, Pe
     }
 
     private func updateScanning() {
-        let needsFallbackScan = target != nil && peripheral == nil
+        let needsFallbackScan = target != nil && (peripheral == nil || reconnectFallback.isScanning)
         let shouldScan = isPoweredOn && (scanHandler != nil || needsFallbackScan)
         guard shouldScan != isScanning else { return }
         isScanning = shouldScan
@@ -189,12 +227,14 @@ public final class CoreBluetoothPeripheralClient: NSObject, PeripheralClient, Pe
 
     private func markIncompatible(_ reason: String) {
         Self.logger.error("incompatible: \(reason)")
+        let retry = incompatibleRetry.shouldRetry()
         if let peripheral {
             central.cancelPeripheralConnection(peripheral)
         }
         characteristics = [:]
         failPendingRequests()
-        state = .incompatible
+        // On a retry the disconnect callback reconnects and discovers services again.
+        state = retry ? .connecting : .incompatible
     }
 
     private func connectionLost(_ error: (any Swift.Error)?) {
@@ -204,6 +244,7 @@ public final class CoreBluetoothPeripheralClient: NSObject, PeripheralClient, Pe
         guard state != .incompatible, target != nil, isPoweredOn, let peripheral else { return }
         state = .connecting
         central.connect(peripheral, options: nil)
+        startFallbackTimer()
     }
 
     // MARK: - Delegate events (main actor, Sendable inputs only)
@@ -231,6 +272,9 @@ public final class CoreBluetoothPeripheralClient: NSObject, PeripheralClient, Pe
     }
 
     private func dropEverything() {
+        fallbackTask?.cancel()
+        fallbackTask = nil
+        reconnectFallback.reset()
         peripheral = nil
         characteristics = [:]
         isScanning = false
@@ -240,12 +284,22 @@ public final class CoreBluetoothPeripheralClient: NSObject, PeripheralClient, Pe
     private func handleDiscovery(identifier: UUID, name: String?, rssi: Int) {
         scanHandler?(PeripheralAdvertisement(identifier: identifier, localName: name, rssi: rssi))
 
-        guard isPoweredOn, let target, peripheral == nil,
-              identifier == target.identifier || name == target.name,
-              let found = central.retrievePeripherals(withIdentifiers: [identifier]).first else { return }
+        guard isPoweredOn, let target else { return }
+        let replacesPending = peripheral.map {
+            reconnectFallback.shouldAdopt(advertisedIdentifier: identifier, advertisedName: name, pending: $0.identifier, targetName: target.name)
+        } ?? false
+        let isMatch = peripheral == nil ? (identifier == target.identifier || name == target.name) : replacesPending
+        guard isMatch, let found = central.retrievePeripherals(withIdentifiers: [identifier]).first else { return }
+        if replacesPending {
+            Self.logger.info("saved name advertises as \(identifier.uuidString), replacing the stale connect")
+            dropPeripheral(cancel: true)
+        }
         self.target = Target(identifier: identifier, name: target.name)
         adopt(found)
-        updateScanning()
+        stopFallback()
+        if identifier != target.identifier {
+            rediscoverySubscriptions.forEach { $0(identifier, target.name) }
+        }
     }
 
     private func handleConnected(identifier: UUID) {
@@ -301,6 +355,8 @@ public final class CoreBluetoothPeripheralClient: NSObject, PeripheralClient, Pe
         }
         guard characteristicUUID == PlantCharacteristic.readings.uuid, state == .connecting, !characteristics.isEmpty else { return }
         Self.logger.info("readings notify \(isNotifying)")
+        incompatibleRetry.reset()
+        stopFallback()
         state = .connected
     }
 

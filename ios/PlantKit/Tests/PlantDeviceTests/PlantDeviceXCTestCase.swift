@@ -108,6 +108,15 @@ class PlantDeviceXCTestCase: XCTestCase {
         func disconnect() {
             messages.append(.disconnect)
         }
+
+        private var rediscoverySubscriptions: [(UUID, String) -> Void] = []
+        func subscribe(rediscovered update: @escaping (UUID, String) -> Void) {
+            rediscoverySubscriptions.append(update)
+        }
+
+        func simulateRediscovery(_ identifier: UUID, name: String) {
+            rediscoverySubscriptions.forEach { $0(identifier, name) }
+        }
     }
 
     @MainActor

@@ -42,3 +42,23 @@ disappears (crashing sketch), hold BOOT while plugging in USB, then upload.
 - [ ] After Claude Code creates `ios/PlantKit` in M1: in Xcode, File → Add Package
       Dependencies → Add Local → select `ios/PlantKit`, and link the `PlantShared`,
       `PlantMonitor`, `PlantMonitoriOS`, and `PlantDevice` products to the app target.
+
+## 4. Test peripheral (a fake sensor, no board needed)
+
+The app can pretend to be the sensor, so the real Bluetooth path runs before the board
+arrives. DEBUG builds only. You need two Bluetooth devices: the phone that runs the app
+normally, and a second iPhone/iPad (or this Mac, with the *Mac (Designed for iPad)*
+destination turned on) that plays the sensor.
+
+- [ ] On the second device, run the app from Xcode with the launch argument
+      `-PlantTestPeripheral` (Edit Scheme → Run → Arguments, tick it). Accept the Bluetooth
+      prompt. The screen shows the state, the interval, the last commands, and a Water button.
+      It advertises as `TalkingPlant-TEST`.
+- [ ] On the main iPhone, run the app without that argument. Settings → *Real sensor* →
+      pair `TalkingPlant-TEST`. The test device logs `SET_INTERVAL`, then `READ_NOW`.
+- [ ] Optional: `-PlantReadingInterval 30` on the main iPhone sets the reading interval to
+      30 s (the default is 300 s). Tick it in the scheme; an unticked entry is ignored.
+- [ ] If the pairing stops working after Bluetooth was toggled on the test device, tap
+      *Forget* and pair again: Apple devices change their identifier.
+
+The checklist to run is section 9 of `docs/plans/M6-bluetooth.md`.

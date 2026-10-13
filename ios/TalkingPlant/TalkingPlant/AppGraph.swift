@@ -85,10 +85,7 @@ final class AppGraph {
             schedule: SimulatedPeripheralClient.repeatingTimer
         )
 
-        // Each screen gets its own connection loader: a loader delivers a state to its subscribers only when it changes.
-        let makeConnection = {
-            PeripheralPlantDeviceConnectionLoader(client: client, schedule: SimulatedPeripheralClient.repeatingTimer)
-        }
+        let connection = PeripheralPlantDeviceConnectionLoader(client: client, schedule: SimulatedPeripheralClient.repeatingTimer)
         let commands = PeripheralPlantDeviceCommandSender(client: client)
         let deviceSettings = PlantDeviceSettings(defaults: defaults)
         let pairing = PeripheralPlantDevicePairingLoader(client: client, settings: deviceSettings)
@@ -118,7 +115,7 @@ final class AppGraph {
         monitor = PlantMonitorUIComposer.composed(
             with: readings,
             healthLoader: health,
-            connectionLoader: PlantDeviceConnectionLoaderAdapter(loader: makeConnection()),
+            connectionLoader: PlantDeviceConnectionLoaderAdapter(loader: connection),
             speechLoader: PlantVoiceSpeechLoaderAdapter(lineLoader: lineLoader),
             plantName: plantName,
             room: "Living room",
@@ -168,7 +165,7 @@ final class AppGraph {
             actionHandler(.device(action))
         }
         device = PlantDeviceUIComposer.composed(
-            connectionLoader: makeConnection(),
+            connectionLoader: connection,
             pairingLoader: pairing,
             infoLoader: PeripheralPlantDeviceInfoLoader(client: client),
             commandSender: commands,
@@ -177,7 +174,7 @@ final class AppGraph {
         )
         devicePicker = PlantDeviceUIComposer.composedPicker(
             scanLoader: PeripheralPlantDeviceScanLoader(client: client),
-            connectionLoader: makeConnection(),
+            connectionLoader: connection,
             pairingLoader: pairing,
             actionHandler: deviceActionHandler
         )
@@ -198,7 +195,7 @@ final class AppGraph {
 
         if mode == .sensor {
             let setup = PlantDeviceConnectionSetup(
-                connection: makeConnection(),
+                connection: connection,
                 infoLoader: PeripheralPlantDeviceInfoLoader(client: client),
                 commands: commands,
                 readingInterval: Self.readingInterval
@@ -221,23 +218,25 @@ final class AppGraph {
     /// Five minutes between readings. DEBUG builds accept `-PlantReadingInterval <seconds>`.
     private static var readingInterval: UInt16 {
         #if DEBUG
-        let arguments = ProcessInfo.processInfo.arguments
-        if let index = arguments.firstIndex(of: "-PlantReadingInterval"),
-           arguments.indices.contains(index + 1),
-           let seconds = UInt16(arguments[index + 1]) {
+        if let seconds = debugArgument("-PlantReadingInterval").flatMap(UInt16.init) {
             return seconds
         }
         #endif
         return 300
     }
 
+    /// Reads `-Name value` from the launch arguments. Also accepts the pair as one argument
+    /// (`"-Name value"`), which is how a scheme entry can arrive.
+    private static func debugArgument(_ name: String) -> String? {
+        let arguments = ProcessInfo.processInfo.arguments.flatMap { $0.split(separator: " ").map(String.init) }
+        guard let index = arguments.firstIndex(of: name), arguments.indices.contains(index + 1) else { return nil }
+        return arguments[index + 1]
+    }
+
     /// One hour between notifications of the same mood. DEBUG builds accept `-PlantNotificationInterval <seconds>`.
     private static var notificationInterval: TimeInterval {
         #if DEBUG
-        let arguments = ProcessInfo.processInfo.arguments
-        if let index = arguments.firstIndex(of: "-PlantNotificationInterval"),
-           arguments.indices.contains(index + 1),
-           let seconds = TimeInterval(arguments[index + 1]) {
+        if let seconds = debugArgument("-PlantNotificationInterval").flatMap(TimeInterval.init) {
             return seconds
         }
         #endif

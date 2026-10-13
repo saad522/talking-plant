@@ -13,11 +13,11 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         XCTAssertEqual(sut.chatLoader.resetCount, 0)
     }
 
-    func test_init_listsEveryPersonalityWithLabel() {
+    func test_init_listsAvailablePersonalitiesWithLabel() {
         let sut = makeSUT()
 
-        XCTAssertEqual(sut.viewModel.personalities.map(\.personality), PlantPersonality.allCases)
-        XCTAssertEqual(Set(sut.viewModel.personalities.map(\.label)).count, PlantPersonality.allCases.count)
+        XCTAssertEqual(sut.viewModel.personalities.map(\.personality), PlantPersonality.available)
+        XCTAssertEqual(Set(sut.viewModel.personalities.map(\.label)).count, PlantPersonality.available.count)
         XCTAssertEqual(sut.viewModel.personalities.first?.label, "Cheerful")
     }
 
@@ -43,13 +43,13 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
     }
 
     func test_appear_deliversSavedPersonality() {
-        let sut = makeSUT(savedPersonality: .dramatic)
+        let sut = makeSUT(savedPersonality: .politeButler)
         var received: [PlantPersonality] = []
         sut.viewModel.loadedPersonality = { received.append($0) }
 
         sut.viewModel.appear()
 
-        XCTAssertEqual(received, [.dramatic])
+        XCTAssertEqual(received, [.politeButler])
     }
 
     func test_appear_deliversAvailabilityOfChatLoader() {
@@ -406,9 +406,9 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
     func test_select_savesPersonalityAndResetsChatLoader() {
         let sut = makeLoadedSUT()
 
-        sut.viewModel.select(.grumpyGrandma)
+        sut.viewModel.select(.politeButler)
 
-        XCTAssertEqual(sut.settings.load(), .grumpyGrandma)
+        XCTAssertEqual(sut.settings.load(), .politeButler)
         XCTAssertEqual(sut.chatLoader.resetCount, 1)
     }
 

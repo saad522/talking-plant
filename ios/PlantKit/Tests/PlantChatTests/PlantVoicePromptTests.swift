@@ -96,14 +96,16 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
         XCTAssertTrue(PlantVoicePrompt.facts(facts).hasSuffix("\nNo readings yet."))
     }
 
-    func test_facts_namesTimeOfDayRightAfterMood() {
-        let lines = PlantVoicePrompt.facts(makeFacts(timeOfDay: .afternoon)).components(separatedBy: "\n")
-
-        XCTAssertEqual(lines[1], "Time of day: afternoon.")
+    func test_facts_leavesOutTimeOfDay() {
+        XCTAssertFalse(PlantVoicePrompt.facts(makeFacts(timeOfDay: .afternoon)).contains("Time of day"))
+        XCTAssertFalse(PlantVoicePrompt.facts(makeFacts()).contains("Time of day"))
     }
 
-    func test_facts_leavesOutTimeOfDayWhenUnknown() {
-        XCTAssertFalse(PlantVoicePrompt.facts(makeFacts()).contains("Time of day"))
+    func test_facts_keepsSleepingLineWithoutTimeOfDay() {
+        let text = PlantVoicePrompt.facts(makeFacts(mood: .happy, isSleeping: true, timeOfDay: .night))
+
+        XCTAssertTrue(text.contains("It's night and you're sleepy."))
+        XCTAssertFalse(text.contains("Time of day"))
     }
 
     func test_timeOfDay_followsTheHour() {
@@ -230,6 +232,25 @@ final class PlantVoicePromptTests: PlantChatXCTestCase {
         [PlantVoiceLineRequest.Purpose.home, .notification].forEach { purpose in
             XCTAssertTrue(PlantVoicePrompt.line(makeFacts(), purpose: purpose).contains("at most 10 words, with no numbers"), "\(purpose)")
         }
+    }
+
+    func test_line_givesOnlyTheGreetingTheTimeOfDayAfterTheFacts() {
+        let facts = makeFacts(timeOfDay: .evening)
+
+        let greeting = PlantVoicePrompt.line(facts, purpose: .greeting)
+
+        XCTAssertTrue(greeting.hasSuffix(PlantVoicePrompt.facts(facts) + "\nTime of day: evening."))
+        [PlantVoiceLineRequest.Purpose.home, .notification].forEach { purpose in
+            XCTAssertFalse(PlantVoicePrompt.line(facts, purpose: purpose).contains("Time of day"), "\(purpose)")
+        }
+    }
+
+    func test_line_greetingLeavesOutTimeOfDayWhenUnknown() {
+        XCTAssertFalse(PlantVoicePrompt.line(makeFacts(), purpose: .greeting).contains("Time of day"))
+    }
+
+    func test_message_leavesOutTimeOfDay() {
+        XCTAssertFalse(PlantVoicePrompt.message("Good evening!", facts: makeFacts(timeOfDay: .evening)).contains("Time of day"))
     }
 
     func test_line_keepsGreetingToTwelveWordsWithoutTenWordRule() {

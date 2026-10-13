@@ -33,10 +33,18 @@ public final class LanguageModelPlantVoiceLineLoader: PlantVoiceLineLoader {
         session.respond(to: PlantVoicePrompt.line(request.facts, purpose: request.purpose)) { result in
             switch result {
             case .success(let text):
-                completion(PlantVoicePrompt.cleanLine(text).map { .success($0) } ?? .failure(Error.invalidLine))
+                guard let line = PlantVoicePrompt.cleanLine(text) else { return completion(.failure(Error.invalidLine)) }
+                completion(.success(Self.fitting(line, request)))
             case .failure:
                 completion(.failure(Error.generation))
             }
         }
+    }
+
+    /// A greeting that doesn't fit the mood is replaced by the mood's template.
+    private static func fitting(_ line: String, _ request: PlantVoiceLineRequest) -> String {
+        let facts = request.facts
+        guard request.purpose == .greeting, PlantChatReplyGuard.greetingFits(line, mood: facts.mood) == false else { return line }
+        return PlantChatTemplate.speech(mood: facts.mood, isSleeping: facts.isSleeping)
     }
 }

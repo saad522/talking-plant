@@ -11,6 +11,16 @@ public enum PlantSpeechText {
             .joined(separator: " ")
     }
 
+    /// Keeps the text of `**bold**` and of a single `*word*` inside a sentence, removes headings and list markers,
+    /// and puts everything on one line. Other `*…*` are left for `removingStageDirections`.
+    static func removingMarkdown(_ text: String) -> String {
+        text.replacingOccurrences(of: #"\*\*(.+?)\*\*|__(.+?)__"#, with: "$1$2", options: .regularExpression)
+            .replacingOccurrences(of: #"(?m)^[ \t]*(?:#{1,6}|[-*•+]|\d+[.)])[ \t]+"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"(?<=\w )\*(\w+)\*(?= \w)"#, with: "$1", options: .regularExpression)
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+    }
+
     /// Removes `*…*` and `(…)` with their content, e.g. "*sighs* I'm fine (smiling)" becomes "I'm fine".
     static func removingStageDirections(_ text: String) -> String {
         text.replacingOccurrences(of: #"\*[^*]*\*|\([^)]*\)"#, with: " ", options: .regularExpression)

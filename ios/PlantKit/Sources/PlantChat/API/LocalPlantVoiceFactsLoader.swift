@@ -14,28 +14,34 @@ public final class LocalPlantVoiceFactsLoader: PlantVoiceFactsLoader {
     private let moodLoader: PlantMoodLoader
     private let store: PlantReadingStore
     private let currentDate: () -> Date
+    private let phoneDate: () -> Date
     private let calendar: Calendar
 
     public enum Error: Swift.Error, Equatable {
         case retrieval
     }
 
-    /// - Parameter currentDate: "Now" for the window. Pass the simulated clock in simulated mode.
+    /// - Parameters:
+    ///   - currentDate: "Now" for the window. Pass the simulated clock in simulated mode.
+    ///   - phoneDate: The phone's own clock, for the time of day. The simulated clock runs ahead of the person's day.
     public init(
         moodLoader: PlantMoodLoader,
         store: PlantReadingStore,
         currentDate: @escaping () -> Date = Date.init,
+        phoneDate: @escaping () -> Date = Date.init,
         calendar: Calendar = .current
     ) {
         self.moodLoader = moodLoader
         self.store = store
         self.currentDate = currentDate
+        self.phoneDate = phoneDate
         self.calendar = calendar
     }
 
     public func load(completion: @escaping (PlantVoiceFactsLoader.Result) -> Void) {
         let store = store
         let currentDate = currentDate
+        let phoneDate = phoneDate
         let calendar = calendar
         moodLoader.load { result in
             switch result {
@@ -44,7 +50,8 @@ public final class LocalPlantVoiceFactsLoader: PlantVoiceFactsLoader {
                 store.retrieve(from: now.addingTimeInterval(-Self.window), to: now) { result in
                     switch result {
                     case .success(let readings):
-                        completion(.success(Self.facts(state: state, readings: readings, now: now, calendar: calendar)))
+                        let timeOfDay = PlantTimeOfDay(hour: calendar.component(.hour, from: phoneDate()))
+                        completion(.success(Self.facts(state: state, readings: readings, now: now, timeOfDay: timeOfDay)))
                     case .failure:
                         completion(.failure(Error.retrieval))
                     }
@@ -59,7 +66,7 @@ public final class LocalPlantVoiceFactsLoader: PlantVoiceFactsLoader {
         moodLoader.subscribe(update: update)
     }
 
-    private static func facts(state: PlantMoodState, readings: [PlantReading], now: Date, calendar: Calendar) -> PlantVoiceFacts {
+    private static func facts(state: PlantMoodState, readings: [PlantReading], now: Date, timeOfDay: PlantTimeOfDay) -> PlantVoiceFacts {
         let reading = readings.last
         let isDark = reading?.lux.map { $0 < nightLux } ?? false
         return PlantVoiceFacts(
@@ -68,7 +75,7 @@ public final class LocalPlantVoiceFactsLoader: PlantVoiceFactsLoader {
             reading: reading,
             problems: state.problems,
             wateredMinutesAgo: wateredMinutesAgo(in: readings, now: now),
-            timeOfDay: PlantTimeOfDay(hour: calendar.component(.hour, from: now))
+            timeOfDay: timeOfDay
         )
     }
 

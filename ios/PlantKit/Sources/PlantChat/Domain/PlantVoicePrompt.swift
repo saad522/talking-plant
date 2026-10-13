@@ -25,9 +25,6 @@ public enum PlantVoicePrompt {
 
     public static func facts(_ facts: PlantVoiceFacts) -> String {
         var lines = ["Mood: \(describe(facts.mood))"]
-        if let timeOfDay = facts.timeOfDay {
-            lines.append("Time of day: \(timeOfDay.rawValue).")
-        }
         if facts.isSleeping {
             lines.append("It's night and you're sleepy.")
         }
@@ -59,11 +56,13 @@ public enum PlantVoicePrompt {
         """
     }
 
+    /// Only a greeting gets the time of day, so chat turns and home lines never mention it.
     public static func line(_ facts: PlantVoiceFacts, purpose: PlantVoiceLineRequest.Purpose) -> String {
-        """
+        let timeOfDay = purpose == .greeting ? facts.timeOfDay.map { "\nTime of day: \($0.rawValue)." } ?? "" : ""
+        return """
         Write one line of at most \(purpose == .greeting ? 12 : 10) words, with no numbers, for \(describe(purpose)).\(rules(for: purpose, facts: facts))
         Current facts:
-        \(self.facts(facts))
+        \(self.facts(facts))\(timeOfDay)
         """
     }
 

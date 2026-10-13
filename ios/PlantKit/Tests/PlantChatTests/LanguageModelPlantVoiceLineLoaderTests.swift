@@ -79,6 +79,34 @@ final class LanguageModelPlantVoiceLineLoaderTests: PlantChatXCTestCase {
         }
     }
 
+    func test_load_replacesGreetingThatDoesNotMentionTheNeedWithMoodTemplate() {
+        let facts = makeFacts(mood: .thirsty)
+
+        expect(sut: makeSUT(), loading: PlantVoiceLineRequest(facts: facts, purpose: .greeting), from: "Hello, lovely evening!",
+               toDeliver: PlantChatTemplate.speech(mood: .thirsty, isSleeping: false))
+    }
+
+    func test_load_replacesGreetingThatContradictsTheMoodWithMoodTemplate() {
+        let facts = makeFacts(mood: .happy)
+
+        expect(sut: makeSUT(), loading: PlantVoiceLineRequest(facts: facts, purpose: .greeting), from: "Hi! I'm so thirsty today.",
+               toDeliver: PlantChatTemplate.speech(mood: .happy, isSleeping: false))
+    }
+
+    func test_load_keepsGreetingThatFitsTheMood() {
+        let facts = makeFacts(mood: .thirsty)
+
+        expect(sut: makeSUT(), loading: PlantVoiceLineRequest(facts: facts, purpose: .greeting), from: "Hi! Could I have some water?",
+               toDeliver: "Hi! Could I have some water?")
+    }
+
+    func test_load_doesNotCheckHomeAndNotificationLinesAgainstTheMood() {
+        [PlantVoiceLineRequest.Purpose.home, .notification].forEach { purpose in
+            expect(sut: makeSUT(), loading: PlantVoiceLineRequest(facts: makeFacts(mood: .thirsty), purpose: purpose), from: "Hello there!",
+                   toDeliver: "Hello there!")
+        }
+    }
+
     func test_load_deliversGenerationErrorOnSessionFailure() {
         ([anyNSError(), PlantLanguageModelError.contextTooLong, PlantLanguageModelError.generation] as [Error]).forEach { error in
             let (sut, client) = makeSUT()
@@ -120,6 +148,23 @@ final class LanguageModelPlantVoiceLineLoaderTests: PlantChatXCTestCase {
 
     private func makeRequest() -> PlantVoiceLineRequest {
         PlantVoiceLineRequest(facts: makeFacts(), purpose: .home)
+    }
+
+    private func expect(
+        sut: (sut: LanguageModelPlantVoiceLineLoader, client: LanguageModelClientSpy),
+        loading request: PlantVoiceLineRequest,
+        from text: String,
+        toDeliver expected: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        var received: [PlantVoiceLineLoader.Result] = []
+        sut.sut.load(request) { received.append($0) }
+
+        sut.client.sessions[0].complete(with: text)
+
+        XCTAssertEqual(received.count, 1, file: file, line: line)
+        XCTAssertEqual(try? received.first?.get(), expected, file: file, line: line)
     }
 
     private func expect(

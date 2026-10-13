@@ -270,9 +270,9 @@ final class LanguageModelPlantChatLoaderTests: PlantChatXCTestCase {
     func test_send_startsNewSessionAfterSixTurns() {
         let (sut, client, _) = makeSUT()
 
-        (0..<6).forEach { index in
+        sixReplies.enumerated().forEach { index, reply in
             sut.send("Q\(index)", facts: makeFacts()) { _ in }
-            client.sessions[0].complete(with: "Reply \(index)", at: index)
+            client.sessions[0].complete(with: reply, at: index)
         }
         XCTAssertEqual(client.sessions.count, 1)
 
@@ -286,25 +286,155 @@ final class LanguageModelPlantChatLoaderTests: PlantChatXCTestCase {
         let (sut, client, _) = makeSUT()
         var results: [PlantChatLoader.Result] = []
 
-        (0..<6).forEach { index in
+        sixReplies.enumerated().forEach { index, reply in
             sut.send("Q\(index)", facts: makeFacts()) { _ in }
-            client.sessions[0].complete(with: "Reply \(index)", at: index)
+            client.sessions[0].complete(with: reply, at: index)
         }
         sut.send("Q6", facts: makeFacts()) { results.append($0) }
-        client.sessions[1].complete(with: "Reply 5")
+        client.sessions[1].complete(with: "Foxtrot")
         client.sessions[2].complete(with: "Fresh reply")
 
         XCTAssertEqual(client.sessions.count, 3)
         XCTAssertEqual(try? results.first?.get(), "Fresh reply")
     }
 
-    func test_send_includesTimeOfDayInThePrompt() {
+    func test_send_leavesTimeOfDayOutOfThePrompt() {
         let (sut, client, _) = makeSUT()
-        let facts = makeFacts(timeOfDay: .morning)
 
-        sut.send("Hi", facts: facts) { _ in }
+        sut.send("Hi", facts: makeFacts(timeOfDay: .evening)) { _ in }
 
-        XCTAssertTrue(client.sessions[0].prompts[0].contains("Time of day: morning."))
+        XCTAssertFalse(client.sessions[0].prompts[0].contains("Time of day"))
+    }
+
+    // MARK: - Status questions
+
+    func test_send_keepsFirstSentenceAndAppendsExactValuesForStatusQuestion() {
+        let (sut, client, _) = makeSUT()
+        let facts = makeFacts(mood: .happy, reading: makeReading(moisture: 47, lux: 0, temperature: 20.7, humidity: 51))
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("What are your stats?", facts: facts) { results.append($0) }
+        client.sessions[0].complete(with: "I feel wonderful today! My moisture is about 60%. Light is fine.")
+
+        XCTAssertEqual(
+            try? results.first?.get(),
+            "I feel wonderful today! Right now: moisture 47%, light 0 lx, temperature 20.7 °C, humidity 51%."
+        )
+    }
+
+    func test_send_keepsWholeReplyForSingleSensorQuestion() {
+        let (sut, client, _) = makeSUT()
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("How is your light?", facts: makeFacts(mood: .happy)) { results.append($0) }
+        client.sessions[0].complete(with: "Bright and lovely. I'm soaking it up!")
+
+        XCTAssertEqual(try? results.first?.get(), "Bright and lovely. I'm soaking it up!")
+    }
+
+    func test_send_deliversTemplateForStatusQuestionWhenFirstSentenceFailsTwice() {
+        let (sut, client, _) = makeSUT()
+        let facts = makeFacts(mood: .happy)
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("Show me all your readings", facts: facts) { results.append($0) }
+        client.sessions[0].complete(with: "I'm thirsty! Everything else is fine.")
+        client.sessions[1].complete(with: "So thirsty. Help.")
+
+        XCTAssertEqual(try? results.first?.get(), PlantChatTemplate.reply(facts: facts))
+    }
+
+    // MARK: - Mood consistency
+
+    func test_send_retriesWithNewSessionWhenHappyReplySaysThirsty() {
+        let (sut, client, _) = makeSUT()
+        let facts = makeFacts(mood: .happy)
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("How are you?", facts: facts) { results.append($0) }
+        client.sessions[0].complete(with: "I'm a bit thirsty, could you help?")
+        client.sessions[1].complete(with: "I'm doing great!")
+
+        XCTAssertEqual(client.sessions.count, 2)
+        XCTAssertEqual(try? results.first?.get(), "I'm doing great!")
+    }
+
+    func test_send_deliversTemplateWhenThirstyReplySaysNoWaterNeededAgainAfterRetry() {
+        let (sut, client, _) = makeSUT()
+        let facts = makeFacts(mood: .thirsty)
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("Do you need water?", facts: facts) { results.append($0) }
+        client.sessions[0].complete(with: "No, I don't need water.")
+        client.sessions[1].complete(with: "I'm not thirsty at all!")
+
+        XCTAssertEqual(client.sessions.count, 2)
+        XCTAssertEqual(try? results.first?.get(), PlantChatTemplate.reply(facts: facts))
+    }
+
+    // MARK: - Roles
+
+    func test_send_retriesWithNewSessionWhenPlantOffersToWaterThePerson() {
+        let (sut, client, _) = makeSUT()
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("I'm tired", facts: makeFacts(mood: .happy)) { results.append($0) }
+        client.sessions[0].complete(with: "Don't worry, I'll water you soon!")
+        client.sessions[1].complete(with: "Rest up, I'll keep growing.")
+
+        XCTAssertEqual(client.sessions.count, 2)
+        XCTAssertEqual(try? results.first?.get(), "Rest up, I'll keep growing.")
+    }
+
+    func test_send_deliversTemplateWhenReplyEchoesThePersonAgainAfterRetry() {
+        let (sut, client, _) = makeSUT()
+        let facts = makeFacts()
+
+        expect(sut, toDeliver: .success(PlantChatTemplate.reply(facts: facts)), when: {
+            client.sessions[0].complete(with: "You're asking me how I feel?")
+            client.sessions[1].complete(with: "You did ask a good question.")
+        })
+        XCTAssertEqual(client.sessions.count, 2)
+    }
+
+    // MARK: - Repetition
+
+    func test_send_treatsRepliesThatDifferOnlyInNumbersAsRepeats() {
+        let (sut, client, _) = makeSUT()
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("One", facts: makeFacts()) { _ in }
+        client.sessions[0].complete(with: "My soil is at 24%.")
+        sut.send("Two", facts: makeFacts()) { results.append($0) }
+        client.sessions[0].complete(with: "My soil is at 31%.", at: 1)
+        client.sessions[1].complete(with: "A sip would be lovely.")
+
+        XCTAssertEqual(client.sessions.count, 2)
+        XCTAssertEqual(try? results.first?.get(), "A sip would be lovely.")
+    }
+
+    func test_send_treatsRepliesWithTheSameFirstSixWordsAsRepeats() {
+        let (sut, client, _) = makeSUT()
+        var results: [PlantChatLoader.Result] = []
+
+        sut.send("One", facts: makeFacts()) { _ in }
+        client.sessions[0].complete(with: "I could really use a drink right now.")
+        sut.send("Two", facts: makeFacts()) { results.append($0) }
+        client.sessions[0].complete(with: "I could really use a drink, my friend!", at: 1)
+        client.sessions[1].complete(with: "A sip would be lovely.")
+
+        XCTAssertEqual(client.sessions.count, 2)
+        XCTAssertEqual(try? results.first?.get(), "A sip would be lovely.")
+    }
+
+    // MARK: - Display
+
+    func test_send_removesMarkdownAndLineBreaksFromReply() {
+        let (sut, client, _) = makeSUT()
+
+        expect(sut, toDeliver: .success("Hi! I'm so thirsty. Water, please."), when: {
+            client.sessions[0].complete(with: "# Hi!\nI'm **so** thirsty.\n\n- Water, please.")
+        })
     }
 
     func test_reset_forgetsRecentReplies() {
@@ -355,6 +485,8 @@ final class LanguageModelPlantChatLoaderTests: PlantChatXCTestCase {
     }
 
     // MARK: - Private helpers
+
+    private let sixReplies = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"]
 
     private func makeSUT(
         personality: PlantPersonality = .cheerful,

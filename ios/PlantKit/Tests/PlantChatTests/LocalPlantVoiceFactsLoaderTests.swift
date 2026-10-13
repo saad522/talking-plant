@@ -86,12 +86,12 @@ final class LocalPlantVoiceFactsLoaderTests: PlantChatXCTestCase {
 
     // MARK: - Time of day
 
-    func test_load_deliversTimeOfDayFromTheInjectedClock() {
+    func test_load_deliversTimeOfDayFromThePhoneClock() {
         let hours: [(Int, PlantTimeOfDay)] = [(8, .morning), (13, .afternoon), (19, .evening), (23, .night)]
 
         hours.forEach { hour, expected in
             let now = Date(timeIntervalSince1970: TimeInterval(hour * 3_600 + 60))
-            let (sut, moodLoader, store) = makeSUT(currentDate: now)
+            let (sut, moodLoader, store) = makeSUT(phoneDate: now)
             var received: [PlantVoiceFactsLoader.Result] = []
 
             sut.load { received.append($0) }
@@ -100,6 +100,19 @@ final class LocalPlantVoiceFactsLoaderTests: PlantChatXCTestCase {
 
             XCTAssertEqual(try? received.first?.get().timeOfDay, expected, "hour \(hour)")
         }
+    }
+
+    func test_load_takesTimeOfDayFromThePhoneClockNotTheSimulatedClock() {
+        let simulatedAfternoon = Date(timeIntervalSince1970: 14 * 3_600)
+        let phoneEvening = Date(timeIntervalSince1970: 19 * 3_600)
+        let (sut, moodLoader, store) = makeSUT(currentDate: simulatedAfternoon, phoneDate: phoneEvening)
+        var received: [PlantVoiceFactsLoader.Result] = []
+
+        sut.load { received.append($0) }
+        moodLoader.completeLoad(with: .happy)
+        store.completeRetrieval(with: [])
+
+        XCTAssertEqual(try? received.first?.get().timeOfDay, .evening)
     }
 
     // MARK: - Recent watering
@@ -212,13 +225,21 @@ final class LocalPlantVoiceFactsLoaderTests: PlantChatXCTestCase {
 
     private func makeSUT(
         currentDate: Date? = nil,
+        phoneDate: Date? = nil,
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (sut: LocalPlantVoiceFactsLoader, moodLoader: MoodLoaderStub, store: StoreSpy) {
         let moodLoader = MoodLoaderStub()
         let store = StoreSpy()
         let now = currentDate ?? anyDate()
-        let sut = LocalPlantVoiceFactsLoader(moodLoader: moodLoader, store: store, currentDate: { now }, calendar: utcCalendar)
+        let phoneNow = phoneDate ?? anyDate()
+        let sut = LocalPlantVoiceFactsLoader(
+            moodLoader: moodLoader,
+            store: store,
+            currentDate: { now },
+            phoneDate: { phoneNow },
+            calendar: utcCalendar
+        )
         trackMemoryLeak(moodLoader, file: file, line: line)
         trackMemoryLeak(store, file: file, line: line)
         trackMemoryLeak(sut, file: file, line: line)

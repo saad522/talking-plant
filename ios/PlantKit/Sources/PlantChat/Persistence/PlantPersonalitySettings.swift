@@ -10,9 +10,10 @@ public final class PlantPersonalitySettings {
         self.defaults = defaults
     }
 
-    /// The saved personality, or `.cheerful` when nothing valid is saved.
+    /// The saved personality, or `.cheerful` when nothing valid or available is saved.
     public func load() -> PlantPersonality {
-        defaults.retrieveString(forKey: Self.key).flatMap(PlantPersonality.init(rawValue:)) ?? .cheerful
+        let saved = defaults.retrieveString(forKey: Self.key).flatMap(PlantPersonality.init(rawValue:))
+        return saved.flatMap { PlantPersonality.available.contains($0) ? $0 : nil } ?? .cheerful
     }
 
     public func save(_ personality: PlantPersonality) {

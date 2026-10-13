@@ -37,7 +37,7 @@ public final class PlantChatViewModel {
     /// Whether the reply being waited for will be spoken.
     private var speaksPendingReply: Bool = false
 
-    public let personalities: [PlantPersonalityViewModel] = PlantPersonality.allCases.map(PlantPersonalityViewModel.init)
+    public let personalities: [PlantPersonalityViewModel] = PlantPersonality.available.map(PlantPersonalityViewModel.init)
 
     public let backLabel: String = String.localised(key: "plant.chat.back.label")
     public let personalityLabel: String = String.localised(key: "plant.chat.personality.label")

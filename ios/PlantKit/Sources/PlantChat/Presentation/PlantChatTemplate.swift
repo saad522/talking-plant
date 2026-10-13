@@ -28,7 +28,8 @@ enum PlantChatTemplate {
         return speech(mood: facts.mood, isSleeping: facts.isSleeping) + " " + status(of: facts.reading)
     }
 
-    private static func status(of reading: PlantReading?) -> String {
+    /// The latest values, e.g. "Right now: moisture 24%, light 0 lx."
+    static func status(of reading: PlantReading?) -> String {
         guard let reading else { return String.localised(key: "plant.chat.reply.noReadings") }
         let values = [
             reading.moisture.map { String(format: String.localised(key: "plant.chat.reply.moisture"), PlantReadingFormatter.percent($0)) },

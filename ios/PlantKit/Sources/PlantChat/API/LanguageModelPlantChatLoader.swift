@@ -44,7 +44,7 @@ public final class LanguageModelPlantChatLoader: PlantChatLoader {
         if turnsInSession >= Self.maximumTurnsPerSession {
             resetSession()
         }
-        respond(to: prompt, facts: facts, retries: .init(), completion: completion)
+        respond(to: prompt, facts: facts, intent: PlantChatIntent(text), retried: [], completion: completion)
     }
 
     public func reset() {
@@ -58,55 +58,61 @@ public final class LanguageModelPlantChatLoader: PlantChatLoader {
         turnsInSession = 0
     }
 
-    /// Each problem gets one fresh session, then the template.
-    private struct Retries {
-        var context = true
-        var repeated = true
-        var rejected = true
+    /// Each problem gets one fresh session, then the template. A context that is too long a second time fails.
+    private enum Problem {
+        case contextTooLong
+        case rejected
+        case confusedRoles
+        case contradictedMood
+        case repeated
     }
 
+    /// For a status question only the model's first sentence (the feeling) is kept, followed by the exact values.
     private func respond(
         to prompt: String,
         facts: PlantVoiceFacts,
-        retries: Retries,
+        intent: PlantChatIntent,
+        retried: Set<Problem>,
         completion: @escaping (PlantChatLoader.Result) -> Void
     ) {
         let session = currentSession()
         turnsInSession += 1
         session.respond(to: prompt) { [weak self] result in
             guard let self else { return }
+            let retry = { (problem: Problem) in
+                self.resetSession()
+                self.respond(to: prompt, facts: facts, intent: intent, retried: retried.union([problem]), completion: completion)
+            }
             switch result {
             case .success(let text):
                 #if DEBUG
                 Self.logger.debug("Reply:\n\(text, privacy: .public)")
                 #endif
-                let reply = PlantChatReplyGuard.clean(text)
-                var retries = retries
-                if PlantChatReplyGuard.isRejected(reply) {
-                    guard retries.rejected else { return deliverTemplate(facts, completion) }
-                    retries.rejected = false
-                    resetSession()
-                    respond(to: prompt, facts: facts, retries: retries, completion: completion)
-                } else if recentReplies.contains(Self.normalized(reply)) {
-                    guard retries.repeated else { return deliverTemplate(facts, completion) }
-                    retries.repeated = false
-                    resetSession()
-                    respond(to: prompt, facts: facts, retries: retries, completion: completion)
+                let cleaned = PlantChatReplyGuard.clean(text)
+                let reply = intent == .status ? PlantChatReplyGuard.firstSentence(of: cleaned) : cleaned
+                if let problem = problem(with: reply, facts: facts) {
+                    guard retried.contains(problem) == false else { return deliverTemplate(facts, completion) }
+                    retry(problem)
                 } else {
                     remember(reply)
-                    completion(.success(reply))
+                    completion(.success(intent == .status ? reply + " " + PlantChatTemplate.status(of: facts.reading) : reply))
                 }
             case .failure(let error):
-                if retries.context, error as? PlantLanguageModelError == .contextTooLong {
-                    var retries = retries
-                    retries.context = false
-                    resetSession()
-                    respond(to: prompt, facts: facts, retries: retries, completion: completion)
+                if retried.contains(.contextTooLong) == false, error as? PlantLanguageModelError == .contextTooLong {
+                    retry(.contextTooLong)
                 } else {
                     completion(.failure(Error.generation))
                 }
             }
         }
+    }
+
+    private func problem(with reply: String, facts: PlantVoiceFacts) -> Problem? {
+        if PlantChatReplyGuard.isRejected(reply) { return .rejected }
+        if PlantChatReplyGuard.confusesRoles(reply) { return .confusedRoles }
+        if PlantChatReplyGuard.contradicts(reply, mood: facts.mood) { return .contradictedMood }
+        if PlantChatReplyGuard.repeats(reply, anyOf: recentReplies) { return .repeated }
+        return nil
     }
 
     private func deliverTemplate(_ facts: PlantVoiceFacts, _ completion: (PlantChatLoader.Result) -> Void) {
@@ -116,14 +122,7 @@ public final class LanguageModelPlantChatLoader: PlantChatLoader {
     }
 
     private func remember(_ reply: String) {
-        recentReplies = Array((recentReplies + [Self.normalized(reply)]).suffix(Self.repeatWindow))
-    }
-
-    /// Lowercased, trimmed and without punctuation, so "I'm fine!" and "im fine" count as the same reply.
-    private static func normalized(_ text: String) -> String {
-        text.lowercased()
-            .components(separatedBy: .punctuationCharacters).joined()
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        recentReplies = Array((recentReplies + [reply]).suffix(Self.repeatWindow))
     }
 
     private func currentSession() -> PlantLanguageModelSession {

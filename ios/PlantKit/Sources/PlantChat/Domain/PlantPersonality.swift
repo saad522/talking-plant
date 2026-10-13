@@ -7,6 +7,9 @@ public enum PlantPersonality: String, Equatable, Sendable, CaseIterable {
     case chillSurfer
     case politeButler
 
+    /// The personalities users can pick. The others are hidden for now.
+    public static let available: [PlantPersonality] = [.cheerful, .chillSurfer, .politeButler]
+
     /// Describes the voice in the model instructions.
     public var voice: String {
         switch self {

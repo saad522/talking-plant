@@ -21,6 +21,8 @@ public struct PlantTestPeripheralResponder: Equatable, Sendable {
     }
 
     public private(set) var intervalSeconds: UInt16
+    /// When set, `readings(from:)` replaces the soil millivolts and marks the soil valid.
+    public var soilOverrideMillivolts: UInt16?
 
     public init(intervalSeconds: UInt16 = PlantTestPeripheralResponder.defaultIntervalSeconds) {
         self.intervalSeconds = intervalSeconds
@@ -33,6 +35,16 @@ public struct PlantTestPeripheralResponder: Equatable, Sendable {
             1, firmware.major, firmware.minor, firmware.patch, 0, 0,
             UInt8(intervalSeconds & 0xFF), UInt8(intervalSeconds >> 8)
         ])
+    }
+
+    /// The Readings packet to serve: the simulated one, with the soil override applied if any.
+    public func readings(from packet: Data) -> Data {
+        guard let override = soilOverrideMillivolts, packet.count >= 4 else { return packet }
+        var bytes = [UInt8](packet)
+        bytes[1] |= 0x01
+        bytes[2] = UInt8(override & 0xFF)
+        bytes[3] = UInt8(override >> 8)
+        return Data(bytes)
     }
 
     public mutating func handle(command data: Data) -> Effect {

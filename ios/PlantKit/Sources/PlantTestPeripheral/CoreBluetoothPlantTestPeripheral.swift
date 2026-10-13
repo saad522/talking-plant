@@ -36,6 +36,7 @@ public final class CoreBluetoothPlantTestPeripheral: NSObject, ObservableObject 
     @Published public private(set) var status: Status = .stopped
     @Published public private(set) var subscriberCount = 0
     @Published public private(set) var intervalSeconds = PlantTestPeripheralResponder.defaultIntervalSeconds
+    @Published public private(set) var soilOverrideMillivolts: UInt16?
     /// Newest first.
     @Published public private(set) var log: [String] = []
 
@@ -81,6 +82,13 @@ public final class CoreBluetoothPlantTestPeripheral: NSObject, ObservableObject 
         append("water")
     }
 
+    /// Serves this soil value in every Readings packet; `nil` goes back to the simulated soil.
+    public func setSoilOverride(_ millivolts: UInt16?) {
+        responder.soilOverrideMillivolts = millivolts
+        soilOverrideMillivolts = millivolts
+        append(millivolts.map { "soil override \($0) mV" } ?? "soil override off")
+    }
+
     // MARK: - Readings
 
     private func restartTicks() {
@@ -104,7 +112,7 @@ public final class CoreBluetoothPlantTestPeripheral: NSObject, ObservableObject 
 
     private func notifySubscribers() {
         guard subscriberCount > 0, let manager, let readingsCharacteristic else { return }
-        needsResend = !manager.updateValue(latestPacket, for: readingsCharacteristic, onSubscribedCentrals: nil)
+        needsResend = !manager.updateValue(responder.readings(from: latestPacket), for: readingsCharacteristic, onSubscribedCentrals: nil)
     }
 
     // MARK: - Delegate events (main actor, Sendable inputs only)
@@ -178,7 +186,7 @@ public final class CoreBluetoothPlantTestPeripheral: NSObject, ObservableObject 
     private func handleRead(_ characteristicUUID: UUID?, offset: Int) -> (value: Data?, result: CBATTError.Code) {
         let value: Data
         switch characteristicUUID.flatMap(PlantCharacteristic.init(uuid:)) {
-        case .readings: value = latestPacket
+        case .readings: value = responder.readings(from: latestPacket)
         case .deviceInfo: value = responder.deviceInfo
         case .command, nil: return (nil, .readNotPermitted)
         }

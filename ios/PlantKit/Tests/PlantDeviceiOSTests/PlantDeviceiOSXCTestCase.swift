@@ -44,6 +44,77 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
         return (sut, connection, pairing, info, commands, defaults)
     }
 
+    func makeRawSUT(
+        showsRawReading: Bool,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> (sut: PlantDeviceView, connection: ConnectionLoaderStub, raw: RawReadingLoaderStub) {
+        let connection = ConnectionLoaderStub()
+        let raw = RawReadingLoaderStub()
+        let defaults = DefaultsSpy()
+        defaults.stub(PlantDeviceMode.sensor.rawValue, forKey: "plant.device.mode")
+        let sut = PlantDeviceUIComposer.composed(
+            connectionLoader: connection,
+            pairingLoader: PairingLoaderStub(),
+            infoLoader: InfoLoaderStub(),
+            calibrationLoader: LocalMoistureCalibrationLoader(defaults: defaults),
+            rawReadingLoader: raw,
+            commandSender: CommandSenderStub(),
+            settings: PlantDeviceSettings(defaults: defaults),
+            showsRawReading: showsRawReading,
+            actionHandler: { _ in }
+        )
+        trackMemoryLeak(connection, file: file, line: line)
+        trackMemoryLeak(raw, file: file, line: line)
+        trackMemoryLeak(defaults, file: file, line: line)
+        return (sut, connection, raw)
+    }
+
+    func makeCalibrationSUT(
+        savedCalibration: MoistureCalibration? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> (
+        sut: PlantDeviceCalibrationView,
+        connection: ConnectionLoaderStub,
+        raw: RawReadingLoaderStub,
+        commands: CommandSenderStub,
+        schedule: ScheduleSpy
+    ) {
+        let connection = ConnectionLoaderStub()
+        let raw = RawReadingLoaderStub()
+        let commands = CommandSenderStub()
+        let defaults = DefaultsSpy()
+        let schedule = ScheduleSpy()
+        let loader = LocalMoistureCalibrationLoader(defaults: defaults)
+        if let savedCalibration { loader.save(savedCalibration) }
+        let sut = PlantDeviceUIComposer.composedCalibration(
+            calibrationLoader: loader,
+            rawReadingLoader: raw,
+            connectionLoader: connection,
+            commandSender: commands,
+            schedule: schedule.schedule
+        )
+        trackMemoryLeak(connection, file: file, line: line)
+        trackMemoryLeak(raw, file: file, line: line)
+        trackMemoryLeak(commands, file: file, line: line)
+        trackMemoryLeak(defaults, file: file, line: line)
+        trackMemoryLeak(schedule, file: file, line: line)
+        return (sut, connection, raw, commands, schedule)
+    }
+
+    func anyRawReading(soilMillivolts: Int? = 2_431, sequence: UInt32 = 1, flags: UInt8 = 0x07) -> PlantDeviceRawReading {
+        PlantDeviceRawReading(
+            soilMillivolts: soilMillivolts,
+            lux: 312,
+            temperature: 23.41,
+            humidity: 48.2,
+            flags: flags,
+            sequence: sequence,
+            receivedAt: Date(timeIntervalSince1970: 0)
+        )
+    }
+
     func anyNSError() -> NSError {
         NSError(domain: "any", code: 1)
     }
@@ -143,6 +214,16 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
     }
 
     @MainActor
+    final class ScheduleSpy {
+        private var ticks: [@MainActor @Sendable () -> Bool] = []
+        func schedule(_ interval: TimeInterval, _ tick: @escaping @MainActor @Sendable () -> Bool) {
+            ticks.append(tick)
+        }
+
+        func fire(at index: Int = 0) { _ = ticks[index]() }
+    }
+
+    @MainActor
     final class CommandSenderStub: PlantDeviceCommandSender {
         private(set) var commands: [PlantDeviceCommand] = []
         private var completions: [(PlantDeviceCommandSender.Result) -> Void] = []
@@ -188,8 +269,10 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
 
         func set(_ value: String, forKey key: String) { strings[key] = value }
         func retrieveString(forKey key: String) -> String? { strings[key] }
-        func set(_ value: Double, forKey key: String) {}
-        func retrieve(forKey key: String) -> Double? { nil }
+        private var doubles: [String: Double] = [:]
+
+        func set(_ value: Double, forKey key: String) { doubles[key] = value }
+        func retrieve(forKey key: String) -> Double? { doubles[key] }
         func set(_ value: Bool, forKey key: String) {}
         func retrieveBool(forKey key: String) -> Bool? { nil }
     }

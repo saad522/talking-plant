@@ -9,4 +9,6 @@ final class PlantDeviceStore: ObservableObject {
     @Published var pairedName: String?
     @Published var info: PlantDeviceInfoViewModel?
     @Published var commandError: String?
+    @Published var calibrationStatus: String = ""
+    @Published var rawReading: PlantDeviceRawReadingViewModel?
 }

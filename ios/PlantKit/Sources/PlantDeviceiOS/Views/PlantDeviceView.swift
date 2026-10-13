@@ -1,13 +1,17 @@
 import PlantDevice
+import PlantShared
 import SwiftUI
 
 public struct PlantDeviceView: View {
     @ObservedObject private var store: PlantDeviceStore
     private let viewModel: PlantDeviceViewModel
+    private let showsRawReading: Bool
+    private let placeholder = PlantReadingFormatter.placeholder
 
-    init(store: PlantDeviceStore, viewModel: PlantDeviceViewModel) {
+    init(store: PlantDeviceStore, viewModel: PlantDeviceViewModel, showsRawReading: Bool) {
         self.store = store
         self.viewModel = viewModel
+        self.showsRawReading = showsRawReading
     }
 
     public var body: some View {
@@ -22,6 +26,9 @@ public struct PlantDeviceView: View {
             }
             if store.mode == .sensor {
                 sensorSection
+                if showsRawReading {
+                    rawReadingSection
+                }
             }
         }
         .navigationTitle(viewModel.title)
@@ -53,10 +60,25 @@ public struct PlantDeviceView: View {
                     .font(PlantDeviceFont.notice)
                     .foregroundStyle(PlantDeviceColor.error)
             }
+            Button(action: viewModel.calibrationTap) {
+                row(viewModel.calibrationLabel, store.calibrationStatus)
+            }
             Button(store.pairedName == nil ? viewModel.pairLabel : viewModel.changeLabel, action: viewModel.pairTap)
             if store.pairedName != nil {
                 Button(viewModel.forgetLabel, role: .destructive, action: viewModel.forgetTap)
             }
+        }
+    }
+
+    private var rawReadingSection: some View {
+        Section(viewModel.rawSectionLabel) {
+            row(viewModel.rawSoilLabel, store.rawReading?.soil ?? placeholder)
+            row(viewModel.rawLightLabel, store.rawReading?.light ?? placeholder)
+            row(viewModel.rawTemperatureLabel, store.rawReading?.temperature ?? placeholder)
+            row(viewModel.rawHumidityLabel, store.rawReading?.humidity ?? placeholder)
+            row(viewModel.rawFlagsLabel, store.rawReading?.flags ?? placeholder)
+            row(viewModel.rawSequenceLabel, store.rawReading?.sequence ?? placeholder)
+            row(viewModel.rawReceivedLabel, store.rawReading?.received ?? placeholder)
         }
     }
 

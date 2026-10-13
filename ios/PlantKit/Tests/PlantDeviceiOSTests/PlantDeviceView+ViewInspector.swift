@@ -24,4 +24,9 @@ extension PlantDeviceView {
     func simulateSelectMode(_ mode: PlantDeviceMode) {
         try? inspect().find(ViewType.Picker.self).select(value: mode)
     }
+
+    /// Taps a button whose label is a row containing `label`.
+    func simulateTapRow(_ label: String) {
+        try? inspect().find(ViewType.Button.self, where: { (try? $0.find(text: label)) != nil }).tap()
+    }
 }

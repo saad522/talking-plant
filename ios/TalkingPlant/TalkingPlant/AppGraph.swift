@@ -50,6 +50,7 @@ final class AppGraph {
         let sensor: CoreBluetoothPeripheralClient?
         let client: any PeripheralClient & PeripheralConnectionClient
         let currentDate: () -> Date
+        let calibration: MoistureCalibration
         switch mode {
         case .simulated:
             // The simulated clock continues from the last saved reading and the soil from its saved value.
@@ -61,12 +62,14 @@ final class AppGraph {
             sensor = nil
             client = plant
             currentDate = { plant.currentDate }
+            calibration = SimulatedPeripheralClient.calibration
         case .sensor:
             let central = CoreBluetoothPeripheralClient()
             simulated = nil
             sensor = central
             client = central
             currentDate = Date.init
+            calibration = .placeholder
         }
         self.sensor = sensor
         #if DEBUG
@@ -74,7 +77,7 @@ final class AppGraph {
         #endif
 
         let readings = LocalPlantReadingDecorator(
-            decoratee: PeripheralPlantReadingLoader(client: client, calibration: { .placeholder }, currentDate: currentDate),
+            decoratee: PeripheralPlantReadingLoader(client: client, calibration: { calibration }, currentDate: currentDate),
             store: store
         )
         let health = LocalPlantHealthLoader(

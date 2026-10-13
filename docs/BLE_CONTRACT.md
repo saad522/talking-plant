@@ -89,8 +89,16 @@ moisture% = clamp((dryMv - soilMv) / (dryMv - wetMv) * 100, 0, 100)
 
 Calibration flow in the app: sensor in dry air → save `dryMv`; sensor in a glass of
 water up to its marked line → save `wetMv`. Until calibrated, use placeholder defaults
-`dryMv = 2400`, `wetMv = 1100`, and show "not calibrated" in the UI. Replace the
+`dryMv = 2450`, `wetMv = 1050`, and show "not calibrated" in the UI. Replace the
 defaults with real values after the hardware arrives.
+
+Source of the defaults (typical values only, no datasheet confirms them): capacitive soil
+moisture sensor v1.2 manuals give about 2.5 V in open air and about 1.0 V fully submerged.
+The ESP32-C3 ADC at 12 dB is rated for 0-2500 mV (ESP-IDF docs), so the dry point sits just
+inside that range (2450) and the wet point takes a small margin (1050).
+
+The simulated plant keeps its own fixed calibration (`dryMv = 2400`, `wetMv = 1100`),
+because its soil curve was designed for those values. It still goes through the mapper.
 
 ## Power modes
 

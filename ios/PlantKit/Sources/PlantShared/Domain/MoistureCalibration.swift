@@ -2,8 +2,12 @@ import Foundation
 
 /// Converts soil sensor millivolts to moisture %. Higher millivolts = drier.
 public struct MoistureCalibration: Equatable, Sendable {
-    /// Placeholder until the real sensor is calibrated. Show "not calibrated" in the UI.
-    public static let placeholder = MoistureCalibration(dry: 2400, wet: 1100, isCalibrated: false)
+    /// Typical values until the user calibrates their own sensor. Show "not calibrated" in the UI.
+    /// Dry 2450 mV: capacitive soil sensor v1.2 manuals give about 2.5 V in open air, and the
+    /// ESP32-C3 ADC at 12 dB is rated for 0-2500 mV (ESP-IDF docs), so we stay just inside it.
+    /// Wet 1050 mV: the same manuals give about 1.0 V fully submerged, plus a small margin.
+    /// No datasheet confirms these. They get replaced by values measured on our sensor.
+    public static let placeholder = MoistureCalibration(dry: 2450, wet: 1050, isCalibrated: false)
 
     public let dryMillivolts: Int
     public let wetMillivolts: Int

@@ -9,6 +9,11 @@ final class SimulatedPeripheralClientTests: PlantSharedXCTestCase {
         XCTAssertEqual(schedule.intervals, [])
     }
 
+    func test_calibration_isTheOneTheSoilCurveWasDesignedFor() {
+        XCTAssertEqual(SimulatedPeripheralClient.calibration.dryMillivolts, 2_400)
+        XCTAssertEqual(SimulatedPeripheralClient.calibration.wetMillivolts, 1_100)
+    }
+
     func test_read_deliversContractPacketForCurrentState() {
         let (sut, _) = makeSUT()
 

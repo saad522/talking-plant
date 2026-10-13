@@ -16,6 +16,10 @@ public final class SimulatedPeripheralClient: PeripheralClient, PeripheralConnec
 
     public static let soilMillivoltsKey = "simulated.soilMillivolts"
 
+    /// The calibration the simulated soil curve (1100-2600 mV) was designed for.
+    /// Separate from `MoistureCalibration.placeholder`, so simulated moods don't change.
+    public static let calibration = MoistureCalibration(dryMillivolts: 2_400, wetMillivolts: 1_100)!
+
     static let wetMillivolts: Double = 1_100
     static let driestMillivolts: Double = 2_600
     static let dryingMillivoltsPerHour: Double = 18

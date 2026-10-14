@@ -48,16 +48,19 @@ public struct PlantChatPersonalityMenuView: View {
 
     public var body: some View {
         Menu {
-            ForEach(options) { option in
-                Button(action: option.select) {
-                    if option.isSelected {
-                        Label(option.label, systemImage: "checkmark")
-                    } else {
-                        Text(option.label)
+            // The picker only shows when there is a choice (v1 ships cheerful only).
+            if options.count > 1 {
+                ForEach(options) { option in
+                    Button(action: option.select) {
+                        if option.isSelected {
+                            Label(option.label, systemImage: "checkmark")
+                        } else {
+                            Text(option.label)
+                        }
                     }
                 }
+                Divider()
             }
-            Divider()
             Toggle(speakReplies.label, isOn: Binding(get: { speakReplies.isOn }, set: speakReplies.set))
             if let voiceSpike {
                 Button("Voice spike", action: voiceSpike)

@@ -5,6 +5,8 @@ picker) are done and stay: S1's mood table now drives Kokoro's speed, and S2 sta
 Apple fallback. Background and measurements: [docs/spikes/kokoro.md](../spikes/kokoro.md).
 Decisions on the open questions are in section 10.
 
+v1: cheerful only, picker hidden.
+
 Scope:
 
 - One Kokoro voice, **"sprout"**: af_heart blended with 55% af_nicole, baked into one file at

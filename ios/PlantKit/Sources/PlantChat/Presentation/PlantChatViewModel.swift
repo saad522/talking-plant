@@ -345,10 +345,22 @@ public final class PlantChatViewModel {
         deactivateAudioSession()
     }
 
-    private func speak(_ text: String) {
+    /// A plant line that is not a reply, spoken when spoken replies are on.
+    private func appendSpokenGreeting(_ text: String) {
+        append(text, from: .plant)
+        let spoken = PlantSpeechText.clean(text)
+        guard spokenReplies.isEnabled, spoken.isEmpty == false, activity == .idle else { return }
+        if isAudioSessionActive == false {
+            guard audioSession.activate() else { return }
+            isAudioSessionActive = true
+        }
+        speak(spoken, from: "greeting")
+    }
+
+    private func speak(_ text: String, from source: String = "reply") {
         speech += 1
         let speech = speech
-        Self.logger.notice("speak from: reply (\(text.count) chars, turn \(speech))")
+        Self.logger.notice("speak from: \(source) (\(text.count) chars, turn \(speech))")
         setActivity(.speaking)
         synthesizer.speak(text, style: settings.load().speechStyle.adjusted(for: latestFacts?.mood)) { [weak self] in
             guard let self, self.speech == speech else {
@@ -417,16 +429,16 @@ public final class PlantChatViewModel {
         loadFacts { [weak self] in
             guard let self, self.conversation == conversation else { return }
             guard let facts = self.latestFacts else {
-                self.append(PlantChatTemplate.greeting, from: .plant)
+                self.appendSpokenGreeting(PlantChatTemplate.greeting)
                 return
             }
             self.lineLoader.load(PlantVoiceLineRequest(facts: facts, purpose: .greeting)) { [weak self] result in
                 guard let self, self.conversation == conversation else { return }
                 switch result {
                 case .success(let line) where self.latestFacts?.mood == facts.mood:
-                    self.append(line, from: .plant)
+                    self.appendSpokenGreeting(line)
                 default:
-                    self.append(PlantChatTemplate.greeting, from: .plant)
+                    self.appendSpokenGreeting(PlantChatTemplate.greeting)
                 }
             }
         }

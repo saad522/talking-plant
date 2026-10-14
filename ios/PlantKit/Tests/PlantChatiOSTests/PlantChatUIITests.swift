@@ -80,13 +80,13 @@ final class PlantChatUIITests: PlantChatiOSXCTestCase {
         XCTAssertEqual(sut.notice, "Sprout's voice needs Apple Intelligence. Replies are simple for now.")
     }
 
-    func test_personalityMenu_listsAvailablePersonalitiesWithSavedOneChecked() {
+    func test_personalityMenu_offersOnlyCheerfulEvenWhenAnotherPersonalityIsSaved() {
         let (sut, _, _, _, _) = makeSUT(savedPersonality: .chillSurfer)
 
         sut.simulateAppear()
 
-        XCTAssertEqual(sut.personalityOptions.map(\.label), ["Cheerful", "Chill surfer", "Polite butler"])
-        XCTAssertEqual(sut.personalityOptions.filter(\.isSelected).map(\.label), ["Chill surfer"])
+        XCTAssertEqual(sut.personalityOptions.map(\.label), ["Cheerful"])
+        XCTAssertEqual(sut.personalityOptions.filter(\.isSelected).map(\.label), ["Cheerful"])
     }
 
     func test_personalityMenu_checksCheerfulWhenSavedPersonalityIsHidden() {
@@ -116,26 +116,6 @@ final class PlantChatUIITests: PlantChatiOSXCTestCase {
         sut.simulateAppear()
 
         XCTAssertEqual(sut.speakReplies?.isOn, false)
-    }
-
-    func test_selectingPersonality_savesItRestartsChatAndGreetsAgain() {
-        let (sut, chatLoader, lineLoader, factsLoader, defaults) = makeSUT()
-        sut.simulateAppear()
-        factsLoader.completeLoad(with: makeFacts())
-        lineLoader.complete(with: "Hi!")
-
-        sut.simulatePersonalitySelection("Chill surfer")
-
-        XCTAssertEqual(defaults.savedStrings["plant.chat.personality"], "chillSurfer")
-        XCTAssertEqual(chatLoader.resetCount, 1)
-        XCTAssertEqual(sut.bubbles.count, 0)
-        factsLoader.completeLoad(with: makeFacts(), at: 1)
-        XCTAssertEqual(lineLoader.requests.count, 2)
-        XCTAssertEqual(sut.personalityOptions.filter(\.isSelected).map(\.label), ["Chill surfer"])
-
-        lineLoader.complete(with: "Dude, hey.", at: 1)
-
-        XCTAssertEqual(sut.bubbles.map(\.text), ["Dude, hey."])
     }
 
     #if DEBUG

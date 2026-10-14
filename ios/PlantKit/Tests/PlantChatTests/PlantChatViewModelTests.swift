@@ -42,14 +42,14 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         XCTAssertEqual(sut.factsLoader.messages, [.subscribeFacts, .loadFacts, .loadFacts])
     }
 
-    func test_appear_deliversSavedPersonality() {
+    func test_appear_deliversCheerfulWhenAnotherPersonalityIsSaved() {
         let sut = makeSUT(savedPersonality: .politeButler)
         var received: [PlantPersonality] = []
         sut.viewModel.loadedPersonality = { received.append($0) }
 
         sut.viewModel.appear()
 
-        XCTAssertEqual(received, [.politeButler])
+        XCTAssertEqual(received, [.cheerful])
     }
 
     func test_appear_deliversAvailabilityOfChatLoader() {
@@ -406,9 +406,9 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
     func test_select_savesPersonalityAndResetsChatLoader() {
         let sut = makeLoadedSUT()
 
-        sut.viewModel.select(.politeButler)
+        sut.viewModel.select(.cheerful)
 
-        XCTAssertEqual(sut.settings.load(), .politeButler)
+        XCTAssertEqual(sut.settings.load(), .cheerful)
         XCTAssertEqual(sut.chatLoader.resetCount, 1)
     }
 
@@ -811,13 +811,13 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
     // MARK: - voice: spoken replies
 
     func test_reply_toSpokenTurn_isSpokenCleanedWithPersonalityStyleThenIdleWhenFinished() {
-        let sut = makeSpokenTurnSUT(personality: .politeButler)
+        let sut = makeSpokenTurnSUT(personality: .cheerful)
         var activities: [PlantChatActivity] = []
         sut.viewModel.loadedActivity = { activities.append($0) }
 
         sut.chatLoader.complete(with: "*sighs* Water, please 🌱")
 
-        XCTAssertEqual(sut.synthesizer.speeches, [.init(text: "Water, please", style: PlantPersonality.politeButler.speechStyle.adjusted(for: .happy))])
+        XCTAssertEqual(sut.synthesizer.speeches, [.init(text: "Water, please", style: PlantPersonality.cheerful.speechStyle.adjusted(for: .happy))])
         XCTAssertEqual(activities, [.speaking])
         XCTAssertEqual(sut.audioSession.messages.filter { $0 == .deactivate }.count, 0)
 
@@ -852,11 +852,11 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
     }
 
     func test_reply_toSpokenTurn_whileThirsty_isSpokenWithTheMoodAdjustedStyle() {
-        let sut = makeSpokenTurnSUT(personality: .politeButler, mood: .thirsty)
+        let sut = makeSpokenTurnSUT(personality: .cheerful, mood: .thirsty)
 
         sut.chatLoader.complete(with: "Water, please")
 
-        XCTAssertEqual(sut.synthesizer.speeches, [.init(text: "Water, please", style: PlantPersonality.politeButler.speechStyle.adjusted(for: .thirsty))])
+        XCTAssertEqual(sut.synthesizer.speeches, [.init(text: "Water, please", style: PlantPersonality.cheerful.speechStyle.adjusted(for: .thirsty))])
     }
 
     func test_reply_toSpokenTurn_showsTheOriginalTextEvenWhenSpoken() {
@@ -903,8 +903,33 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         XCTAssertEqual(sut.audioSession.messages, [.subscribe])
     }
 
-    func test_greeting_isNeverSpoken() {
+    func test_appear_withSpokenRepliesOn_speaksGreetingOnce() {
+        let sut = makeSUT()
+
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts())
+        sut.lineLoader.complete(with: "Hey!")
+
+        XCTAssertEqual(sut.synthesizer.speeches.map(\.text), ["Hey!"])
+    }
+
+    func test_select_speaksTheNewGreeting() {
         let sut = makeLoadedSUT()
+
+        sut.viewModel.select(.cheerful)
+        sut.factsLoader.completeLoad(with: makeFacts(), at: 1)
+        sut.lineLoader.complete(with: "Back again!", at: 1)
+
+        XCTAssertEqual(sut.synthesizer.speeches.map(\.text), ["Back again!"])
+    }
+
+    func test_appear_withSpokenRepliesOff_doesNotSpeakGreeting() {
+        let sut = makeSUT()
+        sut.defaults.stub(false, forKey: "plant.chat.spokenReplies.enabled")
+
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: makeFacts())
+        sut.lineLoader.complete(with: "Hi!")
 
         XCTAssertEqual(sut.synthesizer.speeches, [])
     }
@@ -1165,6 +1190,15 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         return SUT(viewModel: viewModel, chatLoader: chatLoader, lineLoader: lineLoader, factsLoader: factsLoader, settings: settings, transcriptLoader: transcriptLoader, audioSession: audioSession, synthesizer: synthesizer, defaults: defaults)
     }
 
+    /// Appears and shows the greeting "Hey!" without speaking it, so turn tests start from silence.
+    private func appearSilently(_ sut: SUT, facts: PlantVoiceFacts) {
+        sut.defaults.stub(false, forKey: "plant.chat.spokenReplies.enabled")
+        sut.viewModel.appear()
+        sut.factsLoader.completeLoad(with: facts)
+        sut.lineLoader.complete(with: "Hey!")
+        sut.defaults.stub(true, forKey: "plant.chat.spokenReplies.enabled")
+    }
+
     /// Loaded, then listening.
     private func makeListeningSUT(
         facts: PlantVoiceFacts? = nil,
@@ -1173,9 +1207,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         line: UInt = #line
     ) -> SUT {
         let sut = makeSUT(actionHandler: actionHandler, file: file, line: line)
-        sut.viewModel.appear()
-        sut.factsLoader.completeLoad(with: facts ?? makeFacts())
-        sut.lineLoader.complete(with: "Hey!")
+        appearSilently(sut, facts: facts ?? makeFacts())
         sut.viewModel.micTap()
         return sut
     }
@@ -1189,9 +1221,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         line: UInt = #line
     ) -> SUT {
         let sut = makeSUT(savedPersonality: personality, actionHandler: actionHandler, file: file, line: line)
-        sut.viewModel.appear()
-        sut.factsLoader.completeLoad(with: makeFacts(mood: mood))
-        sut.lineLoader.complete(with: "Hey!")
+        appearSilently(sut, facts: makeFacts(mood: mood))
         sut.viewModel.micTap()
         sut.transcriptLoader.sendFinal("Hi")
         return sut
@@ -1205,9 +1235,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         line: UInt = #line
     ) -> SUT {
         let sut = makeSUT(authorization: authorization, file: file, line: line)
-        sut.viewModel.appear()
-        sut.factsLoader.completeLoad(with: facts ?? makeFacts())
-        sut.lineLoader.complete(with: "Hey!")
+        appearSilently(sut, facts: facts ?? makeFacts())
         return sut
     }
 }

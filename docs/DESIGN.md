@@ -235,7 +235,7 @@ Opened by "Talk to <name>" on the home screen.
 - **Personality button:** a 44 pt round `card` button with the sliders icon on the right
   of the header. It opens a menu of personalities with a checkmark on the current one.
 - **Unavailable notice:** when the on-device model is unavailable, a small `card` row under
-  the Sprout says the voice needs Apple Intelligence and replies are simple for now.
+  the Sprout says smart replies need Apple Intelligence and it will keep it simple for now.
 - **Bottom (M5):** a text field with a round send button.
 - **Bottom (M5b):** the voice controls replace the text field: a 56 pt keyboard button, an
   84 pt mic button (`primary`, 6 pt `#CFE6C8` border), and a 56 pt end button (`ink`).

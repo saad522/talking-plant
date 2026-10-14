@@ -6,6 +6,20 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
     /// A chunk louder than this is treated as broken output.
     public static let maximumPeak: Float = 1.5
 
+    /// Timings of the latest utterance, for the DEBUG voice check screen.
+    public struct Metrics: Equatable, Sendable {
+        public struct Chunk: Equatable, Sendable {
+            public let characters: Int
+            public let seconds: Double
+        }
+
+        public internal(set) var firstAudioSeconds: Double?
+        public internal(set) var chunks: [Chunk] = []
+        public internal(set) var watchdogFired = false
+    }
+
+    public private(set) var lastMetrics: Metrics?
+
     private let generator: PlantSpeechGeneratorClient
     private let player: PlantSpeechPlayerClient
     private let schedule: FallbackPlantSynthesizerClient.Schedule
@@ -49,6 +63,7 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
             return
         }
         isActive = true
+        lastMetrics = Metrics()
         let utterance = Utterance(chunks: chunks, speed: style.speed, begin: .now, update: update)
         requestNext(of: utterance, generation: current)
     }
@@ -87,6 +102,7 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
         let generator = generator
         task = Task { [weak self] in
             let samples: [Float]
+            let start = ContinuousClock.now
             do {
                 samples = try await generator.generate(utterance.chunks[index], speed: utterance.speed)
             } catch {
@@ -94,11 +110,11 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
                 self?.fail(utterance, generation: current)
                 return
             }
-            self?.generated(samples, index: index, of: utterance, generation: current)
+            self?.generated(samples, index: index, seconds: start.duration(to: .now).seconds, of: utterance, generation: current)
         }
     }
 
-    private func generated(_ samples: [Float], index: Int, of utterance: Utterance, generation current: Int) {
+    private func generated(_ samples: [Float], index: Int, seconds: Double, of utterance: Utterance, generation current: Int) {
         guard generation == current else {
             Self.logger.notice("chunk \(index) generated but dropped: generation \(current) is now \(self.generation)")
             return
@@ -108,6 +124,7 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
             Self.logger.notice("chunk \(index) rejected by level check: \(samples.count) samples, peak \(peak)")
             return fail(utterance, generation: current)
         }
+        lastMetrics?.chunks.append(.init(characters: utterance.chunks[index].count, seconds: seconds))
         Self.logger.notice("chunk \(index) accepted: \(samples.count) samples, peak \(peak)")
         utterance.isGenerating = false
         utterance.nextIndex = index + 1
@@ -118,6 +135,7 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
         }
         if index == 0 {
             Self.logger.info("first audio \(utterance.begin.duration(to: .now).formatted())")
+            lastMetrics?.firstAudioSeconds = utterance.begin.duration(to: .now).seconds
             utterance.update(.generated)
             watchPlayback(of: utterance, samples: samples.count, generation: current)
         }
@@ -129,6 +147,7 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
         let limit = Double(samples) / Self.sampleRate + Self.playbackGrace
         schedule(limit) { [weak self] in
             guard let self, generation == current, utterance.played == 0 else { return }
+            lastMetrics?.watchdogFired = true
             Self.logger.notice("playback watchdog fired: first buffer not played back after \(limit) s")
             fail(utterance, generation: current)
         }
@@ -182,5 +201,11 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
         guard !samples.isEmpty else { return false }
         let peak = samples.reduce(0) { max($0, abs($1)) }
         return peak <= maximumPeak
+    }
+}
+
+private extension Duration {
+    var seconds: Double {
+        Double(components.seconds) + Double(components.attoseconds) / 1e18
     }
 }

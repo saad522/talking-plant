@@ -128,14 +128,14 @@ public enum PlantChatUIComposer {
                 isOn: isSpeakingReplies,
                 set: { [weak viewModel] in viewModel?.setSpokenReplies($0) }
             ),
-            voiceSpike: voiceSpike(actionHandler: actionHandler)
+            voiceCheck: voiceCheck(actionHandler: actionHandler)
         )
     }
 
-    /// The Kokoro spike entry (docs/spikes/kokoro.md), DEBUG builds only. Delete with the spike.
-    private static func voiceSpike(actionHandler: @escaping (PlantChatAction) -> Void) -> (() -> Void)? {
+    /// The voice check entry, DEBUG builds only.
+    private static func voiceCheck(actionHandler: @escaping (PlantChatAction) -> Void) -> (() -> Void)? {
         #if DEBUG
-        return { actionHandler(.voiceSpikeTap) }
+        return { actionHandler(.voiceCheckTap) }
         #else
         return nil
         #endif

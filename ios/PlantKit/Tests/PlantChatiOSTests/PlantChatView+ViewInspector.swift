@@ -103,8 +103,8 @@ extension PlantChatView where Face == FaceStub {
         try? inspect().find(ViewType.Menu.self).find(ViewType.Toggle.self).tap()
     }
 
-    func simulateVoiceSpikeTap() {
-        try? inspect().find(PlantChatPersonalityMenuView.self).actualView().voiceSpike?()
+    func simulateVoiceCheckTap() {
+        try? inspect().find(PlantChatPersonalityMenuView.self).actualView().voiceCheck?()
     }
 
     func simulatePersonalitySelection(_ label: String) {

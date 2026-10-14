@@ -77,7 +77,7 @@ final class PlantChatUIITests: PlantChatiOSXCTestCase {
 
         sut.simulateAppear()
 
-        XCTAssertEqual(sut.notice, "Sprout's voice needs Apple Intelligence. Replies are simple for now.")
+        XCTAssertEqual(sut.notice, "Smart replies need Apple Intelligence. Sprout will keep it simple for now.")
     }
 
     func test_personalityMenu_offersOnlyCheerfulEvenWhenAnotherPersonalityIsSaved() {
@@ -119,14 +119,14 @@ final class PlantChatUIITests: PlantChatiOSXCTestCase {
     }
 
     #if DEBUG
-    func test_personalityMenuVoiceSpikeTap_sendsVoiceSpikeAction() {
+    func test_personalityMenuVoiceCheckTap_sendsVoiceCheckAction() {
         var actions: [PlantChatAction] = []
         let (sut, _, _, _, _) = makeSUT(actionHandler: { actions.append($0) })
         sut.simulateAppear()
 
-        sut.simulateVoiceSpikeTap()
+        sut.simulateVoiceCheckTap()
 
-        XCTAssertEqual(actions, [.voiceSpikeTap])
+        XCTAssertEqual(actions, [.voiceCheckTap])
     }
     #endif
 

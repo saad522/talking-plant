@@ -22,19 +22,35 @@ final class SproutVoice {
     let synthesizer: PlantSynthesizerClient
     private let prewarmModel: () async throws -> Void
     private let unloadModel: () -> Void
+    #if DEBUG
+    // For the voice check screen.
+    private let apple = AVSpeechPlantSynthesizerClient()
+    private var physicalMemory: UInt64 = 0
+    #if canImport(PlantKokoro)
+    private var generator: KokoroSproutGenerator?
+    private var chunked: ChunkedPlantSynthesizerClient?
+    #endif
+    #endif
     let id = UUID()
     private var memoryWarnings: Task<Void, Never>?
     private static let logger = Logger(subsystem: "TalkingPlant", category: "voice")
 
     init(physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory) {
+        #if DEBUG
+        self.physicalMemory = physicalMemory
+        #endif
         #if canImport(PlantKokoro)
         Self.logger.notice("SproutVoice \(self.id) created: physical memory \(physicalMemory) bytes, gate \(Self.minimumPhysicalMemory)")
         if physicalMemory >= Self.minimumPhysicalMemory {
             let generator = KokoroSproutGenerator()
-            synthesizer = FallbackPlantSynthesizerClient(
-                primary: ChunkedPlantSynthesizerClient(generator: generator, player: AVAudioEnginePlantSpeechPlayerClient()),
-                fallback: AVSpeechPlantSynthesizerClient()
-            )
+            let chunked = ChunkedPlantSynthesizerClient(generator: generator, player: AVAudioEnginePlantSpeechPlayerClient())
+            #if DEBUG
+            self.generator = generator
+            self.chunked = chunked
+            synthesizer = FallbackPlantSynthesizerClient(primary: chunked, fallback: apple)
+            #else
+            synthesizer = FallbackPlantSynthesizerClient(primary: chunked, fallback: AVSpeechPlantSynthesizerClient())
+            #endif
             prewarmModel = { try await generator.prewarm() }
             unloadModel = { generator.unload() }
             memoryWarnings = Task { [weak self] in
@@ -45,7 +61,11 @@ final class SproutVoice {
             return
         }
         #endif
+        #if DEBUG
+        synthesizer = apple
+        #else
         synthesizer = AVSpeechPlantSynthesizerClient()
+        #endif
         prewarmModel = {}
         unloadModel = {}
     }
@@ -73,4 +93,64 @@ final class SproutVoice {
 
 #if canImport(PlantKokoro)
 extension KokoroSproutGenerator: PlantSpeechGeneratorClient {}
+#endif
+
+#if DEBUG
+extension SproutVoice: PlantVoiceCheckClient {
+    var snapshot: PlantVoiceCheckSnapshot {
+        #if canImport(PlantKokoro)
+        let memory = KokoroMemory.current()
+        let state: PlantVoiceCheckSnapshot.State = switch generator?.state {
+        case .loaded: .loaded
+        case .loading: .loading
+        case .notLoaded, nil: .notLoaded
+        }
+        return PlantVoiceCheckSnapshot(
+            voiceID: id.uuidString,
+            physicalMemory: physicalMemory,
+            minimumPhysicalMemory: Self.minimumPhysicalMemory,
+            state: state,
+            loadSeconds: generator?.timings?.loadSeconds,
+            warmUpSeconds: generator?.timings?.warmUpSeconds,
+            memoryNowBytes: memory?.currentBytes,
+            memoryPeakBytes: memory?.peakBytes,
+            utterance: chunked?.lastMetrics
+        )
+        #else
+        PlantVoiceCheckSnapshot(
+            voiceID: id.uuidString,
+            physicalMemory: physicalMemory,
+            minimumPhysicalMemory: Self.minimumPhysicalMemory,
+            state: .notLoaded
+        )
+        #endif
+    }
+
+    func load() async -> String? {
+        do {
+            try await prewarmModel()
+            return nil
+        } catch {
+            return String(describing: error)
+        }
+    }
+
+    func unload() {
+        unload(from: "voice check")
+    }
+
+    func speak(_ text: String, style: PlantSpeechStyle, appleOnly: Bool, completion: @escaping () -> Void) {
+        stop()
+        if appleOnly {
+            apple.speak(text, style: style, completion: completion)
+        } else {
+            synthesizer.speak(text, style: style, completion: completion)
+        }
+    }
+
+    func stop() {
+        synthesizer.stop()
+        apple.stop()
+    }
+}
 #endif

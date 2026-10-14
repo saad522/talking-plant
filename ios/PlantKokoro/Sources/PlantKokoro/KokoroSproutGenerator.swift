@@ -19,6 +19,17 @@ public final class KokoroSproutGenerator {
         case failed(String)
     }
 
+    public enum State: Equatable, Sendable {
+        case notLoaded
+        case loading
+        case loaded
+    }
+
+    public struct LoadTimings: Equatable, Sendable {
+        public let loadSeconds: Double
+        public let warmUpSeconds: Double
+    }
+
     /// Sprout talks a little faster than Kokoro's default.
     public static let baseSpeed: Float = 1.05
     nonisolated static let cacheLimit = 32 * 1_048_576
@@ -29,6 +40,14 @@ public final class KokoroSproutGenerator {
     private var model: SproutModel?
     private var loading: Task<Void, Error>?
     private var epoch = 0
+
+    public var state: State {
+        if model != nil { return .loaded }
+        return loading != nil ? .loading : .notLoaded
+    }
+
+    /// Of the model that is loaded now. `nil` while not loaded.
+    public private(set) var timings: LoadTimings?
 
     /// `resources` holds `kokoro-f16.safetensors` and `sprout.safetensors`. It defaults to this package's bundle.
     public init(resources: URL? = nil) {
@@ -48,9 +67,12 @@ public final class KokoroSproutGenerator {
         let queue = queue
         let task = Task { @MainActor in
             defer { self.loading = nil }
-            let loaded = try await Self.load(resources: resources, on: queue)
+            let (loaded, timings) = try await Self.load(resources: resources, on: queue)
             // An `unload` during the load wins.
-            if self.epoch == epoch { self.model = loaded }
+            if self.epoch == epoch {
+                self.model = loaded
+                self.timings = timings
+            }
         }
         loading = task
         try await task.value
@@ -61,6 +83,7 @@ public final class KokoroSproutGenerator {
     public func unload() {
         epoch += 1
         model = nil
+        timings = nil
         Self.clearCache(on: queue)
     }
 
@@ -78,7 +101,7 @@ public final class KokoroSproutGenerator {
 
     // MARK: - Queue work
 
-    nonisolated private static func load(resources: URL, on queue: DispatchQueue) async throws -> SproutModel {
+    nonisolated private static func load(resources: URL, on queue: DispatchQueue) async throws -> (SproutModel, LoadTimings) {
         try await withCheckedThrowingContinuation { continuation in
             queue.async {
                 continuation.resume(with: Result { try SproutModel.load(resources: resources) })
@@ -113,7 +136,7 @@ public final class KokoroSproutGenerator {
             self.voice = voice
         }
 
-        static func load(resources: URL) throws -> SproutModel {
+        static func load(resources: URL) throws -> (SproutModel, LoadTimings) {
             let weightsURL = resources.appendingPathComponent("kokoro-f16.safetensors")
             let voiceURL = resources.appendingPathComponent("sprout.safetensors")
             // `KokoroTTS` traps on an unreadable file, so check first.
@@ -133,7 +156,10 @@ public final class KokoroSproutGenerator {
             _ = try model.generate("Hi.", speed: 1)
             let warm = Date()
             logger.info("load \(loaded.timeIntervalSince(start), format: .fixed(precision: 2)) s, warm-up \(warm.timeIntervalSince(loaded), format: .fixed(precision: 2)) s, \(Self.memoryDescription())")
-            return model
+            return (model, LoadTimings(
+                loadSeconds: loaded.timeIntervalSince(start),
+                warmUpSeconds: warm.timeIntervalSince(loaded)
+            ))
         }
 
         func generate(_ text: String, speed: Float) throws -> [Float] {

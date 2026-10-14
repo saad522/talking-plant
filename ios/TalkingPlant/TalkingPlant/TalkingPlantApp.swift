@@ -95,7 +95,7 @@ struct TalkingPlantApp: App {
                     case .devicePicker: graph.devicePicker
                     case .calibration: graph.makeCalibration()
                     #if DEBUG
-                    case .voiceSpike: voiceSpike
+                    case .voiceCheck: VoiceCheckView(voice: graphStore.voice)
                     #endif
                     }
                 }
@@ -103,19 +103,6 @@ struct TalkingPlantApp: App {
         // A new graph means new view models, so the screen starts over; the navigation path stays.
         .id(graph.id)
     }
-
-    #if DEBUG
-    /// Kokoro spike (docs/spikes/kokoro.md): a new screen, and a new model load, on each push.
-    @ViewBuilder
-    private var voiceSpike: some View {
-        #if canImport(KokoroSpikeiOS)
-        VoiceSpikeScreen()
-        #else
-        Text("Add the KokoroSpike package to the app target (docs/spikes/kokoro.md).")
-            .padding()
-        #endif
-    }
-    #endif
 }
 
 #if canImport(KokoroSpikeiOS)
@@ -136,7 +123,7 @@ final class AppNavigation: ObservableObject {
         case devicePicker
         case calibration
         #if DEBUG
-        case voiceSpike
+        case voiceCheck
         #endif
     }
 
@@ -165,7 +152,7 @@ final class AppNavigation: ObservableObject {
         case .backTap: _ = path.popLast()
         case .openSettings: break
         #if DEBUG
-        case .voiceSpikeTap: path.append(.voiceSpike)
+        case .voiceCheckTap: path.append(.voiceCheck)
         #endif
         }
     }

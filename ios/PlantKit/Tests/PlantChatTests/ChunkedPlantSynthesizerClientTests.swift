@@ -138,6 +138,50 @@ final class ChunkedPlantSynthesizerClientTests: PlantChatXCTestCase {
         XCTAssertEqual(player.messages.last, .stop)
     }
 
+    func test_lastMetrics_isNilBeforeAnySpeech() {
+        let (sut, _, _) = makeSUT()
+
+        XCTAssertNil(sut.lastMetrics)
+    }
+
+    func test_lastMetrics_recordsFirstAudioAndChunkCharacters() async {
+        let (sut, generator, _) = makeSUT()
+
+        sut.speak(text, style: style) { _ in }
+        XCTAssertEqual(sut.lastMetrics, .init())
+        await settle()
+        generator.complete(with: [0.1])
+        await settle()
+
+        XCTAssertNotNil(sut.lastMetrics?.firstAudioSeconds)
+        XCTAssertEqual(sut.lastMetrics?.chunks.map(\.characters), [first.count])
+        XCTAssertEqual(sut.lastMetrics?.watchdogFired, false)
+    }
+
+    func test_lastMetrics_recordsWatchdogFiring() async {
+        let (sut, generator, _, schedule) = makeScheduledSUT()
+
+        sut.speak(text, style: style) { _ in }
+        await settle()
+        generator.complete(with: [0.1])
+        await settle()
+        schedule.fire(at: 0)
+
+        XCTAssertEqual(sut.lastMetrics?.watchdogFired, true)
+    }
+
+    func test_speak_startsNewMetricsForEachUtterance() async {
+        let (sut, generator, _) = makeSUT()
+
+        sut.speak(text, style: style) { _ in }
+        await settle()
+        generator.complete(with: [0.1])
+        await settle()
+        sut.speak(text, style: style) { _ in }
+
+        XCTAssertEqual(sut.lastMetrics, .init())
+    }
+
     func test_speak_watchdog_afterTheFirstBufferPlayedBack_doesNothing() async {
         let (sut, generator, player, schedule) = makeScheduledSUT()
         var events = [PlantSpeechEvent]()

@@ -61,7 +61,7 @@ public protocol PlantVoiceCheckClient {
 @MainActor
 @Observable
 public final class PlantVoiceCheckViewModel {
-    public static let sampleSentence = "Hi, I'm Sprout. My soil is at 23 percent, and it's 21.5 degrees. I could really use a little water today."
+    public static let sampleSentence = "Hi, I'm Sprout. My soil is at 23 percent and it's 21.5 now. I could really use a little water today."
     public static let sampleMoods: [PlantMood] = [.happy, .thirsty, .tooHot, .tooCold, .drowning]
 
     @ObservationIgnored private let client: PlantVoiceCheckClient

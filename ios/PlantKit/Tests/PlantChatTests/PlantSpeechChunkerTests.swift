@@ -72,10 +72,86 @@ final class PlantSpeechChunkerTests: XCTestCase {
 
     func test_chunks_shortLastSentence_joinsThePreviousOne() {
         XCTAssertEqual(
-            PlantSpeechChunker.chunks("I'm going to fold my leaves and rest now. Goodnight!"),
-            ["I'm going to fold my leaves and rest now. Goodnight!"]
+            PlantSpeechChunker.chunks("I'm going to fold my leaves. Goodnight!"),
+            ["I'm going to fold my leaves. Goodnight!"]
         )
     }
+
+    func test_chunks_merge_neverGoesOverTheCharacterCap() {
+        // 41 + 1 + 10 characters would be 52.
+        XCTAssertEqual(
+            PlantSpeechChunker.chunks("I'm going to fold my leaves and rest now. Goodnight!"),
+            ["I'm going to fold my leaves and rest now.", "Goodnight!"]
+        )
+        XCTAssertEqual(
+            PlantSpeechChunker.chunks("Psst... my soil is dry. I'm going to fold my leaves and rest now."),
+            ["Psst... my soil is dry.", "I'm going to fold my leaves and rest now."]
+        )
+    }
+
+    func test_chunks_neverHasMoreThan45CharactersOrTwelveWords_exceptASingleLongWord() {
+        let text = "My leaves are drooping and I would like to have a big drink of cold water today, "
+            + "because my soil has been dry for days and days. Thank you so much for caring about me, my friend!"
+
+        for chunk in PlantSpeechChunker.chunks(text) {
+            XCTAssertLessThanOrEqual(chunk.count, 45, chunk)
+            XCTAssertLessThanOrEqual(chunk.split(separator: " ").count, 12, chunk)
+        }
+        XCTAssertEqual(PlantSpeechChunker.chunks("Supercalifragilisticexpialidocious-and-then-some-more-letters."), ["Supercalifragilisticexpialidocious-and-then-some-more-letters."])
+    }
+
+    func test_chunks_longSentenceWithCommas_splitsAtTheLastCommaThatFits() {
+        XCTAssertEqual(
+            PlantSpeechChunker.chunks("My leaves are drooping a little, and I would love a big drink of water."),
+            ["My leaves are drooping a little,", "and I would love a big drink of water."]
+        )
+    }
+
+    func test_chunks_longSentenceWithDash_splitsAfterTheDash() {
+        XCTAssertEqual(
+            PlantSpeechChunker.chunks("My leaves are drooping a little — and I would love a big drink of water."),
+            ["My leaves are drooping a little —", "and I would love a big drink of water."]
+        )
+    }
+
+    func test_chunks_longSentenceWithoutCommas_splitsAtAWordBoundary() {
+        XCTAssertEqual(
+            PlantSpeechChunker.chunks("My leaves are drooping and I would really love a big drink of cold water today."),
+            ["My leaves are drooping and I would really", "love a big drink of cold water today."]
+        )
+    }
+
+    func test_chunks_wordBoundarySplit_doesNotEndOnAShortWord() {
+        XCTAssertEqual(
+            PlantSpeechChunker.chunks("My leaves are drooping and I would like to have a big drink of cold water today."),
+            ["My leaves are drooping and I would like", "to have a big drink of cold water today."]
+        )
+    }
+
+    func test_chunks_commaThatLeavesATinyPiece_isSkippedForAWordBoundary() {
+        XCTAssertEqual(
+            PlantSpeechChunker.chunks("Oh my, I have been feeling quite thirsty lately and need water."),
+            ["Oh my, I have been feeling quite thirsty", "lately and need water."]
+        )
+    }
+
+    func test_chunks_overTwelveShortWords_splitsAtTwelve() {
+        XCTAssertEqual(
+            PlantSpeechChunker.chunks("ab cd ef gh ij kl mn op qr st uv wx yz."),
+            ["ab cd ef gh ij kl mn op qr st uv wx", "yz."]
+        )
+    }
+
+    #if DEBUG
+    @MainActor
+    func test_voiceCheckSample_hasAChunkNearTheCap() {
+        let chunks = PlantSpeechChunker.chunks(PlantVoiceCheckViewModel.sampleSentence)
+
+        XCTAssertGreaterThanOrEqual(chunks.count, 3)
+        XCTAssertGreaterThanOrEqual(chunks.map(\.count).max() ?? 0, 40)
+        XCTAssertLessThanOrEqual(chunks.map(\.count).max() ?? 0, 45)
+    }
+    #endif
 
     func test_chunks_shortChunk_doesNotJoinWhenOverMaxWords() {
         XCTAssertEqual(PlantSpeechChunker.chunks("Hi. Yes. Ok.", maxWords: 2), ["Hi. Yes.", "Ok."])

@@ -220,15 +220,19 @@ Pure, in `PlantChat/Domain`, a port of the spike's `KokoroSpikeSentences` (and i
 
 - split after `.`, `!`, `?`, `…`, keeping the punctuation; don't split decimals ("2.5") or
   common abbreviations ("Mr.", "e.g.");
-- a sentence over `maxWords` (default 20) is split at its last `,` `;` `:` before the cap,
-  otherwise at the cap;
+- a chunk is capped at `maxWords` (default 12) and `maxCharacters` (default 45, spaces included),
+  whichever is hit first, because peak memory grows with chunk length (device, K10: ~700 MB at
+  ~30 characters, over 1 GB at 64–74). A sentence over the cap is cut inside the longest prefix
+  that fits: after the last `,` `;` `:` or dash that leaves a piece of at least `minimumLength`
+  characters; otherwise at a word boundary, moved back so the chunk never ends on a function word
+  ("a", "the", "to", "of", "and", ...). Words are never split; a single word over the cap stays whole;
 - whitespace is collapsed to single spaces and empty chunks are dropped;
 - a chunk under `minimumLength` (20 characters, the spike's value) joins the next chunk, or the
-  previous one if it is last, but never past `maxWords` ("Psst... my soil is dry." is one chunk).
-  This runs after the long-sentence split.
+  previous one if it is last, but never past either cap ("Psst... my soil is dry." is one chunk;
+  "…rest now." + "Goodnight!" stay two chunks). This runs after the long-sentence split.
 
-Shorter chunks lower both the time to first audio and the peak memory (K10 tunes
-`maxWords`).
+The Voice check sample is written to hit the cap (a 43-character sentence without commas), so it
+shows the worst case.
 
 ### 3.6 KokoroSproutGenerator (PlantKokoro)
 
@@ -454,9 +458,9 @@ the app building. No commits. You run PlantChatiOSTests and the device checks.
 - **Tests:** the S1 style tests rewritten for `speed` (table per personality; happy faster;
   low moods slower; drowning slower; nil/tooDark/dryAir/offline unchanged; clamps). Chunker:
   the spike's sentence tests ported; decimals and abbreviations don't split; long sentence
-  splits at the last comma before `maxWords`, and at the cap with no comma; whitespace and
+  splits at the last comma or dash that fits the caps (12 words, 45 characters), else at a word boundary that doesn't end on a function word; whitespace and
   empty input give no chunks; a single short sentence is one chunk.
-- A chunk under 20 characters (the spike's minimum) joins the next one, or the previous one if it is last, never going over `maxWords` ("Psst... my soil is dry." is one chunk).
+- A chunk under 20 characters (the spike's minimum) joins the next one, or the previous one if it is last, never going over either cap ("Psst... my soil is dry." is one chunk).
 
 ### K4. Fallback composite (the old S3)
 
@@ -561,7 +565,7 @@ it is under ~1 GB with no crashes or memory warnings (decision 3).
    `ConvWeighted` takes it as is, and `WeightLoader`'s transposition rule moves with it. The smoke test
    compares folded against unfolded output for "Hi." (fixed `MLXRandom` seed, small max
    abs difference). This should also speed up generation.
-2. **Smaller chunks:** try `maxWords` 20 → 12. Listen for choppy prosody.
+2. **Smaller chunks:** done (3.5): `maxWords` 20 → 12 and 45 characters. Listen for choppy prosody.
 3. **Evaluate per stage:** `eval()` after the BERT/duration stage and after the prosody stage in
    `KokoroTTS.generateAudio`, so their intermediates are freed before the decoder runs.
 4. **MLX cache:** check that 32 MB is still right. Try `Memory.memoryLimit` as a ceiling.

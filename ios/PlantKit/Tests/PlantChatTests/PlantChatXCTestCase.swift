@@ -538,4 +538,60 @@ class PlantChatXCTestCase: XCTestCase {
             updates[index](event)
         }
     }
+
+    @MainActor
+    final class GeneratorSpy: PlantSpeechGeneratorClient {
+        struct Request: Equatable {
+            let text: String
+            let speed: Float
+        }
+
+        private(set) var requests: [Request] = []
+
+        private var continuations: [CheckedContinuation<[Float], Error>] = []
+        func generate(_ text: String, speed: Float) async throws -> [Float] {
+            requests.append(Request(text: text, speed: speed))
+            return try await withCheckedThrowingContinuation { continuations.append($0) }
+        }
+
+        func complete(with samples: [Float], at index: Int = 0) {
+            continuations[index].resume(returning: samples)
+        }
+
+        func complete(with error: Error, at index: Int = 0) {
+            continuations[index].resume(throwing: error)
+        }
+    }
+
+    @MainActor
+    final class PlayerSpy: PlantSpeechPlayerClient {
+        enum Message: Equatable {
+            case start
+            case enqueue([Float])
+            case stop
+        }
+
+        var startError: Error?
+        var enqueuedCount: Int { completions.count }
+        private(set) var messages: [Message] = []
+
+        func start() throws {
+            messages.append(.start)
+            if let startError { throw startError }
+        }
+
+        private var completions: [(Bool) -> Void] = []
+        func enqueue(_ samples: [Float], completion: @escaping (Bool) -> Void) {
+            messages.append(.enqueue(samples))
+            completions.append(completion)
+        }
+
+        func stop() {
+            messages.append(.stop)
+        }
+
+        func complete(with succeeded: Bool, at index: Int = 0) {
+            completions[index](succeeded)
+        }
+    }
 }

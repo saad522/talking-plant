@@ -827,6 +827,30 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         XCTAssertEqual(sut.audioSession.messages.last, .deactivate)
     }
 
+    func test_reply_toSpokenTurn_speaksExactlyOnceAndNeverStopsTheSynthesizer() {
+        let sut = makeSpokenTurnSUT()
+
+        sut.chatLoader.complete(with: "Hello!")
+        sut.synthesizer.finish()
+
+        XCTAssertEqual(sut.synthesizer.speeches.count, 1)
+        XCTAssertEqual(sut.synthesizer.stopCount, 0)
+    }
+
+    func test_twoSpokenTurns_speakOncePerReplyAndNeverStopTheSynthesizer() {
+        let sut = makeSpokenTurnSUT()
+        sut.chatLoader.complete(with: "Hello!")
+        sut.synthesizer.finish(at: 0)
+
+        sut.viewModel.micTap()
+        sut.transcriptLoader.sendFinal("Again", at: 1)
+        sut.chatLoader.complete(with: "Hi again!", at: 1)
+        sut.synthesizer.finish(at: 1)
+
+        XCTAssertEqual(sut.synthesizer.speeches.map(\.text), ["Hello!", "Hi again!"])
+        XCTAssertEqual(sut.synthesizer.stopCount, 0)
+    }
+
     func test_reply_toSpokenTurn_whileThirsty_isSpokenWithTheMoodAdjustedStyle() {
         let sut = makeSpokenTurnSUT(personality: .politeButler, mood: .thirsty)
 

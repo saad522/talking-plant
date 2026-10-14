@@ -37,7 +37,7 @@ final class ChunkedPlantSynthesizerClientTests: PlantChatXCTestCase {
         generator.complete(with: [0.1])
         await settle()
 
-        XCTAssertEqual(events, [.started])
+        XCTAssertEqual(events, [.generated])
         XCTAssertEqual(player.messages, [.start, .enqueue([0.1])])
     }
 
@@ -90,20 +90,82 @@ final class ChunkedPlantSynthesizerClientTests: PlantChatXCTestCase {
         generator.complete(with: [0.1, -1.5])
         await settle()
 
-        XCTAssertEqual(events, [.started])
+        XCTAssertEqual(events, [.generated])
         XCTAssertEqual(player.messages, [.start, .enqueue([0.1, -1.5])])
         XCTAssertEqual(generator.requests.map(\.text), [first, second])
 
         generator.complete(with: [0.2], at: 1)
         await settle()
 
-        XCTAssertEqual(events, [.started])
+        XCTAssertEqual(events, [.generated])
         XCTAssertEqual(generator.requests.map(\.text), [first, second])
 
         player.complete(with: true, at: 0)
         await settle()
 
         XCTAssertEqual(generator.requests.map(\.text), [first, second, third])
+    }
+
+    func test_speak_started_isSentOnlyWhenTheFirstBufferIsPlayedBack() async {
+        let (sut, generator, player, _) = makeScheduledSUT()
+        var events = [PlantSpeechEvent]()
+
+        sut.speak(text, style: style) { events.append($0) }
+        await settle()
+        generator.complete(with: [0.1])
+        await settle()
+        XCTAssertEqual(events, [.generated])
+
+        player.complete(with: true, at: 0)
+
+        XCTAssertEqual(events, [.generated, .started])
+    }
+
+    func test_speak_firstBufferNeverPlayedBack_watchdogStopsPlayerAndSendsFailed() async {
+        let (sut, generator, player, schedule) = makeScheduledSUT()
+        var events = [PlantSpeechEvent]()
+
+        sut.speak(text, style: style) { events.append($0) }
+        await settle()
+        generator.complete(with: [Float](repeating: 0.1, count: 24_000))
+        await settle()
+
+        XCTAssertEqual(schedule.intervals, [1 + ChunkedPlantSynthesizerClient.playbackGrace])
+
+        schedule.fire(at: 0)
+
+        XCTAssertEqual(events, [.generated, .failed])
+        XCTAssertEqual(player.messages.last, .stop)
+    }
+
+    func test_speak_watchdog_afterTheFirstBufferPlayedBack_doesNothing() async {
+        let (sut, generator, player, schedule) = makeScheduledSUT()
+        var events = [PlantSpeechEvent]()
+
+        sut.speak(text, style: style) { events.append($0) }
+        await settle()
+        generator.complete(with: [0.1])
+        await settle()
+        player.complete(with: true, at: 0)
+        schedule.fire(at: 0)
+
+        XCTAssertEqual(events, [.generated, .started])
+        XCTAssertFalse(player.messages.contains(.stop))
+    }
+
+    func test_stop_beforeTheWatchdogFires_makesItDoNothing() async {
+        let (sut, generator, player, schedule) = makeScheduledSUT()
+        var events = [PlantSpeechEvent]()
+
+        sut.speak(text, style: style) { events.append($0) }
+        await settle()
+        generator.complete(with: [0.1])
+        await settle()
+        sut.stop()
+        schedule.fire(at: 0)
+
+        XCTAssertEqual(events, [.generated])
+        XCTAssertEqual(player.messages.filter { $0 == .stop }.count, 1)
     }
 
     func test_speak_generationFasterThanPlayback_neverHasMoreThanOneChunkWaiting() async {
@@ -143,10 +205,10 @@ final class ChunkedPlantSynthesizerClientTests: PlantChatXCTestCase {
         generator.complete(with: [0.1], at: 2)
         await settle()
         player.complete(with: true, at: 1)
-        XCTAssertEqual(events, [.started])
+        XCTAssertEqual(events, [.generated, .started])
         player.complete(with: true, at: 2)
 
-        XCTAssertEqual(events, [.started, .finished])
+        XCTAssertEqual(events, [.generated, .started, .finished])
         XCTAssertFalse(player.messages.contains(.stop))
     }
 
@@ -166,7 +228,7 @@ final class ChunkedPlantSynthesizerClientTests: PlantChatXCTestCase {
             await settle()
             player.complete(with: true, at: 0)
 
-            XCTAssertEqual(events, [.started, .failed])
+            XCTAssertEqual(events, [.generated, .failed])
             XCTAssertEqual(player.messages.last, .stop)
         }
     }
@@ -181,7 +243,7 @@ final class ChunkedPlantSynthesizerClientTests: PlantChatXCTestCase {
         await settle()
         player.complete(with: false)
 
-        XCTAssertEqual(events, [.started, .failed])
+        XCTAssertEqual(events, [.generated, .failed])
         XCTAssertEqual(player.messages.last, .stop)
     }
 
@@ -198,7 +260,7 @@ final class ChunkedPlantSynthesizerClientTests: PlantChatXCTestCase {
         await settle()
         player.complete(with: false, at: 0)
 
-        XCTAssertEqual(events, [.started])
+        XCTAssertEqual(events, [.generated])
         XCTAssertEqual(player.messages, [.start, .enqueue([0.1]), .stop])
         XCTAssertEqual(generator.requests.count, 2)
     }
@@ -226,7 +288,7 @@ final class ChunkedPlantSynthesizerClientTests: PlantChatXCTestCase {
         player.complete(with: true, at: 0)
 
         XCTAssertTrue(firstEvents.isEmpty)
-        XCTAssertEqual(secondEvents, [.started, .finished])
+        XCTAssertEqual(secondEvents, [.generated, .started, .finished])
         XCTAssertEqual(player.messages, [.start, .stop, .start, .enqueue([0.3])])
     }
 
@@ -264,6 +326,16 @@ final class ChunkedPlantSynthesizerClientTests: PlantChatXCTestCase {
         let sut = ChunkedPlantSynthesizerClient(generator: generator, player: player)
         trackMemoryLeak(sut)
         return (sut, generator, player)
+    }
+
+    private func makeScheduledSUT() -> (ChunkedPlantSynthesizerClient, GeneratorSpy, PlayerSpy, ScheduleSpy) {
+        let generator = GeneratorSpy()
+        let player = PlayerSpy()
+        let schedule = ScheduleSpy()
+        let sut = ChunkedPlantSynthesizerClient(generator: generator, player: player, schedule: schedule.schedule)
+        trackMemoryLeak(sut)
+        trackMemoryLeak(schedule)
+        return (sut, generator, player, schedule)
     }
 
     private func settle() async {

@@ -28,11 +28,14 @@ import SwiftUI
 struct TalkingPlantApp: App {
     @StateObject private var navigation: AppNavigation
     @StateObject private var graphStore: AppGraphStore
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let navigation = AppNavigation()
         _navigation = StateObject(wrappedValue: navigation)
-        _graphStore = StateObject(wrappedValue: AppGraphStore(navigation: navigation))
+        // The voice is created inside the autoclosure, so it exists once, in the store that SwiftUI keeps.
+        // A second `App.init` must not create a voice that prewarms a model the chat never uses.
+        _graphStore = StateObject(wrappedValue: AppGraphStore(navigation: navigation, voice: SproutVoice()))
     }
 
     var body: some Scene {
@@ -47,6 +50,13 @@ struct TalkingPlantApp: App {
             #else
             rootContent
             #endif
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active: graphStore.voice.prewarm()
+            case .background: graphStore.voice.unload(from: "scenePhase background")
+            default: break
+            }
         }
     }
 
@@ -67,6 +77,7 @@ struct TalkingPlantApp: App {
         let graph = graphStore.graph
         return NavigationStack(path: $navigation.path) {
             graph.monitor
+                .onAppear { graphStore.voice.prewarm() }
                 #if DEBUG
                 .toolbar {
                     if let simulatedPlant = graph.simulatedPlant {

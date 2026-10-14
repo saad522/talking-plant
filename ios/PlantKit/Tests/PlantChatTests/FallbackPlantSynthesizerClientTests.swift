@@ -75,6 +75,30 @@ final class FallbackPlantSynthesizerClientTests: PlantChatXCTestCase {
         XCTAssertEqual(completions, 1)
     }
 
+    func test_startTimeoutAfterGenerated_doesNothing_becauseThePrimaryWatchdogOwnsPlayback() {
+        let (sut, primary, fallback, schedule) = makeSUT()
+        sut.speak("hello", style: style) {}
+        primary.send(.generated)
+
+        schedule.fire(at: 0)
+
+        XCTAssertEqual(primary.stopCount, 0)
+        XCTAssertTrue(fallback.speeches.isEmpty)
+    }
+
+    func test_failedAfterGeneratedButBeforeStarted_speaksWithFallback() {
+        let (sut, primary, fallback, _) = makeSUT()
+        var completions = 0
+        sut.speak("hello", style: style) { completions += 1 }
+        primary.send(.generated)
+
+        primary.send(.failed)
+
+        XCTAssertEqual(fallback.speeches, [.init(text: "hello", style: style)])
+        fallback.finish()
+        XCTAssertEqual(completions, 1)
+    }
+
     func test_startTimeoutAfterStarted_doesNothing() {
         let (sut, primary, fallback, schedule) = makeSUT()
         sut.speak("hello", style: style) {}

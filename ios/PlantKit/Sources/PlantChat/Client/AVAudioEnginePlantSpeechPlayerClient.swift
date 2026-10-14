@@ -1,4 +1,5 @@
 import AVFoundation
+import os
 
 @MainActor
 public final class AVAudioEnginePlantSpeechPlayerClient: PlantSpeechPlayerClient {
@@ -9,6 +10,7 @@ public final class AVAudioEnginePlantSpeechPlayerClient: PlantSpeechPlayerClient
     private var generation = 0
     private var nextIndex = 0
     private var observers: [NSObjectProtocol] = []
+    private static let logger = Logger(subsystem: "TalkingPlant", category: "voice")
 
     public init() {}
 
@@ -18,18 +20,34 @@ public final class AVAudioEnginePlantSpeechPlayerClient: PlantSpeechPlayerClient
 
     public func start() throws {
         let graph = try makeGraphIfNeeded()
-        guard !graph.engine.isRunning else { return }
-        try graph.engine.start()
+        guard !graph.engine.isRunning else {
+            // A running engine can still have a stopped node, which accepts buffers and never plays them.
+            if !graph.player.isPlaying { graph.player.play() }
+            Self.logger.notice("player.start: engine already running, \(Self.state(of: graph))")
+            return
+        }
+        do {
+            try graph.engine.start()
+        } catch {
+            Self.logger.notice("player.start: engine.start failed: \(String(describing: error)), \(Self.state(of: graph))")
+            throw error
+        }
         graph.player.play()
+        Self.logger.notice("player.start: engine started, \(Self.state(of: graph))")
     }
 
     public func enqueue(_ samples: [Float], completion: @escaping (Bool) -> Void) {
+        Self.logger.notice("player.enqueue: \(samples.count) samples, before: \(self.graph.map { Self.state(of: $0) } ?? "no graph")")
         guard let graph = try? makeGraphIfNeeded(),
               let buffer = Self.makeBuffer(samples, format: graph.format),
               (graph.engine.isRunning || (try? start()) != nil) else {
             let expected = generation
+            Self.logger.notice("player.enqueue failed (graph \(self.graph != nil), engine running \(self.graph?.engine.isRunning ?? false), \(samples.count) samples): completion(false) next turn of the run loop")
             DispatchQueue.main.async { MainActor.assumeIsolated { [weak self] in
-                guard let self, self.generation == expected else { return }
+                guard let self, self.generation == expected else {
+                    Self.logger.notice("player.enqueue failure completion dropped: generation \(expected) is now \(self?.generation ?? -1)")
+                    return
+                }
                 completion(false)
             } }
             return
@@ -37,6 +55,7 @@ public final class AVAudioEnginePlantSpeechPlayerClient: PlantSpeechPlayerClient
         let index = nextIndex
         nextIndex += 1
         pending[index] = completion
+        Self.logger.notice("player.enqueue: buffer \(index), \(samples.count) samples, generation \(self.generation), scheduled: \(Self.state(of: graph))")
         graph.player.scheduleBuffer(
             buffer,
             completionCallbackType: .dataPlayedBack,
@@ -45,8 +64,15 @@ public final class AVAudioEnginePlantSpeechPlayerClient: PlantSpeechPlayerClient
     }
 
     public func stop() {
+        Self.logger.notice("player.stop: \(self.pending.count) pending dropped, generation \(self.generation) -> \(self.generation + 1)")
         generation += 1
         pending.removeAll()
+        resetGraph()
+    }
+
+    /// The one way playback ends, for `stop()` and for the natural end: node first, then engine.
+    /// An engine stopped alone leaves the node in a state where the next buffers never play back.
+    private func resetGraph() {
         guard let graph else { return }
         graph.player.stop()
         graph.engine.stop()
@@ -72,6 +98,7 @@ public final class AVAudioEnginePlantSpeechPlayerClient: PlantSpeechPlayerClient
         observers.forEach(center.removeObserver)
         observers = [
             center.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
+                Self.logger.notice("AVAudioEngineConfigurationChange, \(engine.isRunning ? "engine running" : "engine not running")")
                 MainActor.assumeIsolated { self?.playbackBroke(rebuild: false) }
             }
         ]
@@ -79,6 +106,7 @@ public final class AVAudioEnginePlantSpeechPlayerClient: PlantSpeechPlayerClient
         observers += [
             center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
                 let rawType = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+                Self.logger.notice("AVAudioSession interruption, type \(rawType.map(String.init) ?? "nil") (1 began, 0 ended)")
                 MainActor.assumeIsolated {
                     if rawType.flatMap(AVAudioSession.InterruptionType.init(rawValue:)) == .began {
                         self?.playbackBroke(rebuild: false)
@@ -86,6 +114,7 @@ public final class AVAudioEnginePlantSpeechPlayerClient: PlantSpeechPlayerClient
                 }
             },
             center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main) { [weak self] _ in
+                Self.logger.notice("AVAudioSession media services were reset")
                 MainActor.assumeIsolated { self?.playbackBroke(rebuild: true) }
             }
         ]
@@ -95,6 +124,7 @@ public final class AVAudioEnginePlantSpeechPlayerClient: PlantSpeechPlayerClient
     /// Fails every pending buffer. The graph is rebuilt on the next `start()` after a media reset.
     private func playbackBroke(rebuild: Bool) {
         let failed = pending.values
+        Self.logger.notice("playbackBroke(rebuild: \(rebuild)): failing \(failed.count) pending, engine running \(self.graph?.engine.isRunning ?? false)")
         generation += 1
         pending.removeAll()
         if let graph {
@@ -110,9 +140,28 @@ public final class AVAudioEnginePlantSpeechPlayerClient: PlantSpeechPlayerClient
     }
 
     private func played(generation: Int, index: Int) {
-        guard generation == self.generation, let completion = pending.removeValue(forKey: index) else { return }
-        if pending.isEmpty { graph?.engine.stop() }
+        guard generation == self.generation, let completion = pending.removeValue(forKey: index) else {
+            Self.logger.notice("player buffer \(index) played-back callback dropped: generation \(generation) is now \(self.generation)")
+            return
+        }
+        Self.logger.notice("player buffer \(index) played back, \(self.pending.count) still pending: completion(true)")
+        if pending.isEmpty, let graph {
+            Self.logger.notice("player: last buffer played, resetting node and engine, before: \(Self.state(of: graph))")
+            resetGraph()
+        }
         completion(true)
+    }
+
+    /// Engine, player node, audio session and route, for the voice logs.
+    private static func state(of graph: (engine: AVAudioEngine, player: AVAudioPlayerNode, format: AVAudioFormat)) -> String {
+        let engine = "engine.isRunning \(graph.engine.isRunning), player.isPlaying \(graph.player.isPlaying)"
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        let outputs = session.currentRoute.outputs.map { "\($0.portType.rawValue) \($0.portName)" }.joined(separator: ", ")
+        return "\(engine), session \(session.category.rawValue)/\(session.mode.rawValue), route [\(outputs)]"
+        #else
+        return engine
+        #endif
     }
 
     private nonisolated static func makeBuffer(_ samples: [Float], format: AVAudioFormat) -> AVAudioPCMBuffer? {

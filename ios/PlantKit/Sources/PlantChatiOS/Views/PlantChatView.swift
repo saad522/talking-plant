@@ -39,8 +39,8 @@ public struct PlantChatView<Face: View>: View {
         .toolbar(.hidden, for: .navigationBar)
         #endif
         .onAppear(perform: viewModel.appear)
-        .onDisappear(perform: viewModel.disappear)
-        .onChange(of: scenePhase) { if scenePhase != .active { viewModel.disappear() } }
+        .onDisappear { viewModel.disappear(from: "view onDisappear") }
+        .onChange(of: scenePhase) { if scenePhase != .active { viewModel.disappear(from: "scenePhase \(scenePhase)") } }
     }
 
     private var micLabel: String {

@@ -1,0 +1,36 @@
+diff -ru --exclude=Package.resolved --exclude=.swiftpm orig/kokoro-ios/Package.swift vendor/kokoro-ios/Package.swift
+--- orig/kokoro-ios/Package.swift
++++ vendor/kokoro-ios/Package.swift
+@@ -16,9 +16,9 @@
+     ),
+   ],
+   dependencies: [
+-    .package(url: "https://github.com/ml-explore/mlx-swift", exact: "0.30.2"),
++    .package(url: "https://github.com/ml-explore/mlx-swift", exact: "0.30.6"),
+     // .package(url: "https://github.com/mlalma/eSpeakNGSwift", from: "1.0.1"),
+-    .package(url: "https://github.com/mlalma/MisakiSwift", exact: "1.0.6"),
++    .package(path: "../MisakiSwift"),
+     .package(url: "https://github.com/mlalma/MLXUtilsLibrary.git", exact: "0.0.6")
+   ],
+   targets: [
+@@ -34,7 +34,7 @@
+         .product(name: "MLXUtilsLibrary", package: "MLXUtilsLibrary")
+       ],
+       resources: [
+-       .copy("../../Resources/")
++       .copy("../../Resources/config.json")
+       ]
+     ),
+     .testTarget(
+diff -ru --exclude=Package.resolved --exclude=.swiftpm orig/kokoro-ios/Sources/KokoroSwift/TTSEngine/KokoroConfig.swift vendor/kokoro-ios/Sources/KokoroSwift/TTSEngine/KokoroConfig.swift
+--- orig/kokoro-ios/Sources/KokoroSwift/TTSEngine/KokoroConfig.swift
++++ vendor/kokoro-ios/Sources/KokoroSwift/TTSEngine/KokoroConfig.swift
+@@ -154,7 +154,7 @@
+   ///         and should fail fast if the file is missing or malformed
+   nonisolated static func loadConfig() -> KokoroConfig {
+     // Locate config.json in the module bundle
+-    let fileURL = Bundle.module.url(forResource: "config", withExtension: "json", subdirectory: "Resources")!
++    let fileURL = Bundle.module.url(forResource: "config", withExtension: "json")!
+     
+     // Read file contents
+     let configJSON = try! String(contentsOf: fileURL, encoding: .utf8)

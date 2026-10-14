@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4A9250DA307EE4AC007CD17B /* KokoroSpikeiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4A9250D9307EE4AC007CD17B /* KokoroSpikeiOS */; };
 		4AC4892001799203005E9A99 /* PlantShared in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892000799203005E9A99 /* PlantShared */; };
 		4AC4892003799203005E9A99 /* PlantMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892002799203005E9A99 /* PlantMonitor */; };
 		4AC4892005799203005E9A99 /* PlantMonitoriOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892004799203005E9A99 /* PlantMonitoriOS */; };
@@ -81,6 +82,7 @@
 			files = (
 				4AC4892001799203005E9A99 /* PlantShared in Frameworks */,
 				4AC4892003799203005E9A99 /* PlantMonitor in Frameworks */,
+				4A9250DA307EE4AC007CD17B /* KokoroSpikeiOS in Frameworks */,
 				4AEE8E24307E7EDA00DE30FA /* PlantTestPeripheral in Frameworks */,
 				4AC4892005799203005E9A99 /* PlantMonitoriOS in Frameworks */,
 				4AC4892007799203005E9A99 /* PlantDevice in Frameworks */,
@@ -169,6 +171,7 @@
 				4AC4892010799203005E9A99 /* PlantChatiOS */,
 				4AEE8E23307E7EDA00DE30FA /* PlantTestPeripheral */,
 				4AF3EAA4307E92D50065519D /* PlantDeviceiOS */,
+				4A9250D9307EE4AC007CD17B /* KokoroSpikeiOS */,
 			);
 			productName = TalkingPlant;
 			productReference = 4A69B560307973AF00235D0E /* TalkingPlant.app */;
@@ -254,6 +257,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				4AC4891B30799203005E9A99 /* XCLocalSwiftPackageReference "../PlantKit" */,
+				4A9250D8307EE4AC007CD17B /* XCLocalSwiftPackageReference "../KokoroSpike" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4A69B561307973AF00235D0E /* Products */;
@@ -654,6 +658,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		4A9250D8307EE4AC007CD17B /* XCLocalSwiftPackageReference "../KokoroSpike" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../KokoroSpike;
+		};
 		4AC4891B30799203005E9A99 /* XCLocalSwiftPackageReference "../PlantKit" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../PlantKit;
@@ -661,6 +669,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		4A9250D9307EE4AC007CD17B /* KokoroSpikeiOS */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = KokoroSpikeiOS;
+		};
 		4AC4892000799203005E9A99 /* PlantShared */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PlantShared;

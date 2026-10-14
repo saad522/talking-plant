@@ -36,11 +36,14 @@ public struct PlantChatPersonalityMenuView: View {
     public let accessibilityLabel: String
     public let options: [Option]
     public let speakReplies: SpeakReplies
+    /// DEBUG only: opens the Kokoro spike (docs/spikes/kokoro.md). Delete with the spike.
+    public let voiceSpike: (() -> Void)?
 
-    init(accessibilityLabel: String, options: [Option], speakReplies: SpeakReplies) {
+    init(accessibilityLabel: String, options: [Option], speakReplies: SpeakReplies, voiceSpike: (() -> Void)? = nil) {
         self.accessibilityLabel = accessibilityLabel
         self.options = options
         self.speakReplies = speakReplies
+        self.voiceSpike = voiceSpike
     }
 
     public var body: some View {
@@ -56,6 +59,9 @@ public struct PlantChatPersonalityMenuView: View {
             }
             Divider()
             Toggle(speakReplies.label, isOn: Binding(get: { speakReplies.isOn }, set: speakReplies.set))
+            if let voiceSpike {
+                Button("Voice spike", action: voiceSpike)
+            }
         } label: {
             Image(systemName: "slider.horizontal.3")
                 .font(PlantChatFont.headerIcon)

@@ -19,6 +19,9 @@ import PlantShared
 #if DEBUG
 import PlantTestPeripheral
 #endif
+#if canImport(KokoroSpikeiOS)
+import KokoroSpikeiOS
+#endif
 import SwiftUI
 
 @main
@@ -34,16 +37,30 @@ struct TalkingPlantApp: App {
 
     var body: some Scene {
         WindowGroup {
-            #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-PlantTestPeripheral") {
-                TestPeripheralView()
+            #if canImport(KokoroSpikeiOS)
+            // Kokoro spike timings need an optimized build, where the DEBUG menu entry doesn't exist.
+            if ProcessInfo.processInfo.arguments.contains("-KokoroSpike") {
+                NavigationStack { VoiceSpikeScreen() }
             } else {
-                appContent
+                rootContent
             }
             #else
-            appContent
+            rootContent
             #endif
         }
+    }
+
+    @ViewBuilder
+    private var rootContent: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-PlantTestPeripheral") {
+            TestPeripheralView()
+        } else {
+            appContent
+        }
+        #else
+        appContent
+        #endif
     }
 
     private var appContent: some View {
@@ -66,13 +83,38 @@ struct TalkingPlantApp: App {
                     case .device: graph.device
                     case .devicePicker: graph.devicePicker
                     case .calibration: graph.makeCalibration()
+                    #if DEBUG
+                    case .voiceSpike: voiceSpike
+                    #endif
                     }
                 }
         }
         // A new graph means new view models, so the screen starts over; the navigation path stays.
         .id(graph.id)
     }
+
+    #if DEBUG
+    /// Kokoro spike (docs/spikes/kokoro.md): a new screen, and a new model load, on each push.
+    @ViewBuilder
+    private var voiceSpike: some View {
+        #if canImport(KokoroSpikeiOS)
+        VoiceSpikeScreen()
+        #else
+        Text("Add the KokoroSpike package to the app target (docs/spikes/kokoro.md).")
+            .padding()
+        #endif
+    }
+    #endif
 }
+
+#if canImport(KokoroSpikeiOS)
+/// Keeps one composed spike screen for as long as it is pushed, even when the destination is rebuilt.
+private struct VoiceSpikeScreen: View {
+    @State private var screen = KokoroSpikeUIComposer.composed()
+
+    var body: some View { screen }
+}
+#endif
 
 @MainActor
 final class AppNavigation: ObservableObject {
@@ -82,6 +124,9 @@ final class AppNavigation: ObservableObject {
         case device
         case devicePicker
         case calibration
+        #if DEBUG
+        case voiceSpike
+        #endif
     }
 
     @Published var path: [Route] = []
@@ -108,6 +153,9 @@ final class AppNavigation: ObservableObject {
         switch action {
         case .backTap: _ = path.popLast()
         case .openSettings: break
+        #if DEBUG
+        case .voiceSpikeTap: path.append(.voiceSpike)
+        #endif
         }
     }
 }

@@ -138,6 +138,18 @@ final class PlantChatUIITests: PlantChatiOSXCTestCase {
         XCTAssertEqual(sut.bubbles.map(\.text), ["Dude, hey."])
     }
 
+    #if DEBUG
+    func test_personalityMenuVoiceSpikeTap_sendsVoiceSpikeAction() {
+        var actions: [PlantChatAction] = []
+        let (sut, _, _, _, _) = makeSUT(actionHandler: { actions.append($0) })
+        sut.simulateAppear()
+
+        sut.simulateVoiceSpikeTap()
+
+        XCTAssertEqual(actions, [.voiceSpikeTap])
+    }
+    #endif
+
     func test_backTap_sendsBackAction() {
         var actions: [PlantChatAction] = []
         let (sut, _, _, _, _) = makeSUT(actionHandler: { actions.append($0) })

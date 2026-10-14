@@ -63,6 +63,7 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
             return
         }
         isActive = true
+        generator.utteranceStarted()
         lastMetrics = Metrics()
         let utterance = Utterance(chunks: chunks, speed: style.speed, begin: .now, update: update)
         requestNext(of: utterance, generation: current)
@@ -134,8 +135,9 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
             self?.played(succeeded, of: utterance, generation: current)
         }
         if index == 0 {
-            Self.logger.info("first audio \(utterance.begin.duration(to: .now).formatted())")
-            lastMetrics?.firstAudioSeconds = utterance.begin.duration(to: .now).seconds
+            let firstAudio = utterance.begin.duration(to: .now).seconds
+            Self.logger.info("first audio \(Int(firstAudio * 1000)) ms")
+            lastMetrics?.firstAudioSeconds = firstAudio
             utterance.update(.generated)
             watchPlayback(of: utterance, samples: samples.count, generation: current)
         }
@@ -162,11 +164,12 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
         guard succeeded else { return fail(utterance, generation: current) }
         utterance.played += 1
         if utterance.played == 1 {
-            Self.logger.notice("first buffer played back after \(utterance.begin.duration(to: .now).formatted())")
+            Self.logger.notice("first buffer played back after \(Int(utterance.begin.duration(to: .now).seconds * 1000)) ms")
             utterance.update(.started)
         }
         if utterance.played == utterance.chunks.count {
             isActive = false
+            generator.utteranceFinished()
             utterance.update(.finished)
         } else {
             requestNext(of: utterance, generation: current)
@@ -184,6 +187,7 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
         isActive = false
         task?.cancel()
         player.stop()
+        generator.utteranceFinished()
         utterance.update(.failed)
     }
 
@@ -195,6 +199,7 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
         guard isActive else { return }
         isActive = false
         player.stop()
+        generator.utteranceFinished()
     }
 
     private static func isPlayable(_ samples: [Float]) -> Bool {

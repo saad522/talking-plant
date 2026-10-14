@@ -52,6 +52,16 @@ final class PlantVoiceCheckViewModelTests: PlantChatXCTestCase {
         XCTAssertEqual(sut.watchdogText, "yes")
     }
 
+    func test_resetPeak_resetsTheClientAndReadsTheSnapshotAgain() {
+        let (sut, client) = makeSUT(snapshot: makeSnapshot(memoryPeakBytes: 900 * 1_048_576))
+
+        client.snapshot = makeSnapshot(memoryPeakBytes: 500 * 1_048_576)
+        sut.resetPeak()
+
+        XCTAssertEqual(client.messages, [.resetPeak])
+        XCTAssertEqual(sut.memoryText, "- now, 500 MB peak")
+    }
+
     func test_refresh_readsTheClientSnapshotAgain() {
         let (sut, client) = makeSUT()
 
@@ -162,6 +172,7 @@ final class PlantVoiceCheckViewModelTests: PlantChatXCTestCase {
         enum Message: Equatable {
             case load
             case unload
+            case resetPeak
             case stop
         }
 
@@ -187,6 +198,7 @@ final class PlantVoiceCheckViewModelTests: PlantChatXCTestCase {
         }
 
         func unload() { messages.append(.unload) }
+        func resetPeak() { messages.append(.resetPeak) }
         func stop() { messages.append(.stop) }
 
         func speak(_ text: String, style: PlantSpeechStyle, appleOnly: Bool, completion: @escaping () -> Void) {

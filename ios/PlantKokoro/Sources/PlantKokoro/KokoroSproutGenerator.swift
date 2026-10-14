@@ -40,6 +40,7 @@ public final class KokoroSproutGenerator {
     private var model: SproutModel?
     private var loading: Task<Void, Error>?
     private var epoch = 0
+    private var utterancePeak: KokoroPeakWindow?
 
     public var state: State {
         if model != nil { return .loaded }
@@ -79,9 +80,28 @@ public final class KokoroSproutGenerator {
         #endif
     }
 
+    /// Starts the peak-memory window of one utterance. Pair with `utteranceFinished()`.
+    public func utteranceStarted() {
+        utterancePeak?.stop()
+        utterancePeak = KokoroPeakWindow()
+    }
+
+    /// Logs the utterance's peak and drops MLX's cached buffers, so one utterance's scratch memory
+    /// is not carried into the next. Safe without a matching `utteranceStarted()`.
+    public func utteranceFinished() {
+        if let utterancePeak {
+            Self.logger.notice("utterance peak \(KokoroMemory.megabytes(utterancePeak.peakBytes)) MB, \(KokoroMemory.current()?.megabytesDescription ?? "memory unknown")")
+            utterancePeak.stop()
+            self.utterancePeak = nil
+        }
+        Self.clearCache(on: queue)
+    }
+
     /// Drops the model and clears MLX's cache. A pending generation finishes, then is dropped.
     public func unload() {
         epoch += 1
+        utterancePeak?.stop()
+        utterancePeak = nil
         model = nil
         timings = nil
         Self.clearCache(on: queue)
@@ -147,6 +167,7 @@ public final class KokoroSproutGenerator {
             let start = Date()
             // MLX keeps freed GPU buffers in a cache that otherwise grows with every request.
             Memory.cacheLimit = KokoroSproutGenerator.cacheLimit
+            logger.info("MLX cache limit \(Memory.cacheLimit / 1_048_576) MB (asked for \(KokoroSproutGenerator.cacheLimit / 1_048_576) MB)")
             guard let voice = try MLX.loadArrays(url: voiceURL)["sprout"] else {
                 throw GeneratorError.failed("sprout.safetensors has no \"sprout\" tensor")
             }
@@ -175,7 +196,7 @@ public final class KokoroSproutGenerator {
             return samples
         }
 
-        fileprivate static func memoryDescription() -> String {
+        static func memoryDescription() -> String {
             KokoroMemory.current()?.megabytesDescription ?? "memory unknown"
         }
     }

@@ -29,6 +29,8 @@ final class SproutVoice {
     #if canImport(PlantKokoro)
     private var generator: KokoroSproutGenerator?
     private var chunked: ChunkedPlantSynthesizerClient?
+    /// Set by "Reset peak". Until then the peak is the kernel's, since launch.
+    private var peakWindow: KokoroPeakWindow?
     #endif
     #endif
     let id = UUID()
@@ -113,7 +115,7 @@ extension SproutVoice: PlantVoiceCheckClient {
             loadSeconds: generator?.timings?.loadSeconds,
             warmUpSeconds: generator?.timings?.warmUpSeconds,
             memoryNowBytes: memory?.currentBytes,
-            memoryPeakBytes: memory?.peakBytes,
+            memoryPeakBytes: peakWindow?.peakBytes ?? memory?.peakBytes,
             utterance: chunked?.lastMetrics
         )
         #else
@@ -137,6 +139,13 @@ extension SproutVoice: PlantVoiceCheckClient {
 
     func unload() {
         unload(from: "voice check")
+    }
+
+    func resetPeak() {
+        #if canImport(PlantKokoro)
+        peakWindow?.stop()
+        peakWindow = KokoroPeakWindow()
+        #endif
     }
 
     func speak(_ text: String, style: PlantSpeechStyle, appleOnly: Bool, completion: @escaping () -> Void) {

@@ -45,8 +45,7 @@ final class TextEncoder {
       cnnLayers.append([
         // Weight-normalized convolution
         ConvWeighted(
-          weightG: weights["text_encoder.cnn.\(i).0.weight_g"]!,
-          weightV: weights["text_encoder.cnn.\(i).0.weight_v"]!,
+          weight: weights["text_encoder.cnn.\(i).0.weight"]!,
           bias: weights["text_encoder.cnn.\(i).0.bias"]!,
           padding: padding
         ),

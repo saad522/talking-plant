@@ -52,8 +52,7 @@ class Generator {
     for (i, (u, k)) in zip(upsampleRates, upsampleKernelSizes).enumerated() {
       ups.append(
         ConvWeighted(
-          weightG: weights["decoder.generator.ups.\(i).weight_g"]!,
-          weightV: weights["decoder.generator.ups.\(i).weight_v"]!,
+          weight: weights["decoder.generator.ups.\(i).weight"]!,
           bias: weights["decoder.generator.ups.\(i).bias"]!,
           stride: u,
           padding: (k - u) / 2
@@ -128,8 +127,7 @@ class Generator {
     postNFFt = genIstftNFft
 
     convPost = ConvWeighted(
-      weightG: weights["decoder.generator.conv_post.weight_g"]!,
-      weightV: weights["decoder.generator.conv_post.weight_v"]!,
+      weight: weights["decoder.generator.conv_post.weight"]!,
       bias: weights["decoder.generator.conv_post.bias"]!,
       stride: 1,
       padding: 3

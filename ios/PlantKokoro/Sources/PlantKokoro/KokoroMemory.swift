@@ -1,4 +1,6 @@
 import Darwin
+import Dispatch
+import os
 
 /// The process footprint (what jetsam counts) and its peak so far, from `task_vm_info`.
 public struct KokoroMemory: Equatable, Sendable {
@@ -25,8 +27,59 @@ public struct KokoroMemory: Equatable, Sendable {
         )
     }
 
+    static func megabytes(_ bytes: UInt64) -> Int {
+        Int((Double(bytes) / 1_048_576).rounded())
+    }
+
     var megabytesDescription: String {
         let megabyte = 1_048_576.0
         return String(format: "%.0f MB now, %.0f MB peak", Double(currentBytes) / megabyte, Double(peakBytes) / megabyte)
     }
+}
+
+/// The peak footprint since a point in time. The kernel only keeps a peak since launch, so this
+/// samples the footprint every 20 ms and also compares the kernel's peak against its value at the
+/// start: when that grew, it is the exact peak of the window. Otherwise the highest sample wins,
+/// which can miss a spike shorter than 20 ms.
+public final class KokoroPeakWindow: @unchecked Sendable {
+    private struct State {
+        var kernelPeakAtStart: UInt64
+        var highestSample: UInt64
+    }
+
+    private let state: OSAllocatedUnfairLock<State>
+    private let timer: DispatchSourceTimer
+
+    /// Starts sampling right away. Call `stop()` when done.
+    public init(interval: DispatchTimeInterval = .milliseconds(20)) {
+        let now = KokoroMemory.current()
+        state = OSAllocatedUnfairLock(initialState: State(
+            kernelPeakAtStart: now?.peakBytes ?? 0,
+            highestSample: now?.currentBytes ?? 0
+        ))
+        timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "PlantKokoro.peak", qos: .utility))
+        timer.schedule(deadline: .now() + interval, repeating: interval)
+        let state = state
+        timer.setEventHandler {
+            guard let current = KokoroMemory.current()?.currentBytes else { return }
+            state.withLock { $0.highestSample = max($0.highestSample, current) }
+        }
+        timer.resume()
+    }
+
+    public func stop() {
+        timer.cancel()
+    }
+
+    /// Bytes. Safe to call while running.
+    public var peakBytes: UInt64 {
+        let now = KokoroMemory.current()
+        return state.withLock { state in
+            let sampled = max(state.highestSample, now?.currentBytes ?? 0)
+            guard let kernelPeak = now?.peakBytes, kernelPeak > state.kernelPeakAtStart else { return sampled }
+            return max(kernelPeak, sampled)
+        }
+    }
+
+    deinit { timer.cancel() }
 }

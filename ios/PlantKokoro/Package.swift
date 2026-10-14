@@ -58,7 +58,11 @@ let package = Package(
         // Opt-in smoke test of the real model (see the test's comment).
         .testTarget(
             name: "PlantKokoroTests",
-            dependencies: ["PlantKokoro", "MisakiSwift"]
+            dependencies: [
+                "PlantKokoro", "KokoroSwift", "MisakiSwift",
+                .product(name: "MLX", package: "mlx-swift"),
+                .product(name: "MLXRandom", package: "mlx-swift")
+            ]
         )
     ]
 )

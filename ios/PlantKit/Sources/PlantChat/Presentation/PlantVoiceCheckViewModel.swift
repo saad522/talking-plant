@@ -50,6 +50,8 @@ public protocol PlantVoiceCheckClient {
     /// - Returns: a description of the failure, or `nil` when loaded.
     func load() async -> String?
     func unload()
+    /// From now on the snapshot's peak is the peak since this call, not since launch.
+    func resetPeak()
     /// `appleOnly` skips Kokoro and speaks through the fallback voice.
     func speak(_ text: String, style: PlantSpeechStyle, appleOnly: Bool, completion: @escaping () -> Void)
     func stop()
@@ -87,6 +89,11 @@ public final class PlantVoiceCheckViewModel {
 
     public func unload() {
         client.unload()
+        refresh()
+    }
+
+    public func resetPeak() {
+        client.resetPeak()
         refresh()
     }
 

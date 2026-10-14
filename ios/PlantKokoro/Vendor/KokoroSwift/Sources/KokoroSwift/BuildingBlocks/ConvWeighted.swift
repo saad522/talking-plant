@@ -5,10 +5,9 @@ import Foundation
 import MLX
 import MLXNN
 
-/// Conv1d with weight normalization
+/// Conv1d whose weight normalization is already folded into `weight` (tools/kokoro/build_assets.py).
 class ConvWeighted: Module {
-  var weightG: MLXArray
-  var weightV: MLXArray
+  var weight: MLXArray
   var bias: MLXArray?
 
   let stride: Int
@@ -18,8 +17,7 @@ class ConvWeighted: Module {
   let groups: Int
 
   init(
-    weightG: MLXArray,
-    weightV: MLXArray,
+    weight: MLXArray,
     bias: MLXArray?,
     stride: Int = 1,
     padding: Int = 1,
@@ -33,71 +31,13 @@ class ConvWeighted: Module {
     self.outputPadding = outputPadding
     self.groups = groups
 
-    self.weightG = weightG
-    self.weightV = weightV
+    self.weight = weight
     self.bias = bias
 
     super.init()
   }
   
-  private func computeNorm(
-    x: MLXArray,
-    p: Int,
-    dim: [Int]? = nil,
-    keepdim: Bool = false
-  ) -> MLXArray {
-    guard p == 1 || p == 2 else {
-      fatalError("Only p-norms with p of 1 or 2 are supported")
-    }
-
-    let dimensions: [Int]
-    if let dim = dim {
-      dimensions = dim
-    } else {
-      dimensions = Array(0 ..< x.ndim)
-    }
-
-    if p == 1 {
-      // L1 norm
-      return MLX.sum(MLX.abs(x), axes: dimensions, keepDims: keepdim)
-    } else {
-      // L2 norm
-      return MLX.sqrt(MLX.sum(x * x, axes: dimensions, keepDims: keepdim))
-    }
-  }
-
-  private func weightNorm(
-    weightV: MLXArray,
-    weightG: MLXArray,
-    dim: Int? = nil
-  ) -> MLXArray {
-    let rank = weightV.shape.count
-
-    var axes: [Int]
-
-    if let dim = dim {
-      var adjustedDim = dim
-      if dim < 0 {
-        adjustedDim += rank
-      }
-
-      axes = Array(0 ..< rank)
-      if adjustedDim != -1 {
-        axes.removeAll(where: { $0 == adjustedDim })
-      }
-    } else {
-      axes = Array(0 ..< rank)
-    }
-
-    let normV = computeNorm(x: weightV, p: 2, dim: axes, keepdim: true)
-
-    // Add epsilon for numerical stability
-    let normalizedWeight = weightV / (normV + 1e-7)
-    return normalizedWeight * weightG
-  }
-  
   public func callAsFunction(_ x: MLXArray, conv: (MLXArray, MLXArray, Int, Int, Int, Int, StreamOrDevice) -> MLXArray) -> MLXArray {
-    let weight = weightNorm(weightV: weightV, weightG: weightG, dim: 0)
     bias = bias?.reshaped([1, 1, -1])
 
     func applyConv(x: MLXArray, weightToUse: MLXArray) -> MLXArray {
@@ -125,7 +65,6 @@ class ConvWeighted: Module {
   }
   
   public func callAsFunction(_ x: MLXArray, conv: (MLXArray, MLXArray, Int, Int, Int, Int, Int, StreamOrDevice) -> MLXArray) -> MLXArray {
-    let weight = weightNorm(weightV: weightV, weightG: weightG, dim: 0)
     bias = bias?.reshaped([1, 1, -1])
 
     func applyConv(x: MLXArray, weightToUse: MLXArray) -> MLXArray {

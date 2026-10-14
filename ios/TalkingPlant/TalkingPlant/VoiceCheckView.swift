@@ -27,6 +27,8 @@ struct VoiceCheckView: View {
                     Button("Load") { Task { await viewModel.load() } }
                         .disabled(viewModel.isLoading)
                     Spacer()
+                    Button("Reset peak") { viewModel.resetPeak() }
+                    Spacer()
                     Button("Unload") { viewModel.unload() }
                 }
                 .buttonStyle(.bordered)

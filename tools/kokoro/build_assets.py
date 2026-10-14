@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Builds the Kokoro files PlantKokoro ships (docs/plans/M5c-kokoro.md, section 6).
 
-Writes sprout.safetensors and kokoro-f16.safetensors into
+Writes sprout.safetensors and kokoro-f16.safetensors (weight norm folded, see fold_weight_norm) into
 ios/PlantKokoro/Sources/PlantKokoro/Resources/, checks them, and prints a size report.
 """
 import argparse
@@ -95,6 +95,55 @@ def component(key):
 
 def is_float(array):
     return array.dtype in (mx.float32, mx.float16, mx.bfloat16)
+
+
+def fold_weight_norm(weights):
+    """Replaces every `<name>.weight_g` / `<name>.weight_v` pair with `<name>.weight`.
+
+    This is what kokoro-ios computed on every call: g * v / (||v|| + 1e-7), with the norm over all
+    axes except 0. Done once here, in float32, so the app does no weight-norm math and never holds
+    the float32 intermediates. The result has weight_v's shape, so the app's transposition rule
+    for weight_v applies to it unchanged.
+    """
+    folded = {}
+    count = 0
+    for key, array in weights.items():
+        if key.endswith(".weight_g"):
+            continue
+        if not key.endswith(".weight_v"):
+            folded[key] = array
+            continue
+        prefix = key[: -len("weight_v")]
+        g = weights[prefix + "weight_g"].astype(mx.float32)
+        v = array.astype(mx.float32)
+        norm = mx.sqrt(mx.sum(v * v, axis=tuple(range(1, v.ndim)), keepdims=True))
+        name = prefix + "weight"
+        if name in weights:
+            fail(f"{name} already exists next to {key}")
+        folded[name] = g * (v / (norm + 1e-7))
+        count += 1
+    mx.eval(folded)
+    return folded, count
+
+
+def check_fold(original, folded, count):
+    """Recomputes every folded weight in float64 with numpy and compares."""
+    pairs = [key[: -len("weight_v")] for key in original if key.endswith(".weight_v")]
+    if len(pairs) != count or any(key.endswith((".weight_g", ".weight_v")) for key in folded):
+        fail("weight_g / weight_v pairs are left over after folding")
+    worst = 0.0
+    for prefix in pairs:
+        v = np.array(original[prefix + "weight_v"].astype(mx.float32), dtype=np.float64)
+        g = np.array(original[prefix + "weight_g"].astype(mx.float32), dtype=np.float64)
+        norm = np.sqrt(np.sum(v * v, axis=tuple(range(1, v.ndim)), keepdims=True))
+        expected = g * v / (norm + 1e-7)
+        got = np.array(folded[prefix + "weight"], dtype=np.float64)
+        if got.shape != v.shape:
+            fail(f"{prefix}weight has shape {got.shape}, expected {v.shape}")
+        worst = max(worst, float(np.max(np.abs(got - expected))))
+    if worst > 1e-5:
+        fail(f"folded weights differ from the float64 reference by {worst}")
+    print(f"weight norm: {count} folded weights match a float64 reference (worst difference {worst:.2e})")
 
 
 def check_fp16(original, converted):
@@ -213,12 +262,18 @@ def main():
     mx.save_safetensors(str(sprout_path), {"sprout": mx.array(sprout)})
     worst_blend = check_sprout(sprout_path, heart, nicole)
 
-    weights = mx.load(str(weights_path))
+    original = mx.load(str(weights_path))
+    weights, folded_count = fold_weight_norm(original)
+    check_fold(original, weights, folded_count)
     converted = {key: array.astype(mx.float16) if is_float(array) else array for key, array in weights.items()}
     mx.save_safetensors(str(f16_path), converted)
+    # Only for the folded-vs-unfolded test in PlantKokoroTests. Never shipped.
+    unfolded_path = CACHE / "kokoro-f16-unfolded.safetensors"
+    mx.save_safetensors(str(unfolded_path), {key: array.astype(mx.float16) if is_float(array) else array for key, array in original.items()})
     worst_fp16 = check_fp16(weights, mx.load(str(f16_path)))
 
     print(f"sprout: 0.45*heart + 0.55*nicole holds on all {sprout.size:,d} values (worst difference {worst_blend:.2e})")
+    print(f"weight norm: folded {folded_count} convolutions into one weight each")
     print(f"fp16: {len(weights)} tensors round-trip within fp16 precision (worst absolute difference {worst_fp16:.2e})")
     report(weights, f16_path, sprout_path)
     check_checksums([sprout_path, f16_path], args.update_checksums)

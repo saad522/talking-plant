@@ -27,6 +27,9 @@ Added for PlantKokoro:
 - MisakiSwift: British dictionaries (`gb_*`) removed. Only `us_gold`, `us_silver` and `us_bart`
   ship. `EnglishG2P(british: true)` would fail to load them, so don't use it.
 - Tests and upstream READMEs not copied.
+- Weight norm folded at build time (M5c K10): `ConvWeighted` takes one `weight` and does no norm math;
+  `WeightLoader` applies its `weight_v` transposition rule to that `weight`. The weights file must come
+  from `tools/kokoro` (`weight_g` / `weight_v` pairs are gone from it).
 
 fp16 weights load as they are (`MLX.loadArrays` keeps fp16; the smoke test passes), so
 `WeightLoader` is unchanged.

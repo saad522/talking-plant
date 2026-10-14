@@ -34,16 +34,14 @@ class Decoder {
     decode.append(AdainResBlk1d(weights: weights, weightKeyPrefix: "decoder.decode.3", dimIn: 1024 + 2 + 64, dimOut: 512, styleDim: styleDim, upsample: "true"))
 
     F0Conv = ConvWeighted(
-      weightG: weights["decoder.F0_conv.weight_g"]!,
-      weightV: weights["decoder.F0_conv.weight_v"]!,
+      weight: weights["decoder.F0_conv.weight"]!,
       bias: weights["decoder.F0_conv.bias"]!,
       stride: 2,
       padding: 1,
       groups: 1
     )
     NConv = ConvWeighted(
-      weightG: weights["decoder.N_conv.weight_g"]!,
-      weightV: weights["decoder.N_conv.weight_v"]!,
+      weight: weights["decoder.N_conv.weight"]!,
       bias: weights["decoder.N_conv.bias"]!,
       stride: 2,
       padding: 1,
@@ -51,8 +49,7 @@ class Decoder {
     )
 
     asrRes = [ConvWeighted(
-      weightG: weights["decoder.asr_res.0.weight_g"]!,
-      weightV: weights["decoder.asr_res.0.weight_v"]!,
+      weight: weights["decoder.asr_res.0.weight"]!,
       bias: weights["decoder.asr_res.0.bias"]!,
       padding: 0
     )]

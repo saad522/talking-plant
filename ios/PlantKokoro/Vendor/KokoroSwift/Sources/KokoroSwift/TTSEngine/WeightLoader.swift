@@ -25,9 +25,9 @@ final class WeightLoader {
   /// Loads and sanitizes model weights from the specified path.
   /// This method reads the raw model weights and applies component-specific transformations:
   /// - **BERT weights**: Filters out position_ids (not needed for inference)
-  /// - **Predictor weights**: Transposes F0 and N projection weights, handles weight_v conditionally
-  /// - **Text encoder weights**: Handles weight_v with conditional transposition
-  /// - **Decoder weights**: Transposes noise convolution weights and handles weight_v conditionally
+  /// - **Predictor weights**: Transposes F0 and N projection weights, handles folded conv weights conditionally
+  /// - **Text encoder weights**: Handles folded conv weights with conditional transposition
+  /// - **Decoder weights**: Transposes noise convolution weights and handles folded conv weights conditionally
   /// - Parameter modelPath: URL to the directory containing model weight files
   /// - Returns: Dictionary mapping weight names to their processed MLXArray tensors
   /// - Note: Uses forced try (try!) as weight loading is critical and should fail fast if unsuccessful
@@ -56,8 +56,8 @@ final class WeightLoader {
         } else if key.contains("N_proj.weight") {
           sanitizedWeights[key] = value.transposed(0, 2, 1)
           
-        // Weight normalization V parameters need conditional transposition
-        } else if key.contains("weight_v") {
+        // Folded weight-norm conv weights need conditional transposition
+        } else if isFoldedConvWeight(key, value) {
           if checkArrayShape(arr: value) {
             sanitizedWeights[key] = value
           } else {
@@ -69,8 +69,8 @@ final class WeightLoader {
         
       // Process text encoder weights
       } else if key.hasPrefix("text_encoder") {
-        // Weight normalization V parameters need conditional transposition
-        if key.contains("weight_v") {
+        // Folded weight-norm conv weights need conditional transposition
+        if isFoldedConvWeight(key, value) {
           if checkArrayShape(arr: value) {
             sanitizedWeights[key] = value
           } else {
@@ -86,8 +86,8 @@ final class WeightLoader {
         if key.contains("noise_convs"), key.hasSuffix(".weight") {
           sanitizedWeights[key] = value.transposed(0, 2, 1)
           
-        // Weight normalization V parameters need conditional transposition
-        } else if key.contains("weight_v") {
+        // Folded weight-norm conv weights need conditional transposition
+        } else if isFoldedConvWeight(key, value) {
           if checkArrayShape(arr: value) {
             sanitizedWeights[key] = value
           } else {
@@ -100,6 +100,13 @@ final class WeightLoader {
     }
 
     return sanitizedWeights
+  }
+
+  /// A weight-normalized conv. The build script folds `weight_g` / `weight_v` into one `weight` of
+  /// `weight_v`'s shape, so the same transposition rule applies. The only other 3-D `.weight`s
+  /// (F0/N projections, noise convs) are matched by the branches before this one.
+  private static func isFoldedConvWeight(_ key: String, _ value: MLXArray) -> Bool {
+    key.hasSuffix(".weight") && value.ndim == 3
   }
 
   /// Checks if a 3D weight array has the correct shape and doesn't need transposition.

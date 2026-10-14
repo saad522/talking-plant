@@ -1,3 +1,6 @@
+import KokoroSwift
+import MLX
+import MLXRandom
 import MisakiSwift
 import XCTest
 @testable import PlantKokoro
@@ -27,6 +30,56 @@ final class KokoroSproutGeneratorSmokeTests: XCTestCase {
             XCTAssertLessThan(peak, 1.5, text)
             XCTAssertGreaterThan(peak, 0.05, text)
         }
+    }
+
+    /// The shipped weights have weight norm folded in at build time. This folds the unfolded fp16 weights
+    /// the way kokoro-ios did on every call (fp16 math), and checks that both models say the same thing.
+    /// Needs the unfolded copy that `make -C tools/kokoro assets` leaves in tools/kokoro/.cache.
+    func test_foldedWeights_sayTheSameSentenceAsUnfoldedWeights() throws {
+        try skipUnlessOptedIn()
+        let folded = try resourceURL("kokoro-f16.safetensors")
+        let unfolded = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("tools/kokoro/.cache/kokoro-f16-unfolded.safetensors")
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: unfolded.path), "Run make -C tools/kokoro assets first")
+        let voice = try XCTUnwrap(MLX.loadArrays(url: resourceURL("sprout.safetensors"))["sprout"])
+        let text = "Your soil is a little dry today."
+
+        let reference = try Self.foldAtRuntime(unfolded)
+        defer { try? FileManager.default.removeItem(at: reference) }
+        let expected = try Self.speak(text, voice: voice, weights: reference)
+        let actual = try Self.speak(text, voice: voice, weights: folded)
+
+        XCTAssertEqual(actual.count, expected.count)
+        let count = min(actual.count, expected.count)
+        var squaredError: Double = 0
+        var squaredSignal: Double = 0
+        for index in 0..<count {
+            squaredError += Double(actual[index] - expected[index]) * Double(actual[index] - expected[index])
+            squaredSignal += Double(expected[index]) * Double(expected[index])
+        }
+        let waveform = (squaredError / max(squaredSignal, 1e-12)).squareRoot()
+        let envelope = Self.relativeDifference(Self.loudness(actual), Self.loudness(expected))
+        print("folded vs unfolded: \(count) samples, waveform RMS difference \(waveform), loudness envelope difference \(envelope)")
+        // Rounding the weights to fp16 differently already moves the waveform by a few percent (the
+        // vocoder's phases are sensitive), so the waveform bound is loose. The envelope is what you hear.
+        XCTAssertLessThan(waveform, 0.12)
+        XCTAssertLessThan(envelope, 0.02)
+    }
+
+    /// RMS of every 20 ms.
+    private static func loudness(_ samples: [Float]) -> [Double] {
+        stride(from: 0, to: samples.count - 479, by: 480).map { start in
+            let sum = samples[start..<start + 480].reduce(0.0) { $0 + Double($1) * Double($1) }
+            return (sum / 480).squareRoot()
+        }
+    }
+
+    private static func relativeDifference(_ a: [Double], _ b: [Double]) -> Double {
+        let error = zip(a, b).reduce(0.0) { $0 + ($1.0 - $1.1) * ($1.0 - $1.1) }
+        let signal = b.reduce(0.0) { $0 + $1 * $1 }
+        return (error / max(signal, 1e-12)).squareRoot()
     }
 
     /// A dictionary word gets the dictionary pronunciation, not the BART guess ("kˈɑlənᵊl").
@@ -89,6 +142,38 @@ final class KokoroSproutGeneratorSmokeTests: XCTestCase {
         let sut = KokoroSproutGenerator(resources: resources)
         trackForMemoryLeaks(sut, file: file, line: line)
         return sut
+    }
+
+    private func resourceURL(_ name: String) throws -> URL {
+        let url = try XCTUnwrap(Bundle.module.resourceURL).appendingPathComponent(name)
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: url.path), "Run make -C tools/kokoro assets first")
+        return url
+    }
+
+    /// Same seed, so the noise sources match and only the weights differ.
+    private static func speak(_ text: String, voice: MLXArray, weights: URL) throws -> [Float] {
+        MLXRandom.seed(42)
+        let tts = KokoroTTS(modelPath: weights, g2p: .misaki)
+        return try tts.generateAudio(voice: voice, language: .enUS, text: text, speed: 1).0
+    }
+
+    /// Writes a copy of the unfolded weights with `weight_g` / `weight_v` replaced by
+    /// `g * v / (||v|| + 1e-7)`, computed in fp16 with the norm over all axes but 0.
+    private static func foldAtRuntime(_ unfolded: URL) throws -> URL {
+        var weights = try MLX.loadArrays(url: unfolded)
+        for key in Array(weights.keys) where key.hasSuffix(".weight_v") {
+            let prefix = String(key.dropLast("weight_v".count))
+            let v = weights[key]!
+            let g = weights[prefix + "weight_g"]!
+            let axes = Array(1..<v.ndim)
+            let norm = MLX.sqrt(MLX.sum(v * v, axes: axes, keepDims: true))
+            weights[prefix + "weight"] = v / (norm + 1e-7) * g
+            weights[key] = nil
+            weights[prefix + "weight_g"] = nil
+        }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("kokoro-runtime-folded-\(UUID().uuidString).safetensors")
+        try MLX.save(arrays: weights, url: url)
+        return url
     }
 
     private func skipUnlessOptedIn() throws {

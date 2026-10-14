@@ -547,6 +547,11 @@ class PlantChatXCTestCase: XCTestCase {
         }
 
         private(set) var requests: [Request] = []
+        private(set) var utterancesStarted = 0
+        private(set) var utterancesFinished = 0
+
+        func utteranceStarted() { utterancesStarted += 1 }
+        func utteranceFinished() { utterancesFinished += 1 }
 
         private var continuations: [CheckedContinuation<[Float], Error>] = []
         func generate(_ text: String, speed: Float) async throws -> [Float] {

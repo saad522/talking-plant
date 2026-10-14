@@ -38,8 +38,7 @@ class AdainResBlk1d {
       pool = Identity()
     } else {
       pool = ConvWeighted(
-        weightG: weights[weightKeyPrefix + ".pool.weight_g"]!,
-        weightV: weights[weightKeyPrefix + ".pool.weight_v"]!,
+        weight: weights[weightKeyPrefix + ".pool.weight"]!,
         bias: weights[weightKeyPrefix + ".pool.bias"]!,
         stride: 2,
         padding: 1,
@@ -52,16 +51,14 @@ class AdainResBlk1d {
 
   func buildWeights(weights: [String: MLXArray], weightKeyPrefix: String, dimIn: Int, dimOut _: Int, styleDim: Int) {
     conv1 = ConvWeighted(
-      weightG: weights[weightKeyPrefix + ".conv1.weight_g"]!,
-      weightV: weights[weightKeyPrefix + ".conv1.weight_v"]!,
+      weight: weights[weightKeyPrefix + ".conv1.weight"]!,
       bias: weights[weightKeyPrefix + ".conv1.bias"]!,
       stride: 1,
       padding: 1
     )
 
     conv2 = ConvWeighted(
-      weightG: weights[weightKeyPrefix + ".conv2.weight_g"]!,
-      weightV: weights[weightKeyPrefix + ".conv2.weight_v"]!,
+      weight: weights[weightKeyPrefix + ".conv2.weight"]!,
       bias: weights[weightKeyPrefix + ".conv2.bias"]!,
       stride: 1,
       padding: 1
@@ -83,8 +80,7 @@ class AdainResBlk1d {
 
     if learned_sc {
       conv1x1 = ConvWeighted(
-        weightG: weights[weightKeyPrefix + ".conv1x1.weight_g"]!,
-        weightV: weights[weightKeyPrefix + ".conv1x1.weight_v"]!,
+        weight: weights[weightKeyPrefix + ".conv1x1.weight"]!,
         bias: nil,
         stride: 1,
         padding: 0

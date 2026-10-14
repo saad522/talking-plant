@@ -28,8 +28,7 @@ class AdaINResBlock1 {
     for i in 0 ..< 3 {
       let dilationValue = dilation[i]
       let conv = ConvWeighted(
-        weightG: weights[weightPrefixKey + ".convs1.\(i).weight_g"]!,
-        weightV: weights[weightPrefixKey + ".convs1.\(i).weight_v"]!,
+        weight: weights[weightPrefixKey + ".convs1.\(i).weight"]!,
         bias: weights[weightPrefixKey + ".convs1.\(i).bias"]!,
         stride: 1,
         padding: getPadding(kernelSize: kernelSize, dilation: dilationValue),
@@ -40,8 +39,7 @@ class AdaINResBlock1 {
 
     for i in 0 ..< convs1.count {
       let conv = ConvWeighted(
-        weightG: weights[weightPrefixKey + ".convs2.\(i).weight_g"]!,
-        weightV: weights[weightPrefixKey + ".convs2.\(i).weight_v"]!,
+        weight: weights[weightPrefixKey + ".convs2.\(i).weight"]!,
         bias: weights[weightPrefixKey + ".convs2.\(i).bias"]!,
         stride: 1,
         padding: getPadding(kernelSize: kernelSize, dilation: 1),

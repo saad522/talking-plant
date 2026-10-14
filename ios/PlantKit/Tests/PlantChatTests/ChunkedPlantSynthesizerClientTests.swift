@@ -309,6 +309,49 @@ final class ChunkedPlantSynthesizerClientTests: PlantChatXCTestCase {
         XCTAssertEqual(generator.requests.count, 2)
     }
 
+    func test_speak_tellsTheGeneratorWhenTheUtteranceStartsAndWhenItFinishes() async {
+        let (sut, generator, player) = makeSUT()
+
+        sut.speak(text, style: style) { _ in }
+        await settle()
+        XCTAssertEqual([generator.utterancesStarted, generator.utterancesFinished], [1, 0])
+        generator.complete(with: [0.1], at: 0)
+        await settle()
+        generator.complete(with: [0.1], at: 1)
+        await settle()
+        player.complete(with: true, at: 0)
+        await settle()
+        generator.complete(with: [0.1], at: 2)
+        await settle()
+        player.complete(with: true, at: 1)
+        XCTAssertEqual(generator.utterancesFinished, 0)
+        player.complete(with: true, at: 2)
+
+        XCTAssertEqual([generator.utterancesStarted, generator.utterancesFinished], [1, 1])
+    }
+
+    func test_stop_whileSpeaking_tellsTheGeneratorTheUtteranceFinishedOnce() async {
+        let (sut, generator, _) = makeSUT()
+
+        sut.speak(text, style: style) { _ in }
+        await settle()
+        sut.stop()
+        sut.stop()
+
+        XCTAssertEqual([generator.utterancesStarted, generator.utterancesFinished], [1, 1])
+    }
+
+    func test_speak_failure_tellsTheGeneratorTheUtteranceFinished() async {
+        let (sut, generator, _) = makeSUT()
+
+        sut.speak(text, style: style) { _ in }
+        await settle()
+        generator.complete(with: anyNSError())
+        await settle()
+
+        XCTAssertEqual([generator.utterancesStarted, generator.utterancesFinished], [1, 1])
+    }
+
     func test_stop_whileIdle_doesNotTouchPlayer() {
         let (sut, _, player) = makeSUT()
 

@@ -60,7 +60,7 @@ final class PlantVoicePickerTests: PlantChatXCTestCase {
         among voices: [PlantSynthesisVoice]
     ) -> PlantSynthesisVoice? {
         let style = PlantSpeechStyle(
-            language: language, rate: 0.5, pitchCents: 0, effectRate: 1, preferredVoiceIdentifier: preferred
+            language: language, rate: 0.5, speed: 1, preferredVoiceIdentifier: preferred
         )
         return PlantVoicePicker.voice(for: style, among: voices)
     }

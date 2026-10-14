@@ -220,7 +220,10 @@ Pure, in `PlantChat/Domain`, a port of the spike's `KokoroSpikeSentences` (and i
   common abbreviations ("Mr.", "e.g.");
 - a sentence over `maxWords` (default 20) is split at its last `,` `;` `:` before the cap,
   otherwise at the cap;
-- whitespace trimmed, empty chunks dropped.
+- whitespace is collapsed to single spaces and empty chunks are dropped;
+- a chunk under `minimumLength` (20 characters, the spike's value) joins the next chunk, or the
+  previous one if it is last, but never past `maxWords` ("Psst... my soil is dry." is one chunk).
+  This runs after the long-sentence split.
 
 Shorter chunks lower both the time to first audio and the peak memory (K10 tunes
 `maxWords`).
@@ -451,6 +454,7 @@ the app building. No commits. You run PlantChatiOSTests and the device checks.
   the spike's sentence tests ported; decimals and abbreviations don't split; long sentence
   splits at the last comma before `maxWords`, and at the cap with no comma; whitespace and
   empty input give no chunks; a single short sentence is one chunk.
+- A chunk under 20 characters (the spike's minimum) joins the next one, or the previous one if it is last, never going over `maxWords` ("Psst... my soil is dry." is one chunk).
 
 ### K4. Fallback composite (the old S3)
 

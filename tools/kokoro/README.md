@@ -1,0 +1,3 @@
+# tools/kokoro
+
+Build-time assets for PlantKokoro (see `docs/plans/M5c-kokoro.md`, section 6). Run `make -C tools/kokoro assets` once per clone. It downloads the pinned Kokoro weights and voices into `.cache/`, writes `sprout.safetensors` (af_heart × 0.45 + af_nicole × 0.55) and `kokoro-f16.safetensors` into `ios/PlantKokoro/Sources/PlantKokoro/Resources/`, checks the blend, the fp16 round trip and `assets.sha256`, and prints a size report. After a deliberate change to the assets, run `make -C tools/kokoro update-checksums` and commit `assets.sha256`. The Python environment (`.venv`) is only used here and never ships.

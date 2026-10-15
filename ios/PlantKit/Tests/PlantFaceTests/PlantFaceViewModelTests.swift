@@ -57,4 +57,28 @@ final class PlantFaceViewModelTests: PlantFaceXCTestCase {
             XCTAssertEqual(sut.blinks, expected[sut.state], "\(mood)")
         }
     }
+
+    func test_init_isNotSurprisedByDefault() {
+        PlantMood.allCases.forEach { mood in
+            XCTAssertFalse(PlantFaceViewModel(mood: mood).isSurprised, "\(mood)")
+        }
+    }
+
+    func test_init_surprisedKeepsStateSoilAndTiltForEveryMood() {
+        PlantMood.allCases.forEach { mood in
+            let calm = PlantFaceViewModel(mood: mood)
+            let sut = PlantFaceViewModel(mood: mood, isSurprised: true)
+
+            XCTAssertTrue(sut.isSurprised, "\(mood)")
+            XCTAssertEqual(sut.state, calm.state, "\(mood)")
+            XCTAssertEqual(sut.drySoil, calm.drySoil, "\(mood)")
+            XCTAssertEqual(sut.extraTilt, calm.extraTilt, "\(mood)")
+        }
+    }
+
+    func test_init_surprisedNeverBlinks() {
+        PlantMood.allCases.forEach { mood in
+            XCTAssertFalse(PlantFaceViewModel(mood: mood, isSurprised: true).blinks, "\(mood)")
+        }
+    }
 }

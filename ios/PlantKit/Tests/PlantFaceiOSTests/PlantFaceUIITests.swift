@@ -65,4 +65,32 @@ final class PlantFaceUIITests: PlantFaceiOSXCTestCase {
             XCTAssertEqual(PlantFaceUIComposer.composed(mood: mood).renderedSoil(), [expected], "\(mood)")
         }
     }
+
+    func test_composedSurprised_rendersOpenWideEyesAndFilledMouthForEveryMood() {
+        PlantMood.allCases.forEach { mood in
+            let sut = PlantFaceUIComposer.composed(mood: mood, isSurprised: true)
+
+            XCTAssertEqual(sut.renderedEyes(), [.open], "\(mood)")
+            XCTAssertEqual(sut.renderedEyeRy(), [11], "\(mood)")
+            XCTAssertEqual(sut.renderedMouthFilled(), [true], "\(mood)")
+        }
+    }
+
+    func test_composedSurprised_keepsTheMoodsEffectsAndSoil() {
+        PlantMood.allCases.forEach { mood in
+            let calm = PlantFaceUIComposer.composed(mood: mood)
+            let sut = PlantFaceUIComposer.composed(mood: mood, isSurprised: true)
+
+            XCTAssertEqual(sut.renderedEffects(), calm.renderedEffects(), "\(mood)")
+            XCTAssertEqual(sut.renderedSoil(), calm.renderedSoil(), "\(mood)")
+        }
+    }
+
+    func test_composedNotSurprised_rendersFilledMouthOnlyForDrowning() {
+        let filled = PlantMood.allCases.filter {
+            PlantFaceUIComposer.composed(mood: $0, isSurprised: false).renderedMouthFilled() == [true]
+        }
+
+        XCTAssertEqual(filled, [.drowning])
+    }
 }

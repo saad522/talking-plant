@@ -18,19 +18,29 @@ public struct PlantFaceView: View {
         let state: PlantFaceState
         let drySoil: Bool
         let extraTilt: Double
+        let isSurprised: Bool
+    }
+
+    /// What the eyes, brows and mouth show: the state's own look, or the surprised one.
+    private struct Expression: Hashable {
+        let state: PlantFaceState
+        let isSurprised: Bool
     }
 
     public var body: some View {
         ZStack {
             character
                 // Reduce Motion: a new identity per state turns the morph into a cross-fade.
-                .id(reduceMotion ? viewModel.state : nil)
+                .id(reduceMotion ? expression : nil)
                 .transition(.opacity)
         }
         .frame(width: PlantFaceSize.face.width, height: PlantFaceSize.face.height)
         .animation(
             reduceMotion ? PlantFaceAnimation.crossFade : PlantFaceAnimation.morph,
-            value: Look(state: viewModel.state, drySoil: viewModel.drySoil, extraTilt: viewModel.extraTilt)
+            value: Look(
+                state: viewModel.state, drySoil: viewModel.drySoil,
+                extraTilt: viewModel.extraTilt, isSurprised: viewModel.isSurprised
+            )
         )
         .accessibilityHidden(true)
         .onAppear {
@@ -46,8 +56,13 @@ public struct PlantFaceView: View {
         }
     }
 
+    private var expression: Expression {
+        Expression(state: viewModel.state, isSurprised: viewModel.isSurprised)
+    }
+
     private var pose: PlantFacePose {
-        PlantFacePose.pose(for: viewModel.state)
+        let pose = PlantFacePose.pose(for: viewModel.state)
+        return viewModel.isSurprised ? pose.surprised() : pose
     }
 
     private var soil: PlantFaceSoil {
@@ -148,7 +163,7 @@ public struct PlantFaceView: View {
         .opacity(pose.blush)
     }
 
-    /// Keyed by state, so eyes, brows and mouth cross-fade instead of morphing.
+    /// Keyed by expression, so eyes, brows and mouth cross-fade instead of morphing.
     private var features: some View {
         ZStack(alignment: .topLeading) {
             PlantFaceEyesView(kind: pose.eyes, ry: pose.eyeRy, headColor: pose.head, isBlinking: isBlinking)
@@ -156,19 +171,12 @@ public struct PlantFaceView: View {
                 .stroke(PlantFaceColor.ink, style: featureLine)
             mouth
         }
-        .id(viewModel.state)
+        .id(expression)
         .transition(.opacity)
     }
 
-    @ViewBuilder
     private var mouth: some View {
-        let shape = PlantFacePathShape(segments: pose.mouth)
-        if pose.mouthFilled {
-            shape.fill(PlantFaceColor.ink)
-            shape.stroke(PlantFaceColor.ink, style: featureLine)
-        } else {
-            shape.stroke(PlantFaceColor.ink, style: featureLine)
-        }
+        PlantFaceMouthView(segments: pose.mouth, isFilled: pose.mouthFilled, line: featureLine)
     }
 
     private var featureLine: StrokeStyle {
@@ -197,6 +205,28 @@ public struct PlantFaceView: View {
                 isBlinking = false
                 return
             }
+        }
+    }
+}
+
+public struct PlantFaceMouthView: View {
+    public let isFilled: Bool
+    let segments: [PlantFaceSegment]
+    let line: StrokeStyle
+
+    init(segments: [PlantFaceSegment], isFilled: Bool, line: StrokeStyle) {
+        self.segments = segments
+        self.isFilled = isFilled
+        self.line = line
+    }
+
+    public var body: some View {
+        let shape = PlantFacePathShape(segments: segments)
+        if isFilled {
+            shape.fill(PlantFaceColor.ink)
+            shape.stroke(PlantFaceColor.ink, style: line)
+        } else {
+            shape.stroke(PlantFaceColor.ink, style: line)
         }
     }
 }

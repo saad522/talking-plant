@@ -201,6 +201,11 @@ asleep; drowning → overwatered. `dryAir` uses the thirsty pose with the defaul
 no pot cracks, since it isn't a watering problem. The mood label under the character still shows the exact
 `PlantMood` text.
 
+**Reaction: surprised** (shake, see `docs/plans/P1-alive.md`). Not a mood: the mood's own pose
+(colors, leaves, tilt, soil, effects, blush) with the overwatered eyes (open, ry 11), brows and
+filled "o" mouth. No blink while surprised. Asleep moods wake up with open eyes. The swap uses
+the same cross-fade as a mood change.
+
 ### 5.3 Effects
 
 | Effect | Geometry | Color |

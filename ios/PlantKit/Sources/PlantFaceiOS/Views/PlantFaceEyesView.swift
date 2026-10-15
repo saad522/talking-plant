@@ -2,7 +2,7 @@ import SwiftUI
 
 public struct PlantFaceEyesView: View {
     public let kind: PlantFaceEyeKind
-    let ry: CGFloat
+    public let ry: CGFloat
     let headColor: Color
     let isBlinking: Bool
 

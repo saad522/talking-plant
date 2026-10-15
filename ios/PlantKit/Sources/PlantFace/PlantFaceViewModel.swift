@@ -18,8 +18,11 @@ public final class PlantFaceViewModel {
     public let extraTilt: Double
     /// True when the eyes are open, so there is something to blink.
     public let blinks: Bool
+    /// A startled reaction (a shake): wide eyes and an "o" mouth on top of the mood's look.
+    public let isSurprised: Bool
 
-    public init(mood: PlantMood) {
+    public init(mood: PlantMood, isSurprised: Bool = false) {
+        self.isSurprised = isSurprised
         switch mood {
         case .happy: state = .happy
         case .thirsty, .veryThirsty, .dryAir: state = .thirsty
@@ -30,6 +33,6 @@ public final class PlantFaceViewModel {
         }
         drySoil = mood == .thirsty || mood == .veryThirsty
         extraTilt = mood == .veryThirsty ? 6 : 0
-        blinks = state == .happy || state == .thirsty || state == .overwatered
+        blinks = !isSurprised && (state == .happy || state == .thirsty || state == .overwatered)
     }
 }

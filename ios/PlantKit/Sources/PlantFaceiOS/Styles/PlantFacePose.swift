@@ -50,6 +50,20 @@ struct PlantFacePose {
         }
     }
 
+    /// The mood's own pose with the overwatered eyes, brows and mouth (DESIGN.md 5.2, surprised).
+    func surprised() -> PlantFacePose {
+        let wide = Self.overwatered
+        return PlantFacePose(
+            head: head, leaf: leaf, vein: vein, stem: stem,
+            tilt: tilt, topLeft: topLeft, topRight: topRight, topScale: topScale, topY: topY,
+            armLeft: armLeft, armRight: armRight, armScale: armScale,
+            eyes: wide.eyes, eyeRy: wide.eyeRy,
+            browLeft: wide.browLeft, browRight: wide.browRight,
+            mouth: wide.mouth, mouthFilled: wide.mouthFilled,
+            blush: blush
+        )
+    }
+
     private static let happy = PlantFacePose(
         head: Color(hex: 0x62BE70), leaf: Color(hex: 0x3FA35B), vein: Color(hex: 0x2C7A43), stem: Color(hex: 0x3A9452),
         tilt: 0, topLeft: -32, topRight: 32, topScale: 0.55, topY: 78,

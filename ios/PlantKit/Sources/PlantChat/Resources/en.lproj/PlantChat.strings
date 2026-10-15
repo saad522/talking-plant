@@ -57,3 +57,4 @@
 "plant.chat.mic.busy.notice" = "The microphone is busy, maybe on a call. Try again later.";
 "plant.chat.mic.interrupt.label" = "Interrupt %@";
 "plant.chat.speakReplies.label" = "Speak replies";
+"plant.chat.soundEffects.label" = "Sound effects";

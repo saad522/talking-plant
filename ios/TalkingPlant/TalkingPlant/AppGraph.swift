@@ -46,6 +46,7 @@ final class AppGraph {
         defaults: DefaultsClient,
         voice: SproutVoice,
         haptics: PlantHapticsClient,
+        sounds: PlantSoundEffectsClient,
         actionHandler: @escaping (AppAction) -> Void
     ) {
         self.mode = mode
@@ -130,6 +131,7 @@ final class AppGraph {
             lastScene: PlantLastSceneStore(defaults: defaults),
             face: PlantFaceUIComposer.composed,
             haptics: haptics,
+            sounds: sounds,
             clock: Date.init,
             schedule: SimulatedPeripheralClient.repeatingTimer,
             actionHandler: { action in
@@ -152,6 +154,7 @@ final class AppGraph {
             audioSession: AVAudioSessionPlantAudioSessionClient(),
             synthesizer: voice.synthesizer,
             spokenReplies: PlantSpokenReplySettings(defaults: defaults),
+            soundEffects: PlantSoundEffectSettings(defaults: defaults),
             plantName: plantName,
             face: PlantFaceUIComposer.composed,
             haptics: haptics,
@@ -189,7 +192,8 @@ final class AppGraph {
                 connectionLoader: connection,
                 commandSender: commands,
                 schedule: SimulatedPeripheralClient.repeatingTimer,
-                haptics: haptics
+                haptics: haptics,
+                sounds: sounds
             )
         }
         devicePicker = PlantDeviceUIComposer.composedPicker(
@@ -348,6 +352,8 @@ final class AppGraphStore: ObservableObject {
     private let relay: ActionRelay
     let voice: SproutVoice
     private let haptics: PlantHapticsClient
+    /// One sound client for the whole app, shared by every graph and the intro. Gated by the Talk menu's setting and by Sprout's voice.
+    let sounds: PlantSoundEffectsClient
     private var stores: [PlantDeviceMode: PlantReadingStore] = [:]
 
     init(navigation: AppNavigation, voice: SproutVoice, haptics: PlantHapticsClient, defaults: DefaultsClient = UserDefaultsClient()) {
@@ -359,8 +365,15 @@ final class AppGraphStore: ObservableObject {
         self.relay = relay
         self.voice = voice
         self.haptics = haptics
+        let soundSettings = PlantSoundEffectSettings(defaults: defaults)
+        let sounds = GatedPlantSoundEffectsClient(
+            decoratee: AVAudioPlayerPlantSoundEffectsClient(bundle: .main),
+            isEnabled: { soundSettings.isEnabled },
+            isVoiceSpeaking: { [weak voice] in voice?.isSpeaking ?? false }
+        )
+        self.sounds = sounds
         stores[mode] = store
-        graph = AppGraph(mode: mode, store: store, defaults: defaults, voice: voice, haptics: haptics, actionHandler: { relay.handle($0) })
+        graph = AppGraph(mode: mode, store: store, defaults: defaults, voice: voice, haptics: haptics, sounds: sounds, actionHandler: { relay.handle($0) })
         relay.handle = { [weak self] in self?.handle($0) }
     }
 
@@ -386,7 +399,7 @@ final class AppGraphStore: ObservableObject {
     }
 
     private func makeGraph(mode: PlantDeviceMode) -> AppGraph {
-        AppGraph(mode: mode, store: store(for: mode), defaults: defaults, voice: voice, haptics: haptics, actionHandler: { [relay] in relay.handle($0) })
+        AppGraph(mode: mode, store: store(for: mode), defaults: defaults, voice: voice, haptics: haptics, sounds: sounds, actionHandler: { [relay] in relay.handle($0) })
     }
 
     /// One store per mode, kept for the life of the app, so switching back never opens a second container on the same file.

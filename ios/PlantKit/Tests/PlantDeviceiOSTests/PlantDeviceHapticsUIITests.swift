@@ -104,4 +104,31 @@ final class PlantDeviceHapticsUIITests: PlantDeviceiOSXCTestCase {
 
         XCTAssertEqual(haptics.played, [.success])
     }
+
+    func test_calibration_save_playsChime() {
+        let sounds = SoundEffectsSpy()
+        let (sut, connection, raw, _, _) = makeCalibrationSUT(sounds: sounds)
+        sut.simulateAppear()
+        connection.simulate(.connected)
+        sut.simulateTap(String.localised(key: "plant.device.calibration.dry.capture"))
+        raw.simulate(anyRawReading(soilMillivolts: 2_447, sequence: 1))
+        sut.simulateTap(String.localised(key: "plant.device.calibration.wet.capture"))
+        raw.simulate(anyRawReading(soilMillivolts: 1_062, sequence: 2))
+        XCTAssertEqual(sounds.played, [])
+
+        sut.simulateTap(String.localised(key: "plant.device.calibration.save"))
+
+        XCTAssertEqual(sounds.played, [.chime])
+    }
+
+    func test_calibration_invalidSaveAndReset_playNoSound() {
+        let sounds = SoundEffectsSpy()
+        let (sut, _, _, _, _) = makeCalibrationSUT(sounds: sounds)
+        sut.simulateAppear()
+
+        sut.simulateTap(String.localised(key: "plant.device.calibration.save"))
+        sut.simulateTap(String.localised(key: "plant.device.calibration.reset"))
+
+        XCTAssertEqual(sounds.played, [])
+    }
 }

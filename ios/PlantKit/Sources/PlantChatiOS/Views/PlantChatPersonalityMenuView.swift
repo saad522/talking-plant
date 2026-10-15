@@ -31,18 +31,32 @@ public struct PlantChatPersonalityMenuView: View {
         }
     }
 
+    public struct SoundEffects {
+        public let label: String
+        public let isOn: Bool
+        let set: (Bool) -> Void
+
+        init(label: String, isOn: Bool, set: @escaping (Bool) -> Void) {
+            self.label = label
+            self.isOn = isOn
+            self.set = set
+        }
+    }
+
     @Environment(\.plantChatColor) private var color
 
     public let accessibilityLabel: String
     public let options: [Option]
     public let speakReplies: SpeakReplies
+    public let soundEffects: SoundEffects?
     /// DEBUG only: opens the voice check screen.
     public let voiceCheck: (() -> Void)?
 
-    init(accessibilityLabel: String, options: [Option], speakReplies: SpeakReplies, voiceCheck: (() -> Void)? = nil) {
+    init(accessibilityLabel: String, options: [Option], speakReplies: SpeakReplies, soundEffects: SoundEffects? = nil, voiceCheck: (() -> Void)? = nil) {
         self.accessibilityLabel = accessibilityLabel
         self.options = options
         self.speakReplies = speakReplies
+        self.soundEffects = soundEffects
         self.voiceCheck = voiceCheck
     }
 
@@ -62,6 +76,9 @@ public struct PlantChatPersonalityMenuView: View {
                 Divider()
             }
             Toggle(speakReplies.label, isOn: Binding(get: { speakReplies.isOn }, set: speakReplies.set))
+            if let soundEffects {
+                Toggle(soundEffects.label, isOn: Binding(get: { soundEffects.isOn }, set: soundEffects.set))
+            }
             if let voiceCheck {
                 Button("Voice check", action: voiceCheck)
             }

@@ -264,6 +264,8 @@ Opened by "Talk to <name>" on the home screen.
     unavailable notice, with an "Open Settings" text button when permission is denied. It
     clears on the next mic tap.
   - **Speak replies:** a toggle under the personalities in the sliders menu.
+  - **Sound effects:** a toggle right under "Speak replies" (see section 7). It gates Sprout's
+    reward sounds everywhere in the app, not only here.
 
 ## 7. Feedback
 
@@ -286,6 +288,18 @@ baseline. The first reading in the window at least 10 points above the baseline 
 once and closes the window. A second tap extends the window and keeps the baseline. A rise without
 a Water tap, or with no earlier reading, plays nothing.
 
+Sounds: short reward sounds, played through one `PlantSoundEffectsClient`. They use the
+`.ambient` audio session, so the silent switch mutes them and the user's music keeps playing,
+mixed. Nothing plays when "Sound effects" is off (Talk menu, saved, on by default) or while
+Sprout's voice is speaking. A missing sound file is skipped silently. Button taps get a haptic
+only, never a sound.
+
+| Sound | When |
+|---|---|
+| `chime` | Watered, and a valid calibration save, together with the `success` haptic |
+| `greet` | Cold-launch intro, as the greeting starts to rise (0.4 s). Not with Reduce Motion, and not if a tap skips the intro first |
+| `pop` | The shake reaction (S9) |
+
 | Screen | Control | Haptic |
 |---|---|---|
 | Home | Talk, Water, History | `tap` |
@@ -304,6 +318,7 @@ a Water tap, or with no earlier reading, plays nothing.
 | Talk | Menu button (opens the system menu) | none, the system menu has its own feedback |
 | Talk | Menu item (personality) | `tap` |
 | Talk | Menu toggle "Speak replies" | `selection` |
+| Talk | Menu toggle "Sound effects" | `selection` |
 | History | Range segmented control | `selection` |
 | Settings | Mode segmented control | `selection` |
 | Settings | Open Settings, Read now, Calibration row, Pair / Change, Forget | `tap` |

@@ -13,6 +13,7 @@ public enum PlantChatUIComposer {
         audioSession: PlantAudioSessionClient,
         synthesizer: PlantSynthesizerClient,
         spokenReplies: PlantSpokenReplySettings,
+        soundEffects: PlantSoundEffectSettings,
         plantName: String,
         face: @escaping (PlantMood) -> Face,
         haptics: PlantHapticsClient,
@@ -28,6 +29,7 @@ public enum PlantChatUIComposer {
             audioSession: audioSession,
             synthesizer: synthesizer,
             spokenReplies: spokenReplies,
+            soundEffects: soundEffects,
             plantName: plantName,
             actionHandler: actionHandler
         )
@@ -90,6 +92,11 @@ public enum PlantChatUIComposer {
             refreshMenu(store: store, viewModel: viewModel, haptics: haptics, actionHandler: actionHandler)
         }
 
+        viewModel.loadedSoundEffects = { [weak store, weak viewModel] isEnabled in
+            store?.hasSoundEffects = isEnabled
+            refreshMenu(store: store, viewModel: viewModel, haptics: haptics, actionHandler: actionHandler)
+        }
+
         let controls = PlantChatControls(
             back: { [weak viewModel] in
                 haptics.play(.tap)
@@ -139,6 +146,7 @@ public enum PlantChatUIComposer {
         store.personalityMenu = makeMenu(
             current: current,
             isSpeakingReplies: store.isSpeakingReplies,
+            hasSoundEffects: store.hasSoundEffects,
             viewModel: viewModel,
             haptics: haptics,
             actionHandler: actionHandler
@@ -148,6 +156,7 @@ public enum PlantChatUIComposer {
     private static func makeMenu(
         current: PlantPersonality,
         isSpeakingReplies: Bool,
+        hasSoundEffects: Bool,
         viewModel: PlantChatViewModel?,
         haptics: PlantHapticsClient,
         actionHandler: @escaping (PlantChatAction) -> Void
@@ -171,6 +180,14 @@ public enum PlantChatUIComposer {
                 set: { [weak viewModel] in
                     haptics.play(.selection)
                     viewModel?.setSpokenReplies($0)
+                }
+            ),
+            soundEffects: PlantChatPersonalityMenuView.SoundEffects(
+                label: viewModel?.soundEffectsLabel ?? "",
+                isOn: hasSoundEffects,
+                set: { [weak viewModel] in
+                    haptics.play(.selection)
+                    viewModel?.setSoundEffects($0)
                 }
             ),
             voiceCheck: voiceCheck(actionHandler: actionHandler)

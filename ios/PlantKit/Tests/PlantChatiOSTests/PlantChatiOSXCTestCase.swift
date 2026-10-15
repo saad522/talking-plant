@@ -10,6 +10,7 @@ class PlantChatiOSXCTestCase: XCTestCase {
         savedPersonality: PlantPersonality? = nil,
         isAvailable: Bool = true,
         spokenRepliesEnabled: Bool? = nil,
+        soundEffectsEnabled: Bool? = nil,
         transcriptLoader: TranscriptLoaderStub = TranscriptLoaderStub(),
         audioSession: AudioSessionSpy = AudioSessionSpy(),
         synthesizer: SynthesizerSpy = SynthesizerSpy(),
@@ -35,6 +36,9 @@ class PlantChatiOSXCTestCase: XCTestCase {
         if let spokenRepliesEnabled {
             defaults.stub(spokenRepliesEnabled, forKey: "plant.chat.spokenReplies.enabled")
         }
+        if let soundEffectsEnabled {
+            defaults.stub(soundEffectsEnabled, forKey: "plant.chat.soundEffects.enabled")
+        }
         let sut = PlantChatUIComposer.composed(
             chatLoader: chatLoader,
             lineLoader: lineLoader,
@@ -44,6 +48,7 @@ class PlantChatiOSXCTestCase: XCTestCase {
             audioSession: audioSession,
             synthesizer: synthesizer,
             spokenReplies: PlantSpokenReplySettings(defaults: defaults),
+            soundEffects: PlantSoundEffectSettings(defaults: defaults),
             plantName: "Sprout",
             face: { FaceStub(mood: $0) },
             haptics: haptics,

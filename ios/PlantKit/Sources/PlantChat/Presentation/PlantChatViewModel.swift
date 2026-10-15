@@ -18,6 +18,7 @@ public final class PlantChatViewModel {
     private let synthesizer: PlantSynthesizerClient
     private static let logger = Logger(subsystem: "TalkingPlant", category: "voice")
     private let spokenReplies: PlantSpokenReplySettings
+    private let soundEffects: PlantSoundEffectSettings
     private let plantName: String
     private let currentDate: () -> Date
     private let actionHandler: (PlantChatAction) -> Void
@@ -50,6 +51,7 @@ public final class PlantChatViewModel {
     public let keyboardLabel: String = String.localised(key: "plant.chat.keyboard.label")
     public let endLabel: String = String.localised(key: "plant.chat.end.label")
     public let speakRepliesLabel: String = String.localised(key: "plant.chat.speakReplies.label")
+    public let soundEffectsLabel: String = String.localised(key: "plant.chat.soundEffects.label")
     public var talkLabel: String {
         String(format: String.localised(key: "plant.chat.mic.talk.label"), plantName)
     }
@@ -71,6 +73,7 @@ public final class PlantChatViewModel {
     public var loadedInputMode: Observer<PlantChatInputMode>?
     public var loadedMicrophoneNotice: Observer<PlantChatMicrophoneNoticeViewModel?>?
     public var loadedSpokenReplies: Observer<Bool>?
+    public var loadedSoundEffects: Observer<Bool>?
 
     public init(
         chatLoader: PlantChatLoader,
@@ -81,6 +84,7 @@ public final class PlantChatViewModel {
         audioSession: PlantAudioSessionClient,
         synthesizer: PlantSynthesizerClient,
         spokenReplies: PlantSpokenReplySettings,
+        soundEffects: PlantSoundEffectSettings,
         plantName: String,
         currentDate: @escaping () -> Date = Date.init,
         actionHandler: @escaping (PlantChatAction) -> Void
@@ -93,6 +97,7 @@ public final class PlantChatViewModel {
         self.audioSession = audioSession
         self.synthesizer = synthesizer
         self.spokenReplies = spokenReplies
+        self.soundEffects = soundEffects
         self.plantName = plantName
         self.currentDate = currentDate
         self.actionHandler = actionHandler
@@ -109,6 +114,7 @@ public final class PlantChatViewModel {
         appeared = true
         loadedPersonality?(settings.load())
         loadedSpokenReplies?(spokenReplies.isEnabled)
+        loadedSoundEffects?(soundEffects.isEnabled)
         factsLoader.subscribe { [weak self] in
             self?.loadFacts()
         }
@@ -211,6 +217,11 @@ public final class PlantChatViewModel {
         if activity == .speaking {
             stopVoice(from: "setSpokenReplies(off)")
         }
+    }
+
+    public func setSoundEffects(_ isEnabled: Bool) {
+        soundEffects.save(isEnabled: isEnabled)
+        loadedSoundEffects?(isEnabled)
     }
 
     public func keyboardTap() {

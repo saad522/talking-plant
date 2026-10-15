@@ -11,6 +11,7 @@ public struct PlantIntroView: View {
     private let launchBackground: Color
     private let handoffBackground: Color
     private let haptics: PlantHapticsClient
+    private let sounds: PlantSoundEffectsClient
     private let particles = PlantIntroParticle.make()
 
     init(
@@ -20,7 +21,8 @@ public struct PlantIntroView: View {
         sproutHeight: CGFloat,
         launchBackground: Color,
         handoffBackground: Color,
-        haptics: PlantHapticsClient
+        haptics: PlantHapticsClient,
+        sounds: PlantSoundEffectsClient
     ) {
         self.viewModel = viewModel
         self.sprout = sprout
@@ -29,6 +31,7 @@ public struct PlantIntroView: View {
         self.launchBackground = launchBackground
         self.handoffBackground = handoffBackground
         self.haptics = haptics
+        self.sounds = sounds
     }
 
     private var isHandingOff: Bool { viewModel.state == .handingOff }
@@ -126,7 +129,10 @@ public struct PlantIntroView: View {
             do {
                 try await Task.sleep(for: .seconds(PlantIntroTimeline.hapticTime))
                 haptics.play(.bump)
-                try await Task.sleep(for: .seconds(viewModel.handoffDelay - PlantIntroTimeline.hapticTime))
+                // The greeting starts to rise at `textStart`. A tap that skips the intro cancels this task before then.
+                try await Task.sleep(for: .seconds(PlantIntroTimeline.textStart - PlantIntroTimeline.hapticTime))
+                sounds.play(.greet)
+                try await Task.sleep(for: .seconds(viewModel.handoffDelay - PlantIntroTimeline.textStart))
                 viewModel.beginHandoff()
             } catch {}
         case .handingOff:

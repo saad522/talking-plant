@@ -102,7 +102,8 @@ public enum PlantDeviceUIComposer {
         connectionLoader: PlantDeviceConnectionLoader,
         commandSender: PlantDeviceCommandSender,
         schedule: @escaping PlantDeviceCalibrationViewModel.Schedule,
-        haptics: PlantHapticsClient
+        haptics: PlantHapticsClient,
+        sounds: PlantSoundEffectsClient
     ) -> PlantDeviceCalibrationView {
         let store = PlantDeviceCalibrationStore()
         let viewModel = PlantDeviceCalibrationViewModel(
@@ -150,6 +151,7 @@ public enum PlantDeviceUIComposer {
 
         viewModel.loadedSaved = { _ in
             haptics.play(.success)
+            sounds.play(.chime)
         }
 
         let controls = PlantDeviceCalibrationControls(

@@ -15,6 +15,7 @@ public enum PlantMonitorUIComposer {
         lastScene: PlantLastSceneStore,
         face: @escaping (PlantMood) -> Face,
         haptics: PlantHapticsClient,
+        sounds: PlantSoundEffectsClient,
         clock: @escaping () -> Date,
         schedule: @escaping SimulatedPeripheralClient.Schedule,
         actionHandler: @escaping (PlantMonitorAction) -> Void
@@ -60,6 +61,7 @@ public enum PlantMonitorUIComposer {
 
         viewModel.loadedWatered = {
             haptics.play(.success)
+            sounds.play(.chime)
         }
 
         viewModel.loadedSky = { [weak store] update in

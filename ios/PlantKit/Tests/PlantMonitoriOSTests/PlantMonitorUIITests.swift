@@ -510,6 +510,31 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
         XCTAssertEqual(haptics.played, [.tap, .success])
     }
 
+    func test_waterTapThenRisingReading_playsChimeOnce() {
+        let sounds = SoundEffectsSpy()
+        let (sut, loader, _, _) = makeSUT(sounds: sounds)
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading(moisture: 20))
+
+        sut.simulateTap(onButton: "Water")
+        XCTAssertEqual(sounds.played, [])
+        loader.completeSubscription(with: makeReading(moisture: 45))
+        loader.completeSubscription(with: makeReading(moisture: 80))
+
+        XCTAssertEqual(sounds.played, [.chime])
+    }
+
+    func test_risingReadingWithoutWaterTap_playsNoSound() {
+        let sounds = SoundEffectsSpy()
+        let (sut, loader, _, _) = makeSUT(sounds: sounds)
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading(moisture: 20))
+
+        loader.completeSubscription(with: makeReading(moisture: 80))
+
+        XCTAssertEqual(sounds.played, [])
+    }
+
     func test_risingReadingWithoutWaterTap_playsNoHaptic() {
         let haptics = HapticsSpy()
         let (sut, loader, _, _) = makeSUT(haptics: haptics)

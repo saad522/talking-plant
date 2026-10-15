@@ -118,6 +118,28 @@ final class PlantChatUIITests: PlantChatiOSXCTestCase {
         XCTAssertEqual(sut.speakReplies?.isOn, false)
     }
 
+    func test_personalityMenu_showsSoundEffectsOnByDefaultAndTogglingSavesIt() {
+        let (sut, _, _, _, defaults) = makeSUT()
+        sut.simulateAppear()
+
+        XCTAssertEqual(sut.soundEffects?.label, "Sound effects")
+        XCTAssertEqual(sut.soundEffects?.isOn, true)
+
+        sut.simulateSoundEffectsToggle()
+
+        XCTAssertEqual(defaults.savedBools["plant.chat.soundEffects.enabled"], false)
+        XCTAssertEqual(sut.soundEffects?.isOn, false)
+        XCTAssertNil(defaults.savedBools["plant.chat.spokenReplies.enabled"])
+    }
+
+    func test_personalityMenu_showsSavedSoundEffectsSetting() {
+        let (sut, _, _, _, _) = makeSUT(soundEffectsEnabled: false)
+
+        sut.simulateAppear()
+
+        XCTAssertEqual(sut.soundEffects?.isOn, false)
+    }
+
     #if DEBUG
     func test_personalityMenuVoiceCheckTap_sendsVoiceCheckAction() {
         var actions: [PlantChatAction] = []

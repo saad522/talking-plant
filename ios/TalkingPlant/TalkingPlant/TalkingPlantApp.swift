@@ -76,7 +76,8 @@ struct TalkingPlantApp: App {
                 handoffBackground: PlantMonitorUIComposer.background(
                     for: PlantLastSceneStore(defaults: UserDefaultsClient()).scene
                 ),
-                haptics: Self.haptics
+                haptics: Self.haptics,
+                sounds: graphStore.sounds
             )
         }
     }

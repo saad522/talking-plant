@@ -10,6 +10,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         speechLoader: SpeechLoaderStub = SpeechLoaderStub(),
         lastScene: PlantMonitorScene = .day,
         haptics: HapticsSpy = HapticsSpy(),
+        sounds: SoundEffectsSpy = SoundEffectsSpy(),
         clock: ClockStub = ClockStub(at: Date(timeIntervalSince1970: 1_000)),
         scheduleSpy: ScheduleSpy = ScheduleSpy(),
         actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
@@ -29,6 +30,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
             lastScene: makeLastSceneStore(saved: lastScene),
             face: { FaceStub(mood: $0) },
             haptics: haptics,
+            sounds: sounds,
             clock: clock.now,
             schedule: scheduleSpy.schedule,
             actionHandler: actionHandler
@@ -38,6 +40,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         trackMemoryLeak(connectionLoader, file: file, line: line)
         trackMemoryLeak(speechLoader, file: file, line: line)
         trackMemoryLeak(haptics, file: file, line: line)
+        trackMemoryLeak(sounds, file: file, line: line)
         return (sut, loader, healthLoader, connectionLoader)
     }
 
@@ -119,6 +122,12 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
     /// Today at `hour`:00 in the current calendar, which the composer reads the sky with.
     func time(hour: Int, minute: Int = 0) -> Date {
         Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: Date(timeIntervalSince1970: 1_000_000))!
+    }
+
+    @MainActor
+    final class SoundEffectsSpy: PlantSoundEffectsClient {
+        private(set) var played: [PlantSoundEffect] = []
+        func play(_ effect: PlantSoundEffect) { played.append(effect) }
     }
 
     @MainActor

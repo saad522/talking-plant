@@ -14,7 +14,8 @@ public enum PlantIntroUIComposer {
         sproutHeight: CGFloat,
         launchBackground: Color,
         handoffBackground: Color,
-        haptics: PlantHapticsClient
+        haptics: PlantHapticsClient,
+        sounds: PlantSoundEffectsClient
     ) -> PlantIntroView {
         PlantIntroView(
             viewModel: viewModel,
@@ -23,7 +24,8 @@ public enum PlantIntroUIComposer {
             sproutHeight: sproutHeight,
             launchBackground: launchBackground,
             handoffBackground: handoffBackground,
-            haptics: haptics
+            haptics: haptics,
+            sounds: sounds
         )
     }
 }

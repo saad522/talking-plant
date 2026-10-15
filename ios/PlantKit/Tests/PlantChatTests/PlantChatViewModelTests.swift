@@ -1029,6 +1029,55 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         XCTAssertEqual(sut.defaults.messages.last, .setBool(true, forKey: "plant.chat.spokenReplies.enabled"))
     }
 
+    func test_setSoundEffects_savesAndDelivers() {
+        let sut = makeLoadedSUT()
+        var received: [Bool] = []
+        sut.viewModel.loadedSoundEffects = { received.append($0) }
+
+        sut.viewModel.setSoundEffects(false)
+        sut.viewModel.setSoundEffects(true)
+
+        XCTAssertEqual(received, [false, true])
+        XCTAssertTrue(sut.defaults.messages.contains(.setBool(false, forKey: "plant.chat.soundEffects.enabled")))
+        XCTAssertEqual(sut.defaults.messages.last, .setBool(true, forKey: "plant.chat.soundEffects.enabled"))
+    }
+
+    func test_setSoundEffects_doesNotTouchSpokenReplies() {
+        let sut = makeLoadedSUT()
+        var spoken: [Bool] = []
+        sut.viewModel.loadedSpokenReplies = { spoken.append($0) }
+
+        sut.viewModel.setSoundEffects(false)
+
+        XCTAssertEqual(spoken, [])
+        XCTAssertFalse(sut.defaults.messages.contains(.setBool(false, forKey: "plant.chat.spokenReplies.enabled")))
+    }
+
+    func test_appear_deliversSavedSoundEffectsSetting() {
+        let sut = makeSUT()
+        sut.defaults.stub(false, forKey: "plant.chat.soundEffects.enabled")
+        var received: [Bool] = []
+        sut.viewModel.loadedSoundEffects = { received.append($0) }
+
+        sut.viewModel.appear()
+
+        XCTAssertEqual(received, [false])
+    }
+
+    func test_appear_deliversSoundEffectsOnWhenNothingIsSaved() {
+        let sut = makeSUT()
+        var received: [Bool] = []
+        sut.viewModel.loadedSoundEffects = { received.append($0) }
+
+        sut.viewModel.appear()
+
+        XCTAssertEqual(received, [true])
+    }
+
+    func test_soundEffectsLabel_isLocalised() {
+        XCTAssertEqual(makeSUT().viewModel.soundEffectsLabel, "Sound effects")
+    }
+
     func test_appear_deliversSavedSpokenRepliesSetting() {
         let sut = makeSUT()
         sut.defaults.stub(false, forKey: "plant.chat.spokenReplies.enabled")
@@ -1116,6 +1165,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
             audioSession: AudioSessionSpy(),
             synthesizer: SynthesizerSpy(),
             spokenReplies: PlantSpokenReplySettings(defaults: DefaultsSpy()),
+            soundEffects: PlantSoundEffectSettings(defaults: DefaultsSpy()),
             plantName: "Sprout",
             actionHandler: { _ in }
         )
@@ -1161,6 +1211,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         let audioSession = AudioSessionSpy()
         let synthesizer = SynthesizerSpy()
         let spokenReplies = PlantSpokenReplySettings(defaults: defaults)
+        let soundEffects = PlantSoundEffectSettings(defaults: defaults)
         if let savedPersonality {
             settings.save(savedPersonality)
         }
@@ -1173,6 +1224,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
             audioSession: audioSession,
             synthesizer: synthesizer,
             spokenReplies: spokenReplies,
+            soundEffects: soundEffects,
             plantName: "Sprout",
             currentDate: currentDate,
             actionHandler: actionHandler
@@ -1186,6 +1238,7 @@ final class PlantChatViewModelTests: PlantChatXCTestCase {
         trackMemoryLeak(audioSession, file: file, line: line)
         trackMemoryLeak(synthesizer, file: file, line: line)
         trackMemoryLeak(spokenReplies, file: file, line: line)
+        trackMemoryLeak(soundEffects, file: file, line: line)
         trackMemoryLeak(viewModel, file: file, line: line)
         return SUT(viewModel: viewModel, chatLoader: chatLoader, lineLoader: lineLoader, factsLoader: factsLoader, settings: settings, transcriptLoader: transcriptLoader, audioSession: audioSession, synthesizer: synthesizer, defaults: defaults)
     }

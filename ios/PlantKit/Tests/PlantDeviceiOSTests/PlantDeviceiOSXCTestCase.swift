@@ -79,6 +79,7 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
     func makeCalibrationSUT(
         savedCalibration: MoistureCalibration? = nil,
         haptics: HapticsSpy = HapticsSpy(),
+        sounds: SoundEffectsSpy = SoundEffectsSpy(),
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (
@@ -101,7 +102,8 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
             connectionLoader: connection,
             commandSender: commands,
             schedule: schedule.schedule,
-            haptics: haptics
+            haptics: haptics,
+            sounds: sounds
         )
         trackMemoryLeak(connection, file: file, line: line)
         trackMemoryLeak(raw, file: file, line: line)
@@ -109,6 +111,7 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
         trackMemoryLeak(defaults, file: file, line: line)
         trackMemoryLeak(schedule, file: file, line: line)
         trackMemoryLeak(haptics, file: file, line: line)
+        trackMemoryLeak(sounds, file: file, line: line)
         return (sut, connection, raw, commands, schedule)
     }
 
@@ -140,6 +143,12 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
         addTeardownBlock { [weak instance] in
             XCTAssertNil(instance, "Instance should be deallocated. Potential memory leak", file: file, line: line)
         }
+    }
+
+    @MainActor
+    final class SoundEffectsSpy: PlantSoundEffectsClient {
+        private(set) var played: [PlantSoundEffect] = []
+        func play(_ effect: PlantSoundEffect) { played.append(effect) }
     }
 
     @MainActor

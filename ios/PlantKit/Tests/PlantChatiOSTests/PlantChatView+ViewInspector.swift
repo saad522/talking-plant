@@ -52,6 +52,10 @@ extension PlantChatView where Face == FaceStub {
         try? inspect().find(PlantChatPersonalityMenuView.self).actualView().speakReplies
     }
 
+    var soundEffects: PlantChatPersonalityMenuView.SoundEffects? {
+        try? inspect().find(PlantChatPersonalityMenuView.self).actualView().soundEffects
+    }
+
     var micLabel: String? {
         try? inspect().find(PlantChatVoiceControlsView.self).actualView().micLabel
     }
@@ -105,6 +109,11 @@ extension PlantChatView where Face == FaceStub {
 
     func simulateSpeakRepliesToggle() {
         try? inspect().find(ViewType.Menu.self).find(ViewType.Toggle.self).tap()
+    }
+
+    func simulateSoundEffectsToggle() {
+        guard let toggles = try? inspect().find(ViewType.Menu.self).findAll(ViewType.Toggle.self), toggles.count > 1 else { return }
+        try? toggles[1].tap()
     }
 
     func simulateVoiceCheckTap() {

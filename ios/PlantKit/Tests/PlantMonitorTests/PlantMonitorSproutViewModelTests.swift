@@ -426,6 +426,224 @@ final class PlantMonitorSproutViewModelTests: PlantMonitorXCTestCase {
         XCTAssertEqual(voice.spoken.count, 1)
     }
 
+    // MARK: - Shake
+
+    func test_shake_subscribesOnceOnAppear() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, _, _, _) = makeSUT(shakeLoader: shakeLoader)
+
+        sut.appear()
+        sut.disappear()
+        sut.appear()
+
+        XCTAssertEqual(shakeLoader.subscriptionCount, 1)
+    }
+
+    func test_shake_whileVisibleIsSurprisedThenCalmAfterOneSecond() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, _, schedule, _) = makeSUT(shakeLoader: shakeLoader)
+        var surprised: [Bool] = []
+        sut.loadedSurprised = { surprised.append($0) }
+        sut.appear()
+        sut.lineSettled(happyLine)
+
+        shakeLoader.shake()
+        XCTAssertEqual(surprised, [true])
+        XCTAssertEqual(schedule.intervals.suffix(2), [PlantMonitorSproutViewModel.shakeLineDelay, PlantMonitorSproutViewModel.surpriseDuration])
+
+        schedule.fire(at: schedule.intervals.count - 1)
+
+        XCTAssertEqual(surprised, [true, false])
+    }
+
+    func test_shake_speaksShakeLineAfterDelayWithAutomaticTrigger() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, voice, schedule, _) = makeSUT(shakeLoader: shakeLoader)
+        sut.appear()
+        sut.lineSettled(happyLine)
+
+        shakeLoader.shake()
+        XCTAssertEqual(voice.spoken, [])
+        schedule.fire(at: schedule.intervals.count - 2)
+
+        XCTAssertEqual(voice.spoken, [.init(text: PlantMonitorShakeLines.lines(for: .happy, isSleeping: false)[0], mood: .happy, trigger: .automatic)])
+    }
+
+    func test_shake_sleepingUsesSleepingLines() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, voice, schedule, _) = makeSUT(shakeLoader: shakeLoader)
+        sut.appear()
+        sut.lineSettled(.init(text: "Zzz", mood: .happy, isSleeping: true))
+
+        shakeLoader.shake()
+        schedule.fire(at: schedule.intervals.count - 2)
+
+        XCTAssertEqual(voice.spoken.map(\.text), [PlantMonitorShakeLines.lines(for: .happy, isSleeping: true)[0]])
+    }
+
+    func test_shake_withinCooldownIsIgnoredAndAfterItAccepted() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, _, _, clock) = makeSUT(shakeLoader: shakeLoader)
+        var surprised: [Bool] = []
+        sut.loadedSurprised = { surprised.append($0) }
+        sut.appear()
+        sut.lineSettled(happyLine)
+
+        shakeLoader.shake()
+        clock.advance(by: PlantMonitorSproutViewModel.shakeCooldown - 1)
+        shakeLoader.shake()
+        XCTAssertEqual(surprised, [true])
+
+        clock.advance(by: 1)
+        shakeLoader.shake()
+        XCTAssertEqual(surprised, [true, true])
+    }
+
+    func test_shake_whenHiddenIsIgnored() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, voice, schedule, _) = makeSUT(shakeLoader: shakeLoader)
+        var surprised: [Bool] = []
+        sut.loadedSurprised = { surprised.append($0) }
+        sut.appear()
+        sut.lineSettled(happyLine)
+        sut.disappear()
+        let scheduled = schedule.intervals.count
+
+        shakeLoader.shake()
+
+        XCTAssertEqual(surprised, [])
+        XCTAssertEqual(schedule.intervals.count, scheduled)
+        XCTAssertEqual(voice.spoken, [])
+    }
+
+    func test_shake_whileAppIsInactiveIsIgnored() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, _, _, _) = makeSUT(shakeLoader: shakeLoader)
+        var surprised: [Bool] = []
+        sut.loadedSurprised = { surprised.append($0) }
+        sut.appear()
+        sut.lineSettled(happyLine)
+        sut.setActive(false)
+
+        shakeLoader.shake()
+
+        XCTAssertEqual(surprised, [])
+    }
+
+    func test_shake_beforeAMoodIsKnownIsIgnored() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, _, _, _) = makeSUT(shakeLoader: shakeLoader)
+        var surprised: [Bool] = []
+        sut.loadedSurprised = { surprised.append($0) }
+        sut.appear()
+
+        shakeLoader.shake()
+
+        XCTAssertEqual(surprised, [])
+    }
+
+    func test_shake_ignoredShakeDoesNotStartTheCooldown() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, _, _, _) = makeSUT(shakeLoader: shakeLoader)
+        var surprised: [Bool] = []
+        sut.loadedSurprised = { surprised.append($0) }
+        sut.appear()
+        shakeLoader.shake()
+
+        sut.lineSettled(happyLine)
+        shakeLoader.shake()
+
+        XCTAssertEqual(surprised, [true])
+    }
+
+    func test_shake_withSpeechDisabledIsSurprisedButSpeaksNothing() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, voice, schedule, _) = makeSUT(isEnabled: false, shakeLoader: shakeLoader)
+        var surprised: [Bool] = []
+        sut.loadedSurprised = { surprised.append($0) }
+        sut.appear()
+        sut.lineSettled(happyLine)
+
+        shakeLoader.shake()
+        schedule.fire(at: schedule.intervals.count - 2)
+
+        XCTAssertEqual(surprised, [true])
+        XCTAssertEqual(voice.spoken, [])
+    }
+
+    func test_shake_leavingHomeBeforeTheLineStaysSilentButStillCalmsTheFace() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, voice, schedule, _) = makeSUT(shakeLoader: shakeLoader)
+        var surprised: [Bool] = []
+        sut.loadedSurprised = { surprised.append($0) }
+        sut.appear()
+        sut.lineSettled(happyLine)
+        shakeLoader.shake()
+        let last = schedule.intervals.count
+
+        sut.disappear()
+        schedule.fire(at: last - 2)
+        schedule.fire(at: last - 1)
+
+        XCTAssertEqual(voice.spoken, [])
+        XCTAssertEqual(surprised, [true, false])
+    }
+
+    func test_shake_whileAHomeLinePlaysStopsItThenSpeaksTheShakeLine() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, voice, schedule, _) = makeSUT(shakeLoader: shakeLoader)
+        sut.appear()
+        sut.lineSettled(happyLine)
+        schedule.fire()
+
+        shakeLoader.shake()
+        XCTAssertEqual(voice.stopCount, 1)
+        schedule.fire(at: schedule.intervals.count - 2)
+
+        XCTAssertEqual(voice.spoken.map(\.trigger), [.automatic, .automatic])
+        XCTAssertEqual(voice.spoken.last?.text, PlantMonitorShakeLines.lines(for: .happy, isSleeping: false)[0])
+    }
+
+    func test_shake_leavesTheSpokenMemoryUnchanged() {
+        let defaults = DefaultsSpy()
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, _, schedule, _) = makeSUT(defaults: defaults, shakeLoader: shakeLoader)
+        sut.appear()
+        sut.lineSettled(thirstyLine)
+
+        shakeLoader.shake()
+        schedule.fire(at: schedule.intervals.count - 2)
+
+        XCTAssertNil(PlantSpokenLineStore(defaults: defaults).mood)
+    }
+
+    func test_shake_lineCanBeTappedAwayAndTheTapSpeaksTheBubbleLine() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, voice, schedule, _) = makeSUT(shakeLoader: shakeLoader)
+        sut.appear()
+        sut.lineSettled(happyLine)
+        shakeLoader.shake()
+        schedule.fire(at: schedule.intervals.count - 2)
+
+        sut.sproutTap()
+
+        XCTAssertEqual(voice.stopCount, 1)
+        XCTAssertEqual(voice.spoken.last, .init(text: "Feeling great!", mood: .happy, trigger: .tap))
+    }
+
+    func test_shake_afterAnAutomaticLineEndedDoesNotStop() {
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, voice, schedule, _) = makeSUT(shakeLoader: shakeLoader)
+        sut.appear()
+        sut.lineSettled(happyLine)
+        schedule.fire()
+        voice.finish()
+
+        shakeLoader.shake()
+
+        XCTAssertEqual(voice.stopCount, 0)
+    }
+
     // MARK: - Helpers
 
     private func utcCalendar() -> Calendar {
@@ -438,6 +656,7 @@ final class PlantMonitorSproutViewModelTests: PlantMonitorXCTestCase {
         defaults: DefaultsSpy = DefaultsSpy(),
         isEnabled: Bool = true,
         clock: ClockStub = ClockStub(at: Date(timeIntervalSince1970: 1_792_000_000)),
+        shakeLoader: ShakeLoaderStub = ShakeLoaderStub(),
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (sut: PlantMonitorSproutViewModel, voice: VoiceSpy, schedule: ScheduleSpy, clock: ClockStub) {
@@ -449,8 +668,11 @@ final class PlantMonitorSproutViewModelTests: PlantMonitorXCTestCase {
             isEnabled: { isEnabled },
             clock: clock.now,
             calendar: utcCalendar(),
-            schedule: schedule.schedule
+            schedule: schedule.schedule,
+            shakeLoader: shakeLoader,
+            randomIndex: { _ in 0 }
         )
+        trackMemoryLeak(shakeLoader, file: file, line: line)
         trackMemoryLeak(voice, file: file, line: line)
         trackMemoryLeak(schedule, file: file, line: line)
         trackMemoryLeak(sut, file: file, line: line)

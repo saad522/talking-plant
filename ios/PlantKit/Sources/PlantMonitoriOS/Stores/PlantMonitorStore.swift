@@ -1,4 +1,5 @@
 import PlantMonitor
+import PlantShared
 import SwiftUI
 
 @MainActor
@@ -17,6 +18,11 @@ final class PlantMonitorStore<Face: View>: ObservableObject {
     /// Set once by the composer. Tapping the character makes Sprout say its line.
     var sproutLabel: String = ""
     var sproutTap: () -> Void = {}
+    /// Bumped on every accepted shake, so the scene view wobbles Sprout once per shake.
+    @Published var shakeCount = 0
+    /// What the face is drawn with, so a scene update during a shake keeps the surprised look.
+    var faceMood: PlantMood?
+    var isSurprised = false
 
     /// Starts on `scene`, so the first frame already has the final palette and sky.
     init(scene: PlantMonitorScene, sky: PlantMonitorSkyViewModel) {

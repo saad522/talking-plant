@@ -3,6 +3,7 @@ import SwiftUI
 public struct PlantMonitorSceneView<Face: View>: View {
     @ObservedObject private var store: PlantMonitorStore<Face>
     @Environment(\.plantMonitorPalette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(store: PlantMonitorStore<Face>) {
         self.store = store
@@ -26,6 +27,17 @@ public struct PlantMonitorSceneView<Face: View>: View {
                     face
                 }
                 .buttonStyle(.plain)
+                .keyframeAnimator(initialValue: 0.0, trigger: reduceMotion ? 0 : store.shakeCount) { content, angle in
+                    content.rotationEffect(.degrees(angle), anchor: .bottom)
+                } keyframes: { _ in
+                    KeyframeTrack {
+                        LinearKeyframe(-8, duration: 0.15)
+                        LinearKeyframe(7, duration: 0.2)
+                        LinearKeyframe(-5, duration: 0.2)
+                        LinearKeyframe(3, duration: 0.15)
+                        LinearKeyframe(0, duration: 0.1)
+                    }
+                }
                 .accessibilityLabel(store.sproutLabel)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 .padding(.bottom, PlantMonitorSize.faceBottom)

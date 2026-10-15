@@ -13,7 +13,7 @@ public enum PlantMonitorUIComposer {
         plantName: String,
         room: String,
         lastScene: PlantLastSceneStore,
-        face: @escaping (PlantMood) -> Face,
+        face: @escaping (PlantMood, _ isSurprised: Bool) -> Face,
         haptics: PlantHapticsClient,
         sounds: PlantSoundEffectsClient,
         voice: PlantMonitorVoice,
@@ -21,6 +21,8 @@ public enum PlantMonitorUIComposer {
         speaksLines: @escaping () -> Bool,
         clock: @escaping () -> Date,
         schedule: @escaping SimulatedPeripheralClient.Schedule,
+        shakeLoader: PlantShakeLoader,
+        randomIndex: @escaping (Int) -> Int,
         actionHandler: @escaping (PlantMonitorAction) -> Void
     ) -> PlantMonitorView<Face> {
         let calendar = Calendar.current
@@ -46,7 +48,9 @@ public enum PlantMonitorUIComposer {
             isEnabled: speaksLines,
             clock: clock,
             calendar: calendar,
-            schedule: schedule
+            schedule: schedule,
+            shakeLoader: shakeLoader,
+            randomIndex: randomIndex
         )
         store.sproutLabel = viewModel.hearLabel
         store.sproutTap = { [weak sprout] in sprout?.sproutTap() }
@@ -64,13 +68,27 @@ public enum PlantMonitorUIComposer {
             lastScene.save(scene.scene)
             store?.palette = PlantMonitorStore<Face>.makePalette(for: scene.scene)
             store?.subtitle = scene.header(name: plantName, room: room).subtitle
-            if let faceMood = scene.faceMood {
-                store?.face = face(faceMood)
+            if let faceMood = scene.faceMood, let store {
+                store.faceMood = faceMood
+                store.face = face(faceMood, store.isSurprised)
             }
             store?.chips = makeChips(for: scene)
             let buttons = makeButtons(isWaterPrimary: scene.isWaterPrimary, viewModel: viewModel, haptics: haptics)
             store?.primaryButton = buttons.primary
             store?.secondaryButtons = buttons.secondary
+        }
+
+        sprout.loadedSurprised = { [weak store] isSurprised in
+            guard let store else { return }
+            store.isSurprised = isSurprised
+            if let faceMood = store.faceMood {
+                store.face = face(faceMood, isSurprised)
+            }
+            if isSurprised {
+                store.shakeCount += 1
+                haptics.play(.bump)
+                sounds.play(.pop)
+            }
         }
 
         viewModel.loadedWatered = {

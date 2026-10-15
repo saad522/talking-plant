@@ -6,6 +6,9 @@ import PlantShared
 public final class PlantMonitorSproutViewModel {
     public static let settleDelay: TimeInterval = 2.5
     public static let minimumGap: TimeInterval = 60
+    public static let shakeCooldown: TimeInterval = 10
+    public static let shakeLineDelay: TimeInterval = 0.4
+    public static let surpriseDuration: TimeInterval = 1.0
 
     private let voice: PlantMonitorVoice
     private let spokenLines: PlantSpokenLineStore
@@ -13,6 +16,11 @@ public final class PlantMonitorSproutViewModel {
     private let clock: () -> Date
     private let calendar: Calendar
     private let schedule: SimulatedPeripheralClient.Schedule
+    private let shakeLoader: PlantShakeLoader
+    private var shakeLines: PlantMonitorShakeLines
+
+    /// True while the face should look surprised. Set by a shake, cleared 1 s later.
+    public var loadedSurprised: ((Bool) -> Void)?
 
     private var isVisible = false
     private var isActive = true
@@ -25,6 +33,8 @@ public final class PlantMonitorSproutViewModel {
     private var lastAutomaticAt: Date?
     private var speaking: Speaking?
     private var speechID = 0
+    private var isSubscribedToShakes = false
+    private var lastShakeAt: Date?
 
     private struct Speaking {
         let id: Int
@@ -39,7 +49,9 @@ public final class PlantMonitorSproutViewModel {
         isEnabled: @escaping () -> Bool,
         clock: @escaping () -> Date,
         calendar: Calendar,
-        schedule: @escaping SimulatedPeripheralClient.Schedule
+        schedule: @escaping SimulatedPeripheralClient.Schedule,
+        shakeLoader: PlantShakeLoader,
+        randomIndex: @escaping (Int) -> Int
     ) {
         self.voice = voice
         self.spokenLines = spokenLines
@@ -47,10 +59,13 @@ public final class PlantMonitorSproutViewModel {
         self.clock = clock
         self.calendar = calendar
         self.schedule = schedule
+        self.shakeLoader = shakeLoader
+        shakeLines = PlantMonitorShakeLines(randomIndex: randomIndex)
     }
 
     public func appear() {
         isVisible = true
+        subscribeToShakes()
         homeStateChanged()
     }
 
@@ -84,6 +99,36 @@ public final class PlantMonitorSproutViewModel {
     }
 
     // MARK: - Private
+
+    private func subscribeToShakes() {
+        guard isSubscribedToShakes == false else { return }
+        isSubscribedToShakes = true
+        shakeLoader.subscribe { [weak self] in self?.shake() }
+    }
+
+    /// Home only, with a mood known, and not more than once every `shakeCooldown`.
+    /// The face turns surprised, the line follows a moment later, and the face calms down after a second.
+    private func shake() {
+        guard isOpen, let line = latestLine else { return }
+        let now = clock()
+        if let last = lastShakeAt, now.timeIntervalSince(last) < Self.shakeCooldown { return }
+        lastShakeAt = now
+        stopSpeaking()
+        loadedSurprised?(true)
+        schedule(Self.shakeLineDelay) { [weak self] in
+            self?.speakShakeLine(mood: line.mood, isSleeping: line.isSleeping)
+            return false
+        }
+        schedule(Self.surpriseDuration) { [weak self] in
+            self?.loadedSurprised?(false)
+            return false
+        }
+    }
+
+    private func speakShakeLine(mood: PlantMood, isSleeping: Bool) {
+        guard isOpen, speaking == nil, isEnabled() else { return }
+        speak(shakeLines.next(for: mood, isSleeping: isSleeping), mood: mood, trigger: .automatic, remembers: false)
+    }
 
     /// Opening home waits for the intro and the first mood to pass. Closing it silences Sprout at once.
     private func homeStateChanged() {
@@ -123,11 +168,18 @@ public final class PlantMonitorSproutViewModel {
     }
 
     private func speak(_ line: PlantMonitorSpokenLine, trigger: PlantMonitorSpeechTrigger) {
-        spokenLines.save(mood: line.mood, day: PlantSpokenLineStore.day(for: clock(), calendar: calendar))
+        speak(line.text, mood: line.mood, trigger: trigger, remembers: true)
+    }
+
+    /// Shake lines don't count as the day's line, so they leave the spoken-line memory alone.
+    private func speak(_ text: String, mood: PlantMood, trigger: PlantMonitorSpeechTrigger, remembers: Bool) {
+        if remembers {
+            spokenLines.save(mood: mood, day: PlantSpokenLineStore.day(for: clock(), calendar: calendar))
+        }
         speechID += 1
         let id = speechID
         speaking = Speaking(id: id, trigger: trigger)
-        voice.speak(line.text, mood: line.mood, trigger: trigger) { [weak self] in
+        voice.speak(text, mood: mood, trigger: trigger) { [weak self] in
             guard let self, self.speaking?.id == id else { return }
             self.speaking = nil
             self.speakAutomaticallyIfDue()

@@ -129,7 +129,7 @@ final class AppGraph {
             plantName: plantName,
             room: "Living room",
             lastScene: PlantLastSceneStore(defaults: defaults),
-            face: PlantFaceUIComposer.composed,
+            face: { PlantFaceUIComposer.composed(mood: $0, isSurprised: $1) },
             haptics: haptics,
             sounds: sounds,
             voice: PlantMonitorVoiceAdapter(synthesizer: voice.synthesizer, settings: settings),
@@ -137,6 +137,8 @@ final class AppGraph {
             speaksLines: { PlantSpokenReplySettings(defaults: defaults).isEnabled },
             clock: Date.init,
             schedule: SimulatedPeripheralClient.repeatingTimer,
+            shakeLoader: NotificationPlantShakeLoader(),
+            randomIndex: { Int.random(in: 0..<$0) },
             actionHandler: { action in
                 Self.perform(
                     action,

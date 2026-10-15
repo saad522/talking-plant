@@ -237,7 +237,10 @@ the same cross-fade as a mood change.
   ~0.6 s with a spring; cross-fade eyes, mouth, and effects.
 - **Idle:** a blink every 3–6 s (random), a slow breathing scale of the head group
   (1.0 → 1.02, ~3 s), and a gentle sway of the top leaves (±3°).
-- **Reduce Motion:** no idle animation, mood changes cross-fade only.
+- **Shake wobble:** on an accepted shake the whole Sprout rocks about its base: 0 → −8° → 7° →
+  −5° → 3° → 0 over ~0.8 s, while the face turns surprised (5.2) for about 1 s.
+- **Reduce Motion:** no idle animation, mood changes cross-fade only, no shake wobble (the face
+  still turns surprised).
 - The final character will be a **Rive** file with a state machine whose input is the
   visual state above; the SwiftUI drawing is the placeholder until then and must keep
   the same states.
@@ -312,7 +315,14 @@ only, never a sound.
 |---|---|
 | `chime` | Watered, and a valid calibration save, together with the `success` haptic |
 | `greet` | Cold-launch intro, as the greeting starts to rise (0.4 s). Not with Reduce Motion, and not if a tap skips the intro first |
-| `pop` | The shake reaction (S9) |
+| `pop` | The shake reaction |
+
+Shake: on home only (never on Talk, History, Settings, the intro, or while recording), with a
+mood known and at least 10 s after the last accepted shake. In order: a playing home line stops,
+`bump` + `pop` play and the face turns surprised with a wobble (5.4); after 0.4 s a short shake
+line for the mood is spoken (automatic trigger, so the silent switch mutes it; none when "Speak
+replies" is off); after 1.0 s the face calms down. The shake line never changes the bubble or the
+spoken-line memory, and the same line never plays twice in a row for a mood.
 
 Sprout's voice on home follows the same rule for sounds, with one exception. Automatic lines use
 the `.ambient` session: the silent switch mutes them and music keeps playing, mixed. A line the
@@ -326,6 +336,7 @@ left. The next sound or automatic line switches back to `.ambient`.
 | Home | Sliders (settings) button | `tap` |
 | Home | Error "Dismiss" button | `tap` |
 | Home | Watered (moment, not a control) | `success` |
+| Home | Shake (moment, not a control) | `bump`, once |
 | Intro | Bounce (moment, not a control) | `bump` |
 | Intro | Tap to skip | none |
 | Talk | Back (chevron), End (x) | `tap` |

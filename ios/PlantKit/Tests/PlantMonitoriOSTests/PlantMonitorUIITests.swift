@@ -623,4 +623,101 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
 
         XCTAssertEqual(haptics.played, [])
     }
+
+    // MARK: - Shake
+
+    private func makeShakeSUT(
+        haptics: HapticsSpy = HapticsSpy(),
+        sounds: SoundEffectsSpy = SoundEffectsSpy(),
+        speaksLines: Bool = true
+    ) -> (sut: PlantMonitorView<FaceStub>, loader: LoaderStub, healthLoader: HealthLoaderStub, shakeLoader: ShakeLoaderStub, scheduleSpy: ScheduleSpy, voice: VoiceSpy) {
+        let speechLoader = SpeechLoaderStub()
+        let shakeLoader = ShakeLoaderStub()
+        let scheduleSpy = ScheduleSpy()
+        let voice = VoiceSpy()
+        let (sut, loader, healthLoader, _) = makeSUT(
+            speechLoader: speechLoader,
+            haptics: haptics,
+            sounds: sounds,
+            voice: voice,
+            speaksLines: speaksLines,
+            scheduleSpy: scheduleSpy,
+            shakeLoader: shakeLoader
+        )
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading())
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        speechLoader.complete(with: "Got any water?")
+        trackMemoryLeak(shakeLoader)
+        trackMemoryLeak(scheduleSpy)
+        return (sut, loader, healthLoader, shakeLoader, scheduleSpy, voice)
+    }
+
+    func test_shake_showsSurprisedFaceWithBumpAndPop() {
+        let haptics = HapticsSpy()
+        let sounds = SoundEffectsSpy()
+        let (sut, _, _, shakeLoader, _, _) = makeShakeSUT(haptics: haptics, sounds: sounds)
+        XCTAssertEqual(sut.renderedFace(), FaceStub(mood: .thirsty, isSurprised: false))
+
+        shakeLoader.shake()
+
+        XCTAssertEqual(sut.renderedFace(), FaceStub(mood: .thirsty, isSurprised: true))
+        XCTAssertEqual(haptics.played, [.bump])
+        XCTAssertEqual(sounds.played, [.pop])
+    }
+
+    func test_shake_faceIsCalmAgainAfterTheScheduledSecond() {
+        let (sut, _, _, shakeLoader, scheduleSpy, _) = makeShakeSUT()
+        shakeLoader.shake()
+
+        scheduleSpy.fire(at: scheduleSpy.intervals.lastIndex(of: PlantMonitorSproutViewModel.surpriseDuration)!)
+
+        XCTAssertEqual(sut.renderedFace(), FaceStub(mood: .thirsty, isSurprised: false))
+    }
+
+    func test_shake_sceneUpdateDuringTheSurpriseKeepsItSurprised() {
+        let (sut, loader, healthLoader, shakeLoader, _, _) = makeShakeSUT()
+        shakeLoader.shake()
+
+        healthLoader.completeLoad(with: PlantHealth(score: 40, issues: [.veryThirsty]), at: 0)
+        loader.completeSubscription(with: makeReading(moisture: 5))
+
+        XCTAssertEqual(sut.renderedFace()?.isSurprised, true)
+    }
+
+    func test_shake_speaksTheShakeLineWithAutomaticTriggerAfterTheDelay() {
+        let (sut, _, _, shakeLoader, scheduleSpy, voice) = makeShakeSUT()
+        shakeLoader.shake()
+        XCTAssertEqual(voice.spoken, [])
+
+        scheduleSpy.fire(at: scheduleSpy.intervals.lastIndex(of: PlantMonitorSproutViewModel.shakeLineDelay)!)
+
+        XCTAssertEqual(voice.spoken.map(\.trigger), [.automatic])
+        XCTAssertEqual(voice.spoken.map(\.text), [PlantMonitorShakeLines.lines(for: .thirsty, isSleeping: false)[0]])
+        withExtendedLifetime(sut) {}
+    }
+
+    func test_shake_withSpeakRepliesOffStillReactsButSaysNothing() {
+        let haptics = HapticsSpy()
+        let (sut, _, _, shakeLoader, scheduleSpy, voice) = makeShakeSUT(haptics: haptics, speaksLines: false)
+
+        shakeLoader.shake()
+        scheduleSpy.fire(at: scheduleSpy.intervals.lastIndex(of: PlantMonitorSproutViewModel.shakeLineDelay)!)
+
+        XCTAssertEqual(sut.renderedFace()?.isSurprised, true)
+        XCTAssertEqual(haptics.played, [.bump])
+        XCTAssertEqual(voice.spoken, [])
+    }
+
+    func test_shake_beforeAnyMoodIsKnownDoesNothing() {
+        let haptics = HapticsSpy()
+        let shakeLoader = ShakeLoaderStub()
+        let (sut, _, _, _) = makeSUT(haptics: haptics, shakeLoader: shakeLoader)
+        sut.simulateAppear()
+
+        shakeLoader.shake()
+
+        XCTAssertEqual(haptics.played, [])
+        XCTAssertNil(sut.renderedFace())
+    }
 }

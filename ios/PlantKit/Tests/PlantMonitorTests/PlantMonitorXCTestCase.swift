@@ -321,6 +321,19 @@ class PlantMonitorXCTestCase: XCTestCase {
         func finish(at index: Int = 0) { completions[index]() }
     }
 
+    @MainActor
+    final class ShakeLoaderStub: PlantShakeLoader {
+        private(set) var subscriptionCount = 0
+        private var subscriptions: [() -> Void] = []
+
+        func subscribe(update: @escaping () -> Void) {
+            subscriptionCount += 1
+            subscriptions.append(update)
+        }
+
+        func shake() { subscriptions.forEach { $0() } }
+    }
+
     final class DefaultsSpy: DefaultsClient {
         private var strings: [String: String] = [:]
 

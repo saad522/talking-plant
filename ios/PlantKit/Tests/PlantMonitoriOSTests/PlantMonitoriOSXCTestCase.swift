@@ -15,6 +15,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         speaksLines: Bool = true,
         clock: ClockStub = ClockStub(at: Date(timeIntervalSince1970: 1_000)),
         scheduleSpy: ScheduleSpy = ScheduleSpy(),
+        shakeLoader: ShakeLoaderStub = ShakeLoaderStub(),
         actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -30,7 +31,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
             plantName: "Sprout",
             room: "Living room",
             lastScene: makeLastSceneStore(saved: lastScene),
-            face: { FaceStub(mood: $0) },
+            face: { FaceStub(mood: $0, isSurprised: $1) },
             haptics: haptics,
             sounds: sounds,
             voice: voice,
@@ -38,6 +39,8 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
             speaksLines: { speaksLines },
             clock: clock.now,
             schedule: scheduleSpy.schedule,
+            shakeLoader: shakeLoader,
+            randomIndex: { _ in 0 },
             actionHandler: actionHandler
         )
         trackMemoryLeak(loader, file: file, line: line)
@@ -47,6 +50,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         trackMemoryLeak(haptics, file: file, line: line)
         trackMemoryLeak(sounds, file: file, line: line)
         trackMemoryLeak(voice, file: file, line: line)
+        trackMemoryLeak(shakeLoader, file: file, line: line)
         return (sut, loader, healthLoader, connectionLoader)
     }
 
@@ -155,6 +159,15 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
     }
 
     @MainActor
+    final class ShakeLoaderStub: PlantShakeLoader {
+        private var subscriptions: [() -> Void] = []
+
+        func subscribe(update: @escaping () -> Void) { subscriptions.append(update) }
+
+        func shake() { subscriptions.forEach { $0() } }
+    }
+
+    @MainActor
     final class HapticsSpy: PlantHapticsClient {
         private(set) var played: [PlantHaptic] = []
         func play(_ haptic: PlantHaptic) { played.append(haptic) }
@@ -258,6 +271,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
 
 struct FaceStub: View, Equatable {
     let mood: PlantMood
+    var isSurprised = false
 
     var body: some View {
         Text("face")

@@ -46,3 +46,24 @@
 "plant.monitor.mood.offline.speech" = "Zzz… I can't feel my sensor.";
 "plant.monitor.sleeping.speech" = "Zzz… see you at sunrise.";
 "plant.monitor.sprout.hear.label" = "Hear %@";
+
+"plant.monitor.shake.happy.1" = "Whoa! What was that?";
+"plant.monitor.shake.happy.2" = "Hey, easy! I'm growing here.";
+"plant.monitor.shake.happy.3" = "Wheee! Okay, that's enough.";
+"plant.monitor.shake.thirsty.1" = "Careful! I'm too thirsty for rides.";
+"plant.monitor.shake.thirsty.2" = "Shaking won't water me!";
+"plant.monitor.shake.thirsty.3" = "Whoa! Maybe a drink instead?";
+"plant.monitor.shake.drowning.1" = "Whoa, I'm sloshing around in here!";
+"plant.monitor.shake.drowning.2" = "Easy! My soil is soggy enough.";
+"plant.monitor.shake.tooDark.1" = "Huh? Who's there? It's so dark!";
+"plant.monitor.shake.tooDark.2" = "Whoa! I can't see a thing.";
+"plant.monitor.shake.tooHot.1" = "Whoa! Too hot for dancing.";
+"plant.monitor.shake.tooHot.2" = "Careful, I'm already sweating!";
+"plant.monitor.shake.tooCold.1" = "Brr! Shaking won't warm me up.";
+"plant.monitor.shake.tooCold.2" = "Whoa! My leaves are chattering.";
+"plant.monitor.shake.dryAir.1" = "Whoa! My leaves feel crispy.";
+"plant.monitor.shake.dryAir.2" = "Easy! The air's dry enough.";
+"plant.monitor.shake.offline.1" = "Huh? I still can't feel my sensor.";
+"plant.monitor.shake.offline.2" = "Whoa! Is my sensor awake?";
+"plant.monitor.shake.sleeping.1" = "Huh? I was dreaming!";
+"plant.monitor.shake.sleeping.2" = "Whoa! Is it morning already?";

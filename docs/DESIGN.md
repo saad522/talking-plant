@@ -324,6 +324,13 @@ line for the mood is spoken (automatic trigger, so the silent switch mutes it; n
 replies" is off); after 1.0 s the face calms down. The shake line never changes the bubble or the
 spoken-line memory, and the same line never plays twice in a row for a mood.
 
+Thank-you: when watering is detected (the same moment as `success` + `chime`), Sprout says a short
+thank-you line 0.6 s later, even if its mood line was already said today. One of five variants, never
+the same twice in a row. It is an automatic line (the silent switch mutes it, a tap or shake stops it),
+none when "Speak replies" is off, and only on home (never while Talk is open or the mic records). The
+mood-change line that follows the same watering (thirsty to happy, within 30 s) stays quiet and the
+new mood counts as said for today. The thank-you leaves the spoken-line memory alone.
+
 Sprout's voice on home follows the same rule for sounds, with one exception. Automatic lines use
 the `.ambient` session: the silent switch mutes them and music keeps playing, mixed. A line the
 user asked for by tapping Sprout uses `.playback` with ducking: it is audible with the silent

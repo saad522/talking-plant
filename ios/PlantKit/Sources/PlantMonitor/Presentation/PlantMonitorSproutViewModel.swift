@@ -9,6 +9,9 @@ public final class PlantMonitorSproutViewModel {
     public static let shakeCooldown: TimeInterval = 10
     public static let shakeLineDelay: TimeInterval = 0.4
     public static let surpriseDuration: TimeInterval = 1.0
+    public static let thanksLineDelay: TimeInterval = 0.6
+    /// How long after a watering a mood change counts as the same moment and stays quiet.
+    public static let thanksSuppressionWindow: TimeInterval = 30
 
     private let voice: PlantMonitorVoice
     private let spokenLines: PlantSpokenLineStore
@@ -18,6 +21,7 @@ public final class PlantMonitorSproutViewModel {
     private let schedule: SimulatedPeripheralClient.Schedule
     private let shakeLoader: PlantShakeLoader
     private var shakeLines: PlantMonitorShakeLines
+    private var thanksLines: PlantMonitorThanksLines
 
     /// True while the face should look surprised. Set by a shake, cleared 1 s later.
     public var loadedSurprised: ((Bool) -> Void)?
@@ -35,6 +39,8 @@ public final class PlantMonitorSproutViewModel {
     private var speechID = 0
     private var isSubscribedToShakes = false
     private var lastShakeAt: Date?
+    /// Set when a watering was thanked: the next mood change inside the window is the watering's own.
+    private var thanked: (at: Date, mood: PlantMood)?
 
     private struct Speaking {
         let id: Int
@@ -61,6 +67,7 @@ public final class PlantMonitorSproutViewModel {
         self.schedule = schedule
         self.shakeLoader = shakeLoader
         shakeLines = PlantMonitorShakeLines(randomIndex: randomIndex)
+        thanksLines = PlantMonitorThanksLines(randomIndex: randomIndex)
     }
 
     public func appear() {
@@ -98,6 +105,18 @@ public final class PlantMonitorSproutViewModel {
         speak(line, trigger: .tap)
     }
 
+    /// Home only, with a mood known and speech on. The thank-you ignores the once-per-mood-per-day rule,
+    /// and the mood-change line that follows the same watering stays quiet.
+    public func watered() {
+        guard isOpen, isEnabled(), let line = latestLine else { return }
+        thanked = (clock(), line.mood)
+        stopSpeaking()
+        schedule(Self.thanksLineDelay) { [weak self] in
+            self?.speakThanksLine()
+            return false
+        }
+    }
+
     // MARK: - Private
 
     private func subscribeToShakes() {
@@ -130,6 +149,24 @@ public final class PlantMonitorSproutViewModel {
         speak(shakeLines.next(for: mood, isSleeping: isSleeping), mood: mood, trigger: .automatic, remembers: false)
     }
 
+    private func speakThanksLine() {
+        guard isOpen, speaking == nil, isEnabled(), let line = latestLine else { return }
+        speak(thanksLines.next(), mood: line.mood, trigger: .automatic, remembers: false)
+    }
+
+    /// True when `line` is the mood change of the watering just thanked. It counts as said for today.
+    private func isWateringsOwnMoodChange(_ line: PlantMonitorSpokenLine, now: Date, today: String) -> Bool {
+        guard let thanked else { return false }
+        guard now.timeIntervalSince(thanked.at) < Self.thanksSuppressionWindow else {
+            self.thanked = nil
+            return false
+        }
+        guard line.mood != thanked.mood else { return false }
+        self.thanked = nil
+        spokenLines.save(mood: line.mood, day: today)
+        return true
+    }
+
     /// Opening home waits for the intro and the first mood to pass. Closing it silences Sprout at once.
     private func homeStateChanged() {
         settleID += 1
@@ -148,6 +185,7 @@ public final class PlantMonitorSproutViewModel {
         guard isOpen, isSettled, speaking == nil, isEnabled(), let line = latestLine else { return }
         let now = clock()
         let today = PlantSpokenLineStore.day(for: now, calendar: calendar)
+        guard isWateringsOwnMoodChange(line, now: now, today: today) == false else { return }
         guard PlantMonitorSpeechPolicy.shouldSpeak(mood: line.mood, lastMood: spokenLines.mood, lastDay: spokenLines.day, today: today) else { return }
         if let last = lastAutomaticAt, now.timeIntervalSince(last) < Self.minimumGap {
             return waitForGap(since: last, now: now)

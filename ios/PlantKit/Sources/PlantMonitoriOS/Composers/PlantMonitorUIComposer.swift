@@ -91,9 +91,10 @@ public enum PlantMonitorUIComposer {
             }
         }
 
-        viewModel.loadedWatered = {
+        viewModel.loadedWatered = { [weak sprout] in
             haptics.play(.success)
             sounds.play(.chime)
+            sprout?.watered()
         }
 
         viewModel.loadedSpokenLine = { [weak sprout] line in

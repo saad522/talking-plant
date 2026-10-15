@@ -653,6 +653,28 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
         return (sut, loader, healthLoader, shakeLoader, scheduleSpy, voice)
     }
 
+    func test_watered_speaksAThankYouWithAutomaticTriggerAfterTheDelay() {
+        let (sut, loader, _, _, scheduleSpy, voice) = makeShakeSUT()
+
+        sut.simulateTap(onButton: "Water")
+        loader.completeSubscription(with: makeReading(moisture: 90))
+        XCTAssertEqual(voice.spoken, [])
+        scheduleSpy.fire(at: scheduleSpy.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay)!)
+
+        XCTAssertEqual(voice.spoken.map(\.trigger), [.automatic])
+        XCTAssertEqual(voice.spoken.map(\.text), [PlantMonitorThanksLines.lines()[0]])
+    }
+
+    func test_watered_withSpeakRepliesOffSaysNothing() {
+        let (sut, loader, _, _, scheduleSpy, voice) = makeShakeSUT(speaksLines: false)
+
+        sut.simulateTap(onButton: "Water")
+        loader.completeSubscription(with: makeReading(moisture: 90))
+
+        XCTAssertNil(scheduleSpy.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay))
+        XCTAssertEqual(voice.spoken, [])
+    }
+
     func test_shake_showsSurprisedFaceWithBumpAndPop() {
         let haptics = HapticsSpy()
         let sounds = SoundEffectsSpy()

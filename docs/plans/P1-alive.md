@@ -638,6 +638,18 @@ The rules for every step:
 
 ---
 
+## 5b. Follow-ups
+
+- [x] Watering thank-you: on `loadedWatered`, `PlantMonitorSproutViewModel.watered()` speaks one of
+  5 `PlantMonitorThanksLines` after 0.6 s (automatic trigger, `Speak replies` respected, home only,
+  no back-to-back repeat), regardless of the once-per-mood-per-day rule. The mood-change line that
+  follows within 30 s is suppressed and marked said for today. DESIGN 7.
+  - On device:
+    - [ ] Thirsty, tap Water: tick, buzz and chime, then about 0.6 s later a thank-you, and no
+      "happy" line after it.
+    - [ ] Water again later: a different thank-you.
+    - [ ] "Speak replies" off, or silent switch on: no spoken line.
+
 ## 6. Out of scope
 
 - Haptics or sounds in the Talk screen.

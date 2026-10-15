@@ -67,3 +67,8 @@
 "plant.monitor.shake.offline.2" = "Whoa! Is my sensor awake?";
 "plant.monitor.shake.sleeping.1" = "Huh? I was dreaming!";
 "plant.monitor.shake.sleeping.2" = "Whoa! Is it morning already?";
+"plant.monitor.thanks.1" = "Ahh, thank you! That's so refreshing!";
+"plant.monitor.thanks.2" = "Mmm, just what I needed!";
+"plant.monitor.thanks.3" = "Glug, glug... delicious. Thank you!";
+"plant.monitor.thanks.4" = "Oh, that hits the spot. Thanks!";
+"plant.monitor.thanks.5" = "My roots are so happy right now. Thank you!";

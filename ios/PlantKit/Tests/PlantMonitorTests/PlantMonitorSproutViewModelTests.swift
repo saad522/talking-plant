@@ -644,6 +644,172 @@ final class PlantMonitorSproutViewModelTests: PlantMonitorXCTestCase {
         XCTAssertEqual(voice.stopCount, 0)
     }
 
+    // MARK: - Watered
+
+    func test_watered_speaksAThankYouAfterTheDelayWithAutomaticTrigger() {
+        let (sut, voice, schedule, _) = makeSUT()
+        sut.appear()
+        sut.lineSettled(thirstyLine)
+        schedule.fire()
+        voice.finish()
+
+        sut.watered()
+        XCTAssertEqual(voice.spoken.count, 1)
+        schedule.fire(at: schedule.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay)!)
+
+        XCTAssertEqual(voice.spoken.last, .init(text: PlantMonitorThanksLines.lines()[0], mood: .veryThirsty, trigger: .automatic))
+    }
+
+    func test_watered_speaksEvenWhenTheMoodWasAlreadySpokenToday() {
+        let (sut, voice, schedule, _) = makeSUT()
+        sut.appear()
+        sut.lineSettled(happyLine)
+        schedule.fire()
+        voice.finish()
+
+        sut.watered()
+        schedule.fire(at: schedule.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay)!)
+
+        XCTAssertEqual(voice.spoken.map(\.text), ["Feeling great!", PlantMonitorThanksLines.lines()[0]])
+    }
+
+    func test_watered_suppressesTheMoodChangeLineThatFollowsAndMarksItSaidToday() {
+        let defaults = DefaultsSpy()
+        let (sut, voice, schedule, _) = makeSUT(defaults: defaults)
+        sut.appear()
+        sut.lineSettled(thirstyLine)
+        schedule.fire()
+        voice.finish()
+        sut.watered()
+        schedule.fire(at: schedule.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay)!)
+        voice.finish(at: 1)
+
+        sut.lineSettled(happyLine)
+
+        XCTAssertEqual(voice.spoken.count, 2)
+        XCTAssertEqual(PlantSpokenLineStore(defaults: defaults).mood, .happy)
+    }
+
+    func test_watered_suppressesTheMoodChangeLineEvenWhenItSettlesBeforeTheThankYou() {
+        let (sut, voice, schedule, _) = makeSUT()
+        sut.appear()
+        sut.lineSettled(thirstyLine)
+        schedule.fire()
+        voice.finish()
+        sut.watered()
+
+        sut.lineSettled(happyLine)
+        schedule.fire(at: schedule.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay)!)
+
+        XCTAssertEqual(voice.spoken.map(\.text), ["Water, please!", PlantMonitorThanksLines.lines()[0]])
+    }
+
+    func test_watered_doesNotSuppressAMoodChangeAfterTheWindow() {
+        let (sut, voice, schedule, clock) = makeSUT()
+        sut.appear()
+        sut.lineSettled(thirstyLine)
+        schedule.fire()
+        voice.finish()
+        sut.watered()
+        schedule.fire(at: schedule.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay)!)
+        voice.finish(at: 1)
+
+        clock.advance(by: PlantMonitorSproutViewModel.thanksSuppressionWindow + 1)
+        sut.lineSettled(happyLine)
+
+        XCTAssertEqual(voice.spoken.last?.text, "Feeling great!")
+    }
+
+    func test_watered_withSpeechDisabledIsSilent() {
+        let (sut, voice, schedule, _) = makeSUT(isEnabled: false)
+        sut.appear()
+        sut.lineSettled(thirstyLine)
+
+        sut.watered()
+        schedule.fire(at: schedule.intervals.count - 1)
+
+        XCTAssertEqual(voice.spoken, [])
+    }
+
+    func test_watered_whenHomeIsNotShownIsSilent() {
+        let (sut, voice, schedule, _) = makeSUT()
+        sut.appear()
+        sut.lineSettled(thirstyLine)
+        sut.disappear()
+        let count = schedule.intervals.count
+
+        sut.watered()
+
+        XCTAssertEqual(schedule.intervals.count, count)
+        XCTAssertEqual(voice.spoken, [])
+    }
+
+    func test_watered_leavingHomeBeforeTheThankYouStaysSilent() {
+        let (sut, voice, schedule, _) = makeSUT()
+        sut.appear()
+        sut.lineSettled(thirstyLine)
+        sut.watered()
+        let index = schedule.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay)!
+
+        sut.disappear()
+        schedule.fire(at: index)
+
+        XCTAssertEqual(voice.spoken, [])
+    }
+
+    func test_watered_neverRepeatsTheSameThankYouBackToBack() {
+        let (sut, voice, schedule, _) = makeSUT()
+        sut.appear()
+        sut.lineSettled(thirstyLine)
+
+        sut.watered()
+        schedule.fire(at: schedule.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay)!)
+        voice.finish()
+        sut.watered()
+        schedule.fire(at: schedule.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay)!)
+
+        XCTAssertEqual(voice.spoken.count, 2)
+        XCTAssertNotEqual(voice.spoken[0].text, voice.spoken[1].text)
+    }
+
+    func test_watered_whileAHomeLinePlaysStopsItThenThanks() {
+        let (sut, voice, schedule, _) = makeSUT()
+        sut.appear()
+        sut.lineSettled(thirstyLine)
+        schedule.fire()
+
+        sut.watered()
+        XCTAssertEqual(voice.stopCount, 1)
+        schedule.fire(at: schedule.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay)!)
+
+        XCTAssertEqual(voice.spoken.last?.text, PlantMonitorThanksLines.lines()[0])
+    }
+
+    func test_watered_thankYouCanBeTappedAway() {
+        let (sut, voice, schedule, _) = makeSUT()
+        sut.appear()
+        sut.lineSettled(thirstyLine)
+        sut.watered()
+        schedule.fire(at: schedule.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay)!)
+
+        sut.sproutTap()
+
+        XCTAssertEqual(voice.stopCount, 1)
+        XCTAssertEqual(voice.spoken.last?.trigger, .tap)
+    }
+
+    func test_watered_leavesTheSpokenMemoryUnchanged() {
+        let defaults = DefaultsSpy()
+        let (sut, _, schedule, _) = makeSUT(defaults: defaults)
+        sut.appear()
+        sut.lineSettled(thirstyLine)
+
+        sut.watered()
+        schedule.fire(at: schedule.intervals.lastIndex(of: PlantMonitorSproutViewModel.thanksLineDelay)!)
+
+        XCTAssertNil(PlantSpokenLineStore(defaults: defaults).mood)
+    }
+
     // MARK: - Helpers
 
     private func utcCalendar() -> Calendar {

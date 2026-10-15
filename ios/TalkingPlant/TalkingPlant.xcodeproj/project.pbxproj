@@ -15,6 +15,8 @@
 		4AC4892009799203005E9A99 /* PlantHistory in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892008799203005E9A99 /* PlantHistory */; };
 		4AC489200B799203005E9A99 /* PlantHistoryiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC489200A799203005E9A99 /* PlantHistoryiOS */; };
 		4AC489200D799203005E9A99 /* PlantFaceiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC489200C799203005E9A99 /* PlantFaceiOS */; };
+		4AC4892030799203005E9A99 /* PlantIntro in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892031799203005E9A99 /* PlantIntro */; };
+		4AC4892032799203005E9A99 /* PlantIntroiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892033799203005E9A99 /* PlantIntroiOS */; };
 		4AC489200F799203005E9A99 /* PlantChat in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC489200E799203005E9A99 /* PlantChat */; };
 		4AC4892011799203005E9A99 /* PlantChatiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892010799203005E9A99 /* PlantChatiOS */; };
 		4AEE8E24307E7EDA00DE30FA /* PlantTestPeripheral in Frameworks */ = {isa = PBXBuildFile; productRef = 4AEE8E23307E7EDA00DE30FA /* PlantTestPeripheral */; };
@@ -88,6 +90,8 @@
 				4AC4892009799203005E9A99 /* PlantHistory in Frameworks */,
 				4AC489200B799203005E9A99 /* PlantHistoryiOS in Frameworks */,
 				4AC489200D799203005E9A99 /* PlantFaceiOS in Frameworks */,
+				4AC4892030799203005E9A99 /* PlantIntro in Frameworks */,
+				4AC4892032799203005E9A99 /* PlantIntroiOS in Frameworks */,
 				4AC489200F799203005E9A99 /* PlantChat in Frameworks */,
 				4AC4892011799203005E9A99 /* PlantChatiOS in Frameworks */,
 				4A94DEE6307FD24B00E9F97E /* PlantKokoro in Frameworks */,
@@ -168,6 +172,8 @@
 				4AC4892008799203005E9A99 /* PlantHistory */,
 				4AC489200A799203005E9A99 /* PlantHistoryiOS */,
 				4AC489200C799203005E9A99 /* PlantFaceiOS */,
+				4AC4892031799203005E9A99 /* PlantIntro */,
+				4AC4892033799203005E9A99 /* PlantIntroiOS */,
 				4AC489200E799203005E9A99 /* PlantChat */,
 				4AC4892010799203005E9A99 /* PlantChatiOS */,
 				4AEE8E23307E7EDA00DE30FA /* PlantTestPeripheral */,
@@ -725,6 +731,14 @@
 		4AC489200C799203005E9A99 /* PlantFaceiOS */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PlantFaceiOS;
+		};
+		4AC4892031799203005E9A99 /* PlantIntro */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlantIntro;
+		};
+		4AC4892033799203005E9A99 /* PlantIntroiOS */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlantIntroiOS;
 		};
 		4AC489200E799203005E9A99 /* PlantChat */ = {
 			isa = XCSwiftPackageProductDependency;

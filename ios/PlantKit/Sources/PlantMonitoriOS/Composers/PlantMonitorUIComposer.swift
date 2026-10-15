@@ -60,6 +60,11 @@ public enum PlantMonitorUIComposer {
         return PlantMonitorView(store: store, viewModel: viewModel)
     }
 
+    /// The home screen's background colour for a scene, for hand-offs from outside the feature.
+    public static func background(for scene: PlantMonitorScene) -> Color {
+        PlantMonitorStore<EmptyView>.makePalette(for: scene).background
+    }
+
     private static func makeChips(for scene: PlantMonitorSceneViewModel) -> [PlantSensorChipView] {
         guard let reading = scene.reading else { return [] }
         return scene.sensors.map { kind in

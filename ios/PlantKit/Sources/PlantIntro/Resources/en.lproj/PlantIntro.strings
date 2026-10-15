@@ -1,0 +1,7 @@
+/* PlantIntro strings. Keys follow plant.intro.<thing>. */
+
+"plant.intro.title" = "Sprout";
+"plant.intro.greeting.morning" = "Good morning!";
+"plant.intro.greeting.afternoon" = "Good afternoon!";
+"plant.intro.greeting.evening" = "Good evening!";
+"plant.intro.greeting.night" = "Shh... sweet dreams";

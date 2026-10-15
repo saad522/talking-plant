@@ -13,6 +13,8 @@ import PlantDevice
 import PlantDeviceiOS
 import PlantFaceiOS
 import PlantHistoryiOS
+import PlantIntro
+import PlantIntroiOS
 import PlantMonitor
 import PlantMonitoriOS
 import PlantShared
@@ -20,11 +22,16 @@ import PlantShared
 import PlantTestPeripheral
 #endif
 import SwiftUI
+import UIKit
 
 @main
 struct TalkingPlantApp: App {
+    /// One for the whole process: only the first launch of the process is cold, so coming back from background never replays the intro.
+    private static let launchTracker = PlantIntroLaunchTracker()
+
     @StateObject private var navigation: AppNavigation
     @StateObject private var graphStore: AppGraphStore
+    @StateObject private var intro: PlantIntroViewModel
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -33,11 +40,17 @@ struct TalkingPlantApp: App {
         // The voice is created inside the autoclosure, so it exists once, in the store that SwiftUI keeps.
         // A second `App.init` must not create a voice that prewarms a model the chat never uses.
         _graphStore = StateObject(wrappedValue: AppGraphStore(navigation: navigation, voice: SproutVoice()))
+        _intro = StateObject(wrappedValue: PlantIntroViewModel(
+            isColdLaunch: Self.launchTracker.consumeColdLaunch(),
+            reduceMotion: UIAccessibility.isReduceMotionEnabled,
+            hour: Calendar.current.component(.hour, from: Date())
+        ))
     }
 
     var body: some Scene {
         WindowGroup {
             rootContent
+                .overlay { introOverlay }
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
@@ -45,6 +58,23 @@ struct TalkingPlantApp: App {
             case .background: graphStore.voice.unload(from: "scenePhase background")
             default: break
             }
+        }
+    }
+
+    /// Home is built underneath from the first frame; the intro only covers it until the hand-off is done.
+    @ViewBuilder
+    private var introOverlay: some View {
+        if intro.isVisible {
+            PlantIntroUIComposer.composed(
+                viewModel: intro,
+                sprout: Image("LaunchSprout"),
+                sproutBlink: Image("LaunchSproutBlink"),
+                sproutHeight: UIImage(named: "LaunchSprout")?.size.height ?? 151,
+                launchBackground: Color("LaunchBackground"),
+                handoffBackground: PlantMonitorUIComposer.background(
+                    for: PlantLastSceneStore(defaults: UserDefaultsClient()).scene
+                )
+            )
         }
     }
 

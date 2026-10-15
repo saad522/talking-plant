@@ -4,10 +4,12 @@ import SwiftUI
 public struct PlantDeviceCalibrationView: View {
     @ObservedObject private var store: PlantDeviceCalibrationStore
     private let viewModel: PlantDeviceCalibrationViewModel
+    private let controls: PlantDeviceCalibrationControls
 
-    init(store: PlantDeviceCalibrationStore, viewModel: PlantDeviceCalibrationViewModel) {
+    init(store: PlantDeviceCalibrationStore, viewModel: PlantDeviceCalibrationViewModel, controls: PlantDeviceCalibrationControls) {
         self.store = store
         self.viewModel = viewModel
+        self.controls = controls
     }
 
     public var body: some View {
@@ -43,10 +45,10 @@ public struct PlantDeviceCalibrationView: View {
                 if let message = store.message {
                     notice(message, color: PlantDeviceColor.error)
                 }
-                Button(viewModel.saveLabel, action: viewModel.saveTap)
+                Button(viewModel.saveLabel, action: controls.save)
                     .disabled(store.canSave == false)
                 if store.status?.isCalibrated == true {
-                    Button(viewModel.resetLabel, role: .destructive, action: viewModel.resetTap)
+                    Button(viewModel.resetLabel, role: .destructive, action: controls.reset)
                 }
             } footer: {
                 if store.canCapture == false {
@@ -60,7 +62,7 @@ public struct PlantDeviceCalibrationView: View {
 
     private func captureRow(_ point: PlantDeviceCalibrationPoint, label: String, draft: String?) -> some View {
         HStack {
-            Button(label) { viewModel.captureTap(point) }
+            Button(label) { controls.capture(point) }
                 .disabled(store.canCapture == false || store.capturing != nil)
             Spacer()
             if store.capturing == point {

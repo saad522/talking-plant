@@ -45,6 +45,7 @@ final class AppGraph {
         store: PlantReadingStore,
         defaults: DefaultsClient,
         voice: SproutVoice,
+        haptics: PlantHapticsClient,
         actionHandler: @escaping (AppAction) -> Void
     ) {
         self.mode = mode
@@ -128,6 +129,7 @@ final class AppGraph {
             room: "Living room",
             lastScene: PlantLastSceneStore(defaults: defaults),
             face: PlantFaceUIComposer.composed,
+            haptics: haptics,
             actionHandler: { action in
                 switch (action, mode) {
                 case (.waterTap, .sensor):
@@ -157,6 +159,7 @@ final class AppGraph {
             spokenReplies: PlantSpokenReplySettings(defaults: defaults),
             plantName: plantName,
             face: PlantFaceUIComposer.composed,
+            haptics: haptics,
             actionHandler: { action in
                 if action == .openSettings, let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
@@ -164,7 +167,7 @@ final class AppGraph {
                 actionHandler(.chat(action))
             }
         )
-        history = PlantHistoryUIComposer.composed(with: LocalPlantHistoryLoader(store: store, currentDate: currentDate))
+        history = PlantHistoryUIComposer.composed(with: LocalPlantHistoryLoader(store: store, currentDate: currentDate), haptics: haptics)
 
         let deviceActionHandler = { (action: PlantDeviceAction) in
             if action == .openSettings, let url = URL(string: UIApplication.openSettingsURLString) {
@@ -181,6 +184,7 @@ final class AppGraph {
             commandSender: commands,
             settings: deviceSettings,
             showsRawReading: Self.showsRawReading,
+            haptics: haptics,
             actionHandler: deviceActionHandler
         )
         makeCalibration = {
@@ -189,13 +193,15 @@ final class AppGraph {
                 rawReadingLoader: PeripheralPlantDeviceRawReadingLoader(client: client, currentDate: currentDate),
                 connectionLoader: connection,
                 commandSender: commands,
-                schedule: SimulatedPeripheralClient.repeatingTimer
+                schedule: SimulatedPeripheralClient.repeatingTimer,
+                haptics: haptics
             )
         }
         devicePicker = PlantDeviceUIComposer.composedPicker(
             scanLoader: PeripheralPlantDeviceScanLoader(client: client),
             connectionLoader: connection,
             pairingLoader: pairing,
+            haptics: haptics,
             actionHandler: deviceActionHandler
         )
 
@@ -326,9 +332,10 @@ final class AppGraphStore: ObservableObject {
     private let defaults: DefaultsClient
     private let relay: ActionRelay
     let voice: SproutVoice
+    private let haptics: PlantHapticsClient
     private var stores: [PlantDeviceMode: PlantReadingStore] = [:]
 
-    init(navigation: AppNavigation, voice: SproutVoice, defaults: DefaultsClient = UserDefaultsClient()) {
+    init(navigation: AppNavigation, voice: SproutVoice, haptics: PlantHapticsClient, defaults: DefaultsClient = UserDefaultsClient()) {
         let relay = ActionRelay()
         let mode = PlantDeviceSettings(defaults: defaults).loadMode()
         let store = Self.makeStore(fileName: Self.fileName(for: mode))
@@ -336,8 +343,9 @@ final class AppGraphStore: ObservableObject {
         self.defaults = defaults
         self.relay = relay
         self.voice = voice
+        self.haptics = haptics
         stores[mode] = store
-        graph = AppGraph(mode: mode, store: store, defaults: defaults, voice: voice, actionHandler: { relay.handle($0) })
+        graph = AppGraph(mode: mode, store: store, defaults: defaults, voice: voice, haptics: haptics, actionHandler: { relay.handle($0) })
         relay.handle = { [weak self] in self?.handle($0) }
     }
 
@@ -363,7 +371,7 @@ final class AppGraphStore: ObservableObject {
     }
 
     private func makeGraph(mode: PlantDeviceMode) -> AppGraph {
-        AppGraph(mode: mode, store: store(for: mode), defaults: defaults, voice: voice, actionHandler: { [relay] in relay.handle($0) })
+        AppGraph(mode: mode, store: store(for: mode), defaults: defaults, voice: voice, haptics: haptics, actionHandler: { [relay] in relay.handle($0) })
     }
 
     /// One store per mode, kept for the life of the app, so switching back never opens a second container on the same file.

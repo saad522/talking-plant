@@ -6,10 +6,12 @@ public struct PlantChatView<Face: View>: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
     private let viewModel: PlantChatViewModel
+    private let controls: PlantChatControls
 
-    init(store: PlantChatStore<Face>, viewModel: PlantChatViewModel) {
+    init(store: PlantChatStore<Face>, viewModel: PlantChatViewModel, controls: PlantChatControls) {
         self.store = store
         self.viewModel = viewModel
+        self.controls = controls
     }
 
     private var color: PlantChatColor { PlantChatColor(colorScheme) }
@@ -21,7 +23,7 @@ public struct PlantChatView<Face: View>: View {
                 subtitle: store.subtitle,
                 backLabel: viewModel.backLabel,
                 personalityMenu: store.personalityMenu,
-                back: viewModel.backTap
+                back: controls.back
             )
             face
             store.notice
@@ -60,9 +62,9 @@ public struct PlantChatView<Face: View>: View {
                 keyboardLabel: viewModel.keyboardLabel,
                 micLabel: micLabel,
                 endLabel: viewModel.endLabel,
-                keyboard: viewModel.keyboardTap,
-                mic: viewModel.micTap,
-                end: viewModel.endTap
+                keyboard: controls.keyboard,
+                mic: controls.mic,
+                end: controls.end
             )
         case .keyboard:
             PlantChatInputView(
@@ -72,7 +74,7 @@ public struct PlantChatView<Face: View>: View {
                 canSend: canSend,
                 voiceLabel: viewModel.talkLabel,
                 send: send,
-                voice: viewModel.voiceTap
+                voice: controls.voice
             )
         }
     }
@@ -117,7 +119,7 @@ public struct PlantChatView<Face: View>: View {
         guard canSend else { return }
         let text = store.draft
         store.draft = ""
-        viewModel.send(text)
+        controls.send(text)
     }
 
     private func scrollToBottom(_ proxy: ScrollViewProxy) {

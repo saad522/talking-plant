@@ -74,6 +74,10 @@ extension PlantChatView where Face == FaceStub {
         try? inspect().find(PlantChatInputView.self).findAll(ViewType.Button.self)[1].tap()
     }
 
+    func simulateTyping(_ text: String) {
+        try? inspect().find(ViewType.TextField.self).setInput(text)
+    }
+
     func simulateKeyboardTap() {
         try? voiceButtons()[0].tap()
     }

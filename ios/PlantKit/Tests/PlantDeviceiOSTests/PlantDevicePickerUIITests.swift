@@ -62,9 +62,30 @@ final class PlantDevicePickerUIITests: PlantDeviceiOSXCTestCase {
         XCTAssertEqual(actions, [.paired])
     }
 
+    func test_picker_candidateTap_playsTapAndStillPairs() {
+        var actions: [PlantDeviceAction] = []
+        let haptics = HapticsSpy()
+        let (sut, scan, pairing, _) = makePickerSUT(haptics: haptics, actionHandler: { actions.append($0) })
+        let candidate = PlantDeviceCandidate(
+            identifier: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            name: "TalkingPlant-A",
+            rssi: -50
+        )
+        sut.simulateAppear()
+        scan.simulate(candidate)
+        XCTAssertEqual(haptics.played, [])
+
+        sut.simulateTap("TalkingPlant-A")
+
+        XCTAssertEqual(haptics.played, [.tap])
+        XCTAssertEqual(pairing.messages, [.pair(candidate)])
+        XCTAssertEqual(actions, [.paired])
+    }
+
     // MARK: - Private helpers
 
     private func makePickerSUT(
+        haptics: HapticsSpy = HapticsSpy(),
         actionHandler: @escaping (PlantDeviceAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -81,8 +102,10 @@ final class PlantDevicePickerUIITests: PlantDeviceiOSXCTestCase {
             scanLoader: scan,
             connectionLoader: connection,
             pairingLoader: pairing,
+            haptics: haptics,
             actionHandler: actionHandler
         )
+        trackMemoryLeak(haptics, file: file, line: line)
         trackMemoryLeak(scan, file: file, line: line)
         trackMemoryLeak(pairing, file: file, line: line)
         trackMemoryLeak(connection, file: file, line: line)

@@ -28,6 +28,8 @@ import UIKit
 struct TalkingPlantApp: App {
     /// One for the whole process: only the first launch of the process is cold, so coming back from background never replays the intro.
     private static let launchTracker = PlantIntroLaunchTracker()
+    /// One haptics client for the whole app: the graphs and the intro share its generators.
+    private static let haptics = UIKitPlantHapticsClient()
 
     @StateObject private var navigation: AppNavigation
     @StateObject private var graphStore: AppGraphStore
@@ -39,7 +41,7 @@ struct TalkingPlantApp: App {
         _navigation = StateObject(wrappedValue: navigation)
         // The voice is created inside the autoclosure, so it exists once, in the store that SwiftUI keeps.
         // A second `App.init` must not create a voice that prewarms a model the chat never uses.
-        _graphStore = StateObject(wrappedValue: AppGraphStore(navigation: navigation, voice: SproutVoice()))
+        _graphStore = StateObject(wrappedValue: AppGraphStore(navigation: navigation, voice: SproutVoice(), haptics: Self.haptics))
         _intro = StateObject(wrappedValue: PlantIntroViewModel(
             isColdLaunch: Self.launchTracker.consumeColdLaunch(),
             reduceMotion: UIAccessibility.isReduceMotionEnabled,
@@ -73,7 +75,8 @@ struct TalkingPlantApp: App {
                 launchBackground: Color("LaunchBackground"),
                 handoffBackground: PlantMonitorUIComposer.background(
                     for: PlantLastSceneStore(defaults: UserDefaultsClient()).scene
-                )
+                ),
+                haptics: Self.haptics
             )
         }
     }

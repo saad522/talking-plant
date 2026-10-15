@@ -15,6 +15,7 @@ public enum PlantChatUIComposer {
         spokenReplies: PlantSpokenReplySettings,
         plantName: String,
         face: @escaping (PlantMood) -> Face,
+        haptics: PlantHapticsClient,
         actionHandler: @escaping (PlantChatAction) -> Void
     ) -> PlantChatView<Face> {
         let store = PlantChatStore<Face>()
@@ -51,6 +52,10 @@ public enum PlantChatUIComposer {
         }
 
         viewModel.loadedActivity = { [weak store] activity in
+            // Listening only starts from a mic tap, so this is that tap's one haptic.
+            if store?.activity != .listening, activity == .listening {
+                haptics.play(.bump)
+            }
             store?.activity = activity
         }
 
@@ -67,22 +72,53 @@ public enum PlantChatUIComposer {
                 PlantChatMicrophoneNoticeView(
                     text: notice.text,
                     settingsLabel: notice.settingsLabel,
-                    settings: notice.settingsTap
+                    settings: {
+                        haptics.play(.tap)
+                        notice.settingsTap()
+                    }
                 )
             }
         }
 
         viewModel.loadedPersonality = { [weak store, weak viewModel] personality in
             store?.personality = personality
-            refreshMenu(store: store, viewModel: viewModel, actionHandler: actionHandler)
+            refreshMenu(store: store, viewModel: viewModel, haptics: haptics, actionHandler: actionHandler)
         }
 
         viewModel.loadedSpokenReplies = { [weak store, weak viewModel] isEnabled in
             store?.isSpeakingReplies = isEnabled
-            refreshMenu(store: store, viewModel: viewModel, actionHandler: actionHandler)
+            refreshMenu(store: store, viewModel: viewModel, haptics: haptics, actionHandler: actionHandler)
         }
 
-        return PlantChatView(store: store, viewModel: viewModel)
+        let controls = PlantChatControls(
+            back: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.backTap()
+            },
+            keyboard: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.keyboardTap()
+            },
+            mic: { [weak store, weak viewModel] in
+                // Stopping is a tap here; starting plays its bump when the activity turns to listening.
+                if store?.activity == .listening { haptics.play(.tap) }
+                viewModel?.micTap()
+            },
+            end: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.endTap()
+            },
+            voice: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.voiceTap()
+            },
+            send: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.send($0)
+            }
+        )
+
+        return PlantChatView(store: store, viewModel: viewModel, controls: controls)
     }
 
     private static func makeBubble(_ message: PlantChatMessageViewModel) -> PlantChatBubbleView {
@@ -96,6 +132,7 @@ public enum PlantChatUIComposer {
     private static func refreshMenu<Face: View>(
         store: PlantChatStore<Face>?,
         viewModel: PlantChatViewModel?,
+        haptics: PlantHapticsClient,
         actionHandler: @escaping (PlantChatAction) -> Void
     ) {
         guard let store, let current = store.personality else { return }
@@ -103,6 +140,7 @@ public enum PlantChatUIComposer {
             current: current,
             isSpeakingReplies: store.isSpeakingReplies,
             viewModel: viewModel,
+            haptics: haptics,
             actionHandler: actionHandler
         )
     }
@@ -111,6 +149,7 @@ public enum PlantChatUIComposer {
         current: PlantPersonality,
         isSpeakingReplies: Bool,
         viewModel: PlantChatViewModel?,
+        haptics: PlantHapticsClient,
         actionHandler: @escaping (PlantChatAction) -> Void
     ) -> PlantChatPersonalityMenuView {
         PlantChatPersonalityMenuView(
@@ -120,13 +159,19 @@ public enum PlantChatUIComposer {
                     id: option.personality.rawValue,
                     label: option.label,
                     isSelected: option.personality == current,
-                    select: { [weak viewModel] in viewModel?.select(option.personality) }
+                    select: { [weak viewModel] in
+                        haptics.play(.tap)
+                        viewModel?.select(option.personality)
+                    }
                 )
             },
             speakReplies: PlantChatPersonalityMenuView.SpeakReplies(
                 label: viewModel?.speakRepliesLabel ?? "",
                 isOn: isSpeakingReplies,
-                set: { [weak viewModel] in viewModel?.setSpokenReplies($0) }
+                set: { [weak viewModel] in
+                    haptics.play(.selection)
+                    viewModel?.setSpokenReplies($0)
+                }
             ),
             voiceCheck: voiceCheck(actionHandler: actionHandler)
         )

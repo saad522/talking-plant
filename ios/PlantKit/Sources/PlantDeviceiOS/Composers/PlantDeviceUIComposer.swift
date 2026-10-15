@@ -1,4 +1,5 @@
 import PlantDevice
+import PlantShared
 import SwiftUI
 
 @MainActor
@@ -12,6 +13,7 @@ public enum PlantDeviceUIComposer {
         commandSender: PlantDeviceCommandSender,
         settings: PlantDeviceSettings,
         showsRawReading: Bool = false,
+        haptics: PlantHapticsClient,
         actionHandler: @escaping (PlantDeviceAction) -> Void
     ) -> PlantDeviceView {
         let store = PlantDeviceStore()
@@ -58,7 +60,40 @@ public enum PlantDeviceUIComposer {
             store?.rawReading = reading
         }
 
-        return PlantDeviceView(store: store, viewModel: viewModel, showsRawReading: showsRawReading)
+        let controls = PlantDeviceControls(
+            modeSelect: { [weak viewModel] in
+                haptics.play(.selection)
+                viewModel?.modeSelect($0)
+            },
+            openSettings: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.openSettingsTap()
+            },
+            readNow: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.readNowTap()
+            },
+            calibration: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.calibrationTap()
+            },
+            pair: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.pairTap()
+            },
+            forget: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.forgetTap()
+            },
+            clearHistory: { haptics.play(.tap) },
+            clearHistoryConfirm: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.clearHistoryConfirmTap()
+            },
+            clearHistoryCancel: { haptics.play(.tap) }
+        )
+
+        return PlantDeviceView(store: store, viewModel: viewModel, showsRawReading: showsRawReading, controls: controls)
     }
 
     public static func composedCalibration(
@@ -66,7 +101,8 @@ public enum PlantDeviceUIComposer {
         rawReadingLoader: PlantDeviceRawReadingLoader,
         connectionLoader: PlantDeviceConnectionLoader,
         commandSender: PlantDeviceCommandSender,
-        schedule: @escaping PlantDeviceCalibrationViewModel.Schedule
+        schedule: @escaping PlantDeviceCalibrationViewModel.Schedule,
+        haptics: PlantHapticsClient
     ) -> PlantDeviceCalibrationView {
         let store = PlantDeviceCalibrationStore()
         let viewModel = PlantDeviceCalibrationViewModel(
@@ -112,13 +148,31 @@ public enum PlantDeviceUIComposer {
             store?.warning = warning
         }
 
-        return PlantDeviceCalibrationView(store: store, viewModel: viewModel)
+        viewModel.loadedSaved = { _ in
+            haptics.play(.success)
+        }
+
+        let controls = PlantDeviceCalibrationControls(
+            capture: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.captureTap($0)
+            },
+            // No tap here: a valid save plays `success` through `loadedSaved`, never two haptics for one tap.
+            save: { [weak viewModel] in viewModel?.saveTap() },
+            reset: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.resetTap()
+            }
+        )
+
+        return PlantDeviceCalibrationView(store: store, viewModel: viewModel, controls: controls)
     }
 
     public static func composedPicker(
         scanLoader: PlantDeviceScanLoader,
         connectionLoader: PlantDeviceConnectionLoader,
         pairingLoader: PlantDevicePairingLoader,
+        haptics: PlantHapticsClient,
         actionHandler: @escaping (PlantDeviceAction) -> Void
     ) -> PlantDevicePickerView {
         let store = PlantDevicePickerStore()
@@ -137,6 +191,13 @@ public enum PlantDeviceUIComposer {
             store?.emptyText = text
         }
 
-        return PlantDevicePickerView(store: store, viewModel: viewModel)
+        return PlantDevicePickerView(
+            store: store,
+            viewModel: viewModel,
+            select: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.select($0)
+            }
+        )
     }
 }

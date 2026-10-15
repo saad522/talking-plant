@@ -1,16 +1,19 @@
 import PlantHistory
 import PlantHistoryiOS
+import PlantShared
 import XCTest
 
 @MainActor
 class PlantHistoryiOSXCTestCase: XCTestCase {
     func makeSUT(
+        haptics: HapticsSpy = HapticsSpy(),
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (sut: PlantHistoryView, loader: LoaderStub) {
         let loader = LoaderStub()
-        let sut = PlantHistoryUIComposer.composed(with: loader)
+        let sut = PlantHistoryUIComposer.composed(with: loader, haptics: haptics)
         trackMemoryLeak(loader, file: file, line: line)
+        trackMemoryLeak(haptics, file: file, line: line)
         return (sut, loader)
     }
 
@@ -36,6 +39,13 @@ class PlantHistoryiOSXCTestCase: XCTestCase {
         addTeardownBlock { [weak instance] in
             XCTAssertNil(instance, "Instance should be deallocated. Potential memory leak", file: file, line: line)
         }
+    }
+
+    @MainActor
+    final class HapticsSpy: PlantHapticsClient {
+        private(set) var played: [PlantHaptic] = []
+        func play(_ haptic: PlantHaptic) { played.append(haptic) }
+        func clear() { played.removeAll() }
     }
 
     @MainActor

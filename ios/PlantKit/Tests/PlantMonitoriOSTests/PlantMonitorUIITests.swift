@@ -400,4 +400,57 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
 
         XCTAssertEqual(invokedActions, [.talkTap, .waterTap, .historyTap])
     }
+
+    func test_buttons_playTapHapticBeforeEachAction() {
+        for title in ["Talk to Sprout", "Water", "History"] {
+            var invokedActions: [PlantMonitorAction] = []
+            let haptics = HapticsSpy()
+            let (sut, loader, _, _) = makeSUT(haptics: haptics, actionHandler: { invokedActions.append($0) })
+            sut.simulateAppear()
+            loader.completeSubscription(with: makeReading())
+
+            sut.simulateTap(onButton: title)
+
+            XCTAssertEqual(haptics.played, [.tap], title)
+            XCTAssertEqual(invokedActions.count, 1, title)
+        }
+    }
+
+    func test_settingsButton_playsTapHapticAndStillDeliversAction() {
+        var invokedActions: [PlantMonitorAction] = []
+        let haptics = HapticsSpy()
+        let (sut, _, _, _) = makeSUT(haptics: haptics, actionHandler: { invokedActions.append($0) })
+
+        sut.simulateTapOnSettings()
+
+        XCTAssertEqual(haptics.played, [.tap])
+        XCTAssertEqual(invokedActions, [.settingsTap])
+    }
+
+    func test_loadingReadingMoodAndScene_playsNoHaptic() {
+        let haptics = HapticsSpy()
+        let (sut, loader, healthLoader, connectionLoader) = makeSUT(haptics: haptics)
+
+        sut.simulateAppear()
+        connectionLoader.complete(with: .connected)
+        loader.completeSubscription(with: makeReading())
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        loader.completeSubscription(with: makeReading(lux: 2))
+
+        XCTAssertEqual(haptics.played, [])
+    }
+
+    func test_errorDismiss_playsTapAndStillDeliversDismissed() {
+        var invokedActions: [PlantMonitorAction] = []
+        let haptics = HapticsSpy()
+        let (sut, loader, _, _) = makeSUT(haptics: haptics, actionHandler: { invokedActions.append($0) })
+        sut.simulateAppear()
+        loader.completeSubscription(with: anyNSError())
+        XCTAssertEqual(haptics.played, [])
+
+        sut.renderedError()?.simulateTap()
+
+        XCTAssertEqual(haptics.played, [.tap])
+        XCTAssertEqual(invokedActions, [.dismissed])
+    }
 }

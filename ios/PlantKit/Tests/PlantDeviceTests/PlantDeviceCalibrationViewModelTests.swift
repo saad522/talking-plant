@@ -266,6 +266,46 @@ final class PlantDeviceCalibrationViewModelTests: PlantDeviceXCTestCase {
         XCTAssertEqual(commands.commands, [.readNow, .readNow, .readNow])
     }
 
+    func test_saveTap_deliversLoadedSavedOnceAfterValidSave() {
+        let (sut, raw, connection, _, _, _) = makeSUT()
+        var saved = 0
+        sut.loadedSaved = { _ in saved += 1 }
+        sut.appear()
+        connection.simulate(.connected)
+        capture(.dry, soil: 2_447, sequence: 1, sut, raw)
+        capture(.wet, soil: 1_062, sequence: 2, sut, raw)
+
+        sut.saveTap()
+
+        XCTAssertEqual(saved, 1)
+    }
+
+    func test_saveTap_doesNotDeliverLoadedSavedOnValidationError() {
+        let (sut, raw, connection, _, _, _) = makeSUT()
+        var saved = 0
+        sut.loadedSaved = { _ in saved += 1 }
+        sut.appear()
+        connection.simulate(.connected)
+        capture(.dry, soil: 1_000, sequence: 1, sut, raw)
+        capture(.wet, soil: 1_500, sequence: 2, sut, raw)
+
+        sut.saveTap()
+        sut.saveTap()
+
+        XCTAssertEqual(saved, 0)
+    }
+
+    func test_resetTap_doesNotDeliverLoadedSaved() {
+        let (sut, _, _, _, _, _) = makeSUT()
+        var saved = 0
+        sut.loadedSaved = { _ in saved += 1 }
+        sut.appear()
+
+        sut.resetTap()
+
+        XCTAssertEqual(saved, 0)
+    }
+
     func test_saveTap_deliversMessageForEachValidationError() {
         let cases: [(dry: Int?, wet: Int?, message: String)] = [
             (nil, nil, "Capture the dry point first."),

@@ -5,10 +5,12 @@ public struct PlantMonitorView<Face: View>: View {
     @ObservedObject private var store: PlantMonitorStore<Face>
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let viewModel: PlantMonitorViewModel
+    private let settingsAction: () -> Void
 
-    init(store: PlantMonitorStore<Face>, viewModel: PlantMonitorViewModel) {
+    init(store: PlantMonitorStore<Face>, viewModel: PlantMonitorViewModel, settingsAction: @escaping () -> Void) {
         self.store = store
         self.viewModel = viewModel
+        self.settingsAction = settingsAction
     }
 
     public var body: some View {
@@ -18,7 +20,7 @@ public struct PlantMonitorView<Face: View>: View {
                     title: store.title,
                     subtitle: store.subtitle,
                     settingsLabel: viewModel.settingsLabel,
-                    settingsAction: viewModel.settingsTap
+                    settingsAction: settingsAction
                 )
                 PlantMonitorSceneView(store: store)
                 actions

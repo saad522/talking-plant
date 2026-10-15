@@ -1,9 +1,10 @@
 import PlantHistory
+import PlantShared
 import SwiftUI
 
 @MainActor
 public enum PlantHistoryUIComposer {
-    public static func composed(with loader: PlantHistoryLoader) -> PlantHistoryView {
+    public static func composed(with loader: PlantHistoryLoader, haptics: PlantHapticsClient) -> PlantHistoryView {
         let store = PlantHistoryStore()
         let viewModel = PlantHistoryViewModel(loader: loader)
 
@@ -34,7 +35,14 @@ public enum PlantHistoryUIComposer {
             store?.message = PlantHistoryMessageView(icon: Image(systemName: "exclamationmark.triangle"), text: description)
         }
 
-        return PlantHistoryView(store: store, viewModel: viewModel)
+        return PlantHistoryView(
+            store: store,
+            viewModel: viewModel,
+            select: { [weak viewModel] in
+                haptics.play(.selection)
+                viewModel?.select($0)
+            }
+        )
     }
 
     private static func makeChart(

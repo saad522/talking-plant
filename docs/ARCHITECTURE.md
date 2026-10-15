@@ -97,7 +97,7 @@ Later features follow the same pattern: `PlantChat` / `PlantChatiOS`, `PlantChec
 
 | Target | May import |
 |---|---|
-| `PlantShared` | Foundation (and CoreBluetooth / SwiftData inside `Client/` only) |
+| `PlantShared` | Foundation (and CoreBluetooth / SwiftData inside `Client/` only; UIKit feedback generators and AVFoundation inside `Client/`, behind `#if os(iOS)`) |
 | `PlantX` (Feature) | Foundation, `PlantShared` (and a system framework such as FoundationModels, UserNotifications, Speech or AVFoundation inside its own `Client/` folder only) |
 | `PlantXiOS` | SwiftUI, `PlantX`, `PlantShared` |
 | `PlantXTests` | XCTest, `PlantX`, `PlantShared` |
@@ -276,6 +276,7 @@ Implementations:
 | `PeripheralConnectionClient` | Connection side of a sensor: state (`idle`, `connecting`, `connected`, `incompatible`, Bluetooth off / unauthorized / unsupported), scan, connect, disconnect. A separate protocol from `PeripheralClient`, so reading code never sees scanning. |
 | `CoreBluetoothPeripheralClient` | The real sensor over Bluetooth (M6). Implements both protocols. No timers, no interval, no persistence: those rules live in the `PlantDevice` loaders. Reads and writes while not connected fail at once. Reconnects until `disconnect()`. A service-missing result gets one fresh discovery before it stays `incompatible`. |
 | `SimulatedPeripheralClient` | (Also a `PeripheralConnectionClient`: always connected, finds nothing.) The fake plant used until the hardware arrives and as a demo mode. It produces **real 16-byte packets** per `BLE_CONTRACT.md`, so everything above it runs the exact production path. |
+| `PlantHapticsClient` (+ `UIKitPlantHapticsClient`, `#if os(iOS)`) | Plays a `PlantHaptic` (`tap`, `success`, `bump`, `selection`) on one light, one soft, one notification and one selection feedback generator, created once. Shared by PlantMonitor, PlantDevice and PlantIntro; the app creates one and passes it to the composers. UIKit follows the system haptics setting. |
 | `DefaultsClient` (+ `UserDefaultsClient`) | Small key-value storage (calibration, preferences, the simulated plant's soil value). |
 | `PlantReadingStore` (+ `SwiftDataPlantReadingStore`) | Reading history: insert, retrieve a date range, and notify subscribers after each insert. Keeps 30 days, measured from the newest reading (M3). |
 

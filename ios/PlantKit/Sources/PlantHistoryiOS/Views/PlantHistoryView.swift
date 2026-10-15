@@ -4,16 +4,18 @@ import SwiftUI
 public struct PlantHistoryView: View {
     @ObservedObject private var store: PlantHistoryStore
     private let viewModel: PlantHistoryViewModel
+    private let select: (PlantHistoryRange) -> Void
 
-    init(store: PlantHistoryStore, viewModel: PlantHistoryViewModel) {
+    init(store: PlantHistoryStore, viewModel: PlantHistoryViewModel, select: @escaping (PlantHistoryRange) -> Void) {
         self.store = store
         self.viewModel = viewModel
+        self.select = select
     }
 
     public var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                Picker(viewModel.title, selection: Binding(get: { store.selectedRange }, set: { viewModel.select($0) })) {
+                Picker(viewModel.title, selection: Binding(get: { store.selectedRange }, set: select)) {
                     ForEach(viewModel.ranges, id: \.self) { range in
                         Text(viewModel.title(for: range)).tag(range)
                     }

@@ -13,6 +13,7 @@ class PlantChatiOSXCTestCase: XCTestCase {
         transcriptLoader: TranscriptLoaderStub = TranscriptLoaderStub(),
         audioSession: AudioSessionSpy = AudioSessionSpy(),
         synthesizer: SynthesizerSpy = SynthesizerSpy(),
+        haptics: HapticsSpy = HapticsSpy(),
         actionHandler: @escaping (PlantChatAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -45,6 +46,7 @@ class PlantChatiOSXCTestCase: XCTestCase {
             spokenReplies: PlantSpokenReplySettings(defaults: defaults),
             plantName: "Sprout",
             face: { FaceStub(mood: $0) },
+            haptics: haptics,
             actionHandler: actionHandler
         )
         trackMemoryLeak(chatLoader, file: file, line: line)
@@ -54,6 +56,7 @@ class PlantChatiOSXCTestCase: XCTestCase {
         trackMemoryLeak(transcriptLoader, file: file, line: line)
         trackMemoryLeak(audioSession, file: file, line: line)
         trackMemoryLeak(synthesizer, file: file, line: line)
+        trackMemoryLeak(haptics, file: file, line: line)
         return (sut, chatLoader, lineLoader, factsLoader, defaults)
     }
 
@@ -81,6 +84,13 @@ class PlantChatiOSXCTestCase: XCTestCase {
         addTeardownBlock { [weak instance] in
             XCTAssertNil(instance, "Instance should be deallocated. Potential memory leak", file: file, line: line)
         }
+    }
+
+    @MainActor
+    final class HapticsSpy: PlantHapticsClient {
+        private(set) var played: [PlantHaptic] = []
+        func play(_ haptic: PlantHaptic) { played.append(haptic) }
+        func clear() { played.removeAll() }
     }
 
     @MainActor

@@ -9,6 +9,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
     func makeSUT(
         speechLoader: SpeechLoaderStub = SpeechLoaderStub(),
         lastScene: PlantMonitorScene = .day,
+        haptics: HapticsSpy = HapticsSpy(),
         actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -25,12 +26,14 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
             room: "Living room",
             lastScene: makeLastSceneStore(saved: lastScene),
             face: { FaceStub(mood: $0) },
+            haptics: haptics,
             actionHandler: actionHandler
         )
         trackMemoryLeak(loader, file: file, line: line)
         trackMemoryLeak(healthLoader, file: file, line: line)
         trackMemoryLeak(connectionLoader, file: file, line: line)
         trackMemoryLeak(speechLoader, file: file, line: line)
+        trackMemoryLeak(haptics, file: file, line: line)
         return (sut, loader, healthLoader, connectionLoader)
     }
 
@@ -84,6 +87,13 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         func complete(with line: String, at index: Int = 0) {
             completions[index](.success(line))
         }
+    }
+
+    @MainActor
+    final class HapticsSpy: PlantHapticsClient {
+        private(set) var played: [PlantHaptic] = []
+        func play(_ haptic: PlantHaptic) { played.append(haptic) }
+        func clear() { played.removeAll() }
     }
 
     @MainActor

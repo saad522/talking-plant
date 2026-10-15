@@ -4,10 +4,12 @@ import SwiftUI
 public struct PlantMonitorErrorView: View {
     @ObservedObject private var store: PlantMonitorErrorStore
     private let viewModel: PlantMonitorErrorViewModel
+    private let tap: () -> Void
 
-    init(store: PlantMonitorErrorStore, viewModel: PlantMonitorErrorViewModel) {
+    init(store: PlantMonitorErrorStore, viewModel: PlantMonitorErrorViewModel, tap: @escaping () -> Void) {
         self.store = store
         self.viewModel = viewModel
+        self.tap = tap
     }
 
     public var body: some View {
@@ -24,7 +26,7 @@ public struct PlantMonitorErrorView: View {
                     .foregroundStyle(PlantMonitorColor.primaryText)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
-                Button(action: viewModel.tap) {
+                Button(action: tap) {
                     Text(viewModel.buttonTitle)
                         .font(PlantMonitorFont.button)
                 }

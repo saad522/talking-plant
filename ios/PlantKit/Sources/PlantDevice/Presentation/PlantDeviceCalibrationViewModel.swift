@@ -53,6 +53,8 @@ public final class PlantDeviceCalibrationViewModel {
     /// The message to show, or `nil` to clear it.
     public var loadedMessage: Observer<String?>?
     public var loadedWarning: Observer<String?>?
+    /// Fires once after a valid save, never for a failed validation or a reset.
+    public var loadedSaved: Observer<Void>?
 
     /// - Parameters:
     ///   - captureTimeout: How long a capture waits for a fresh reading.
@@ -113,6 +115,7 @@ public final class PlantDeviceCalibrationViewModel {
             loadedStatus?(PlantDeviceCalibrationStatusViewModel(calibration: calibration))
             clearDrafts()
             commandSender.send(.readNow) { _ in }
+            loadedSaved?(())
         }
     }
 

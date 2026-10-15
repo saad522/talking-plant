@@ -251,3 +251,45 @@ Opened by "Talk to <name>" on the home screen.
     unavailable notice, with an "Open Settings" text button when permission is denied. It
     clears on the next mic tap.
   - **Speak replies:** a toggle under the personalities in the sliders menu.
+
+## 7. Feedback
+
+Haptics are for taps and for something that worked. One `PlantHapticsClient` serves the whole
+app, and UIKit follows Settings › Sounds & Haptics › System Haptics. Composers play the haptic
+and then call the view model, so views stay thin.
+
+Rules:
+- Buttons and menu items: `tap` (light impact).
+- Toggles, segmented controls and pickers: `selection`, on a value change by the user.
+- Mic: starting to listen is `bump` (soft impact), stopping is `tap`.
+- Something finished: `success` (a valid calibration save; later, watered).
+- One haptic per tap. A button that ends in `success` plays only that.
+- Never on typing, scrolling, data updates (readings, transcripts, replies, scene changes),
+  system swipe-to-dismiss, the system back button, or the DEBUG-only screens (Voice check,
+  test peripheral).
+
+| Screen | Control | Haptic |
+|---|---|---|
+| Home | Talk, Water, History | `tap` |
+| Home | Sliders (settings) button | `tap` |
+| Home | Error "Dismiss" button | `tap` |
+| Intro | Bounce (moment, not a control) | `bump` |
+| Intro | Tap to skip | none |
+| Talk | Back (chevron), End (x) | `tap` |
+| Talk | Keyboard button, mic button in the keyboard bar, Send (button or return key) | `tap` |
+| Talk | Big mic: start listening | `bump` (when listening begins) |
+| Talk | Big mic: stop listening | `tap` |
+| Talk | Big mic while Sprout speaks (interrupt, then listen) | `bump` |
+| Talk | Big mic when permission is missing | none (the notice appears) |
+| Talk | Microphone notice "Open Settings" | `tap` |
+| Talk | Menu button (opens the system menu) | none, the system menu has its own feedback |
+| Talk | Menu item (personality) | `tap` |
+| Talk | Menu toggle "Speak replies" | `selection` |
+| History | Range segmented control | `selection` |
+| Settings | Mode segmented control | `selection` |
+| Settings | Open Settings, Read now, Calibration row, Pair / Change, Forget | `tap` |
+| Settings | Clear history (debug), its alert's Clear and Cancel | `tap` |
+| Device picker | A sensor in the list | `tap` |
+| Calibration | Capture dry, Capture wet, Reset | `tap` |
+| Calibration | Save, valid | `success` only |
+| Calibration | Save, invalid | none (the message appears) |

@@ -7,6 +7,7 @@ import XCTest
 class PlantDeviceiOSXCTestCase: XCTestCase {
     func makeSUT(
         savedMode: PlantDeviceMode? = nil,
+        haptics: HapticsSpy = HapticsSpy(),
         actionHandler: @escaping (PlantDeviceAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -34,8 +35,10 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
             rawReadingLoader: RawReadingLoaderStub(),
             commandSender: commands,
             settings: PlantDeviceSettings(defaults: defaults),
+            haptics: haptics,
             actionHandler: actionHandler
         )
+        trackMemoryLeak(haptics, file: file, line: line)
         trackMemoryLeak(connection, file: file, line: line)
         trackMemoryLeak(pairing, file: file, line: line)
         trackMemoryLeak(info, file: file, line: line)
@@ -46,6 +49,7 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
 
     func makeRawSUT(
         showsRawReading: Bool,
+        haptics: HapticsSpy = HapticsSpy(),
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (sut: PlantDeviceView, connection: ConnectionLoaderStub, raw: RawReadingLoaderStub) {
@@ -62,8 +66,10 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
             commandSender: CommandSenderStub(),
             settings: PlantDeviceSettings(defaults: defaults),
             showsRawReading: showsRawReading,
+            haptics: haptics,
             actionHandler: { _ in }
         )
+        trackMemoryLeak(haptics, file: file, line: line)
         trackMemoryLeak(connection, file: file, line: line)
         trackMemoryLeak(raw, file: file, line: line)
         trackMemoryLeak(defaults, file: file, line: line)
@@ -72,6 +78,7 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
 
     func makeCalibrationSUT(
         savedCalibration: MoistureCalibration? = nil,
+        haptics: HapticsSpy = HapticsSpy(),
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (
@@ -93,13 +100,15 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
             rawReadingLoader: raw,
             connectionLoader: connection,
             commandSender: commands,
-            schedule: schedule.schedule
+            schedule: schedule.schedule,
+            haptics: haptics
         )
         trackMemoryLeak(connection, file: file, line: line)
         trackMemoryLeak(raw, file: file, line: line)
         trackMemoryLeak(commands, file: file, line: line)
         trackMemoryLeak(defaults, file: file, line: line)
         trackMemoryLeak(schedule, file: file, line: line)
+        trackMemoryLeak(haptics, file: file, line: line)
         return (sut, connection, raw, commands, schedule)
     }
 
@@ -131,6 +140,13 @@ class PlantDeviceiOSXCTestCase: XCTestCase {
         addTeardownBlock { [weak instance] in
             XCTAssertNil(instance, "Instance should be deallocated. Potential memory leak", file: file, line: line)
         }
+    }
+
+    @MainActor
+    final class HapticsSpy: PlantHapticsClient {
+        private(set) var played: [PlantHaptic] = []
+        func play(_ haptic: PlantHaptic) { played.append(haptic) }
+        func clear() { played.removeAll() }
     }
 
     @MainActor

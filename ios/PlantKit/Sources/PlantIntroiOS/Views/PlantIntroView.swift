@@ -1,8 +1,6 @@
 import PlantIntro
+import PlantShared
 import SwiftUI
-#if canImport(UIKit)
-import UIKit
-#endif
 
 public struct PlantIntroView: View {
     @ObservedObject private var viewModel: PlantIntroViewModel
@@ -12,6 +10,7 @@ public struct PlantIntroView: View {
     private let sproutHeight: CGFloat
     private let launchBackground: Color
     private let handoffBackground: Color
+    private let haptics: PlantHapticsClient
     private let particles = PlantIntroParticle.make()
 
     init(
@@ -20,7 +19,8 @@ public struct PlantIntroView: View {
         sproutBlink: Image,
         sproutHeight: CGFloat,
         launchBackground: Color,
-        handoffBackground: Color
+        handoffBackground: Color,
+        haptics: PlantHapticsClient
     ) {
         self.viewModel = viewModel
         self.sprout = sprout
@@ -28,6 +28,7 @@ public struct PlantIntroView: View {
         self.sproutHeight = sproutHeight
         self.launchBackground = launchBackground
         self.handoffBackground = handoffBackground
+        self.haptics = haptics
     }
 
     private var isHandingOff: Bool { viewModel.state == .handingOff }
@@ -124,7 +125,7 @@ public struct PlantIntroView: View {
         case .playing:
             do {
                 try await Task.sleep(for: .seconds(PlantIntroTimeline.hapticTime))
-                haptic()
+                haptics.play(.bump)
                 try await Task.sleep(for: .seconds(viewModel.handoffDelay - PlantIntroTimeline.hapticTime))
                 viewModel.beginHandoff()
             } catch {}
@@ -136,11 +137,5 @@ public struct PlantIntroView: View {
         case .finished:
             break
         }
-    }
-
-    private func haptic() {
-        #if canImport(UIKit) && !os(macOS)
-        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-        #endif
     }
 }

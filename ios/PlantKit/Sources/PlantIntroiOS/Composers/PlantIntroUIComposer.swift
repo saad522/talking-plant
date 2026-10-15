@@ -1,4 +1,5 @@
 import PlantIntro
+import PlantShared
 import SwiftUI
 
 @MainActor
@@ -12,7 +13,8 @@ public enum PlantIntroUIComposer {
         sproutBlink: Image,
         sproutHeight: CGFloat,
         launchBackground: Color,
-        handoffBackground: Color
+        handoffBackground: Color,
+        haptics: PlantHapticsClient
     ) -> PlantIntroView {
         PlantIntroView(
             viewModel: viewModel,
@@ -20,7 +22,8 @@ public enum PlantIntroUIComposer {
             sproutBlink: sproutBlink,
             sproutHeight: sproutHeight,
             launchBackground: launchBackground,
-            handoffBackground: handoffBackground
+            handoffBackground: handoffBackground,
+            haptics: haptics
         )
     }
 }

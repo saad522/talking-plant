@@ -6,13 +6,15 @@ public struct PlantDeviceView: View {
     @ObservedObject private var store: PlantDeviceStore
     private let viewModel: PlantDeviceViewModel
     private let showsRawReading: Bool
+    private let controls: PlantDeviceControls
     private let placeholder = PlantReadingFormatter.placeholder
     @State private var confirmsClearHistory = false
 
-    init(store: PlantDeviceStore, viewModel: PlantDeviceViewModel, showsRawReading: Bool) {
+    init(store: PlantDeviceStore, viewModel: PlantDeviceViewModel, showsRawReading: Bool, controls: PlantDeviceControls) {
         self.store = store
         self.viewModel = viewModel
         self.showsRawReading = showsRawReading
+        self.controls = controls
     }
 
     public var body: some View {
@@ -37,7 +39,7 @@ public struct PlantDeviceView: View {
     }
 
     private var mode: Binding<PlantDeviceMode> {
-        Binding(get: { store.mode }, set: { viewModel.modeSelect($0) })
+        Binding(get: { store.mode }, set: controls.modeSelect)
     }
 
     private var sensorSection: some View {
@@ -45,7 +47,7 @@ public struct PlantDeviceView: View {
             if let connection = store.connection {
                 row(viewModel.statusLabel, connection.label)
                 if connection.showsOpenSettings {
-                    Button(viewModel.openSettingsLabel, action: viewModel.openSettingsTap)
+                    Button(viewModel.openSettingsLabel, action: controls.openSettings)
                 }
             }
             row(viewModel.pairedLabel, store.pairedName ?? viewModel.noSensorPairedLabel)
@@ -54,19 +56,19 @@ public struct PlantDeviceView: View {
                 row(viewModel.intervalLabel, info.interval)
             }
             if store.connection?.isConnected == true {
-                Button(viewModel.readNowLabel, action: viewModel.readNowTap)
+                Button(viewModel.readNowLabel, action: controls.readNow)
             }
             if let commandError = store.commandError {
                 Text(commandError)
                     .font(PlantDeviceFont.notice)
                     .foregroundStyle(PlantDeviceColor.error)
             }
-            Button(action: viewModel.calibrationTap) {
+            Button(action: controls.calibration) {
                 row(viewModel.calibrationLabel, store.calibrationStatus)
             }
-            Button(store.pairedName == nil ? viewModel.pairLabel : viewModel.changeLabel, action: viewModel.pairTap)
+            Button(store.pairedName == nil ? viewModel.pairLabel : viewModel.changeLabel, action: controls.pair)
             if store.pairedName != nil {
-                Button(viewModel.forgetLabel, role: .destructive, action: viewModel.forgetTap)
+                Button(viewModel.forgetLabel, role: .destructive, action: controls.forget)
             }
         }
     }
@@ -80,10 +82,13 @@ public struct PlantDeviceView: View {
             row(viewModel.rawFlagsLabel, store.rawReading?.flags ?? placeholder)
             row(viewModel.rawSequenceLabel, store.rawReading?.sequence ?? placeholder)
             row(viewModel.rawReceivedLabel, store.rawReading?.received ?? placeholder)
-            Button(viewModel.clearHistoryLabel, role: .destructive) { confirmsClearHistory = true }
+            Button(viewModel.clearHistoryLabel, role: .destructive) {
+                controls.clearHistory()
+                confirmsClearHistory = true
+            }
                 .alert(viewModel.clearHistoryTitle, isPresented: $confirmsClearHistory) {
-                    Button(viewModel.clearHistoryConfirmLabel, role: .destructive, action: viewModel.clearHistoryConfirmTap)
-                    Button(viewModel.clearHistoryCancelLabel, role: .cancel) {}
+                    Button(viewModel.clearHistoryConfirmLabel, role: .destructive, action: controls.clearHistoryConfirm)
+                    Button(viewModel.clearHistoryCancelLabel, role: .cancel, action: controls.clearHistoryCancel)
                 } message: {
                     Text(viewModel.clearHistoryMessage)
                 }

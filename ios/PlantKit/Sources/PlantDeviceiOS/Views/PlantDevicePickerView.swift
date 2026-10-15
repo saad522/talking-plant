@@ -4,10 +4,12 @@ import SwiftUI
 public struct PlantDevicePickerView: View {
     @ObservedObject private var store: PlantDevicePickerStore
     private let viewModel: PlantDevicePickerViewModel
+    private let select: (PlantDeviceCandidateViewModel) -> Void
 
-    init(store: PlantDevicePickerStore, viewModel: PlantDevicePickerViewModel) {
+    init(store: PlantDevicePickerStore, viewModel: PlantDevicePickerViewModel, select: @escaping (PlantDeviceCandidateViewModel) -> Void) {
         self.store = store
         self.viewModel = viewModel
+        self.select = select
     }
 
     public var body: some View {
@@ -19,7 +21,7 @@ public struct PlantDevicePickerView: View {
             }
             ForEach(store.candidates, id: \.candidate.identifier) { candidate in
                 Button {
-                    viewModel.select(candidate)
+                    select(candidate)
                 } label: {
                     HStack {
                         Text(candidate.name)

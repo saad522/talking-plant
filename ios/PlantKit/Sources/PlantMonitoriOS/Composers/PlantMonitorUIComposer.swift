@@ -13,6 +13,7 @@ public enum PlantMonitorUIComposer {
         room: String,
         lastScene: PlantLastSceneStore,
         face: @escaping (PlantMood) -> Face,
+        haptics: PlantHapticsClient,
         actionHandler: @escaping (PlantMonitorAction) -> Void
     ) -> PlantMonitorView<Face> {
         let store = PlantMonitorStore<Face>(scene: lastScene.scene)
@@ -43,7 +44,7 @@ public enum PlantMonitorUIComposer {
             }
             store?.window = PlantMonitorWindowView(celestial: scene.scene == .night ? .moon : .sun)
             store?.chips = makeChips(for: scene)
-            let buttons = makeButtons(isWaterPrimary: scene.isWaterPrimary, viewModel: viewModel)
+            let buttons = makeButtons(isWaterPrimary: scene.isWaterPrimary, viewModel: viewModel, haptics: haptics)
             store?.primaryButton = buttons.primary
             store?.secondaryButtons = buttons.secondary
         }
@@ -54,10 +55,17 @@ public enum PlantMonitorUIComposer {
 
         viewModel.loadedError = { [weak store] error in
             store?.loading = nil
-            store?.error = makeError(for: error, actionHandler: actionHandler)
+            store?.error = makeError(for: error, haptics: haptics, actionHandler: actionHandler)
         }
 
-        return PlantMonitorView(store: store, viewModel: viewModel)
+        return PlantMonitorView(
+            store: store,
+            viewModel: viewModel,
+            settingsAction: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.settingsTap()
+            }
+        )
     }
 
     /// The home screen's background colour for a scene, for hand-offs from outside the feature.
@@ -79,7 +87,8 @@ public enum PlantMonitorUIComposer {
     /// Water leads while the plant is thirsty, Talk otherwise. History is always secondary.
     private static func makeButtons(
         isWaterPrimary: Bool,
-        viewModel: PlantMonitorViewModel?
+        viewModel: PlantMonitorViewModel?,
+        haptics: PlantHapticsClient
     ) -> (primary: PlantMonitorButtonView, secondary: [PlantMonitorButtonView]) {
         let talk = { (style: PlantMonitorButtonView.Style) in
             PlantMonitorButtonView(
@@ -87,7 +96,10 @@ public enum PlantMonitorUIComposer {
                 systemImage: "mic.fill",
                 style: style,
                 accent: \.primary,
-                action: { [weak viewModel] in viewModel?.talkTap() }
+                action: { [weak viewModel] in
+                    haptics.play(.tap)
+                    viewModel?.talkTap()
+                }
             )
         }
         let water = { (style: PlantMonitorButtonView.Style) in
@@ -96,7 +108,10 @@ public enum PlantMonitorUIComposer {
                 systemImage: "drop.fill",
                 style: style,
                 accent: \.water,
-                action: { [weak viewModel] in viewModel?.waterTap() }
+                action: { [weak viewModel] in
+                    haptics.play(.tap)
+                    viewModel?.waterTap()
+                }
             )
         }
         let history = PlantMonitorButtonView(
@@ -104,7 +119,10 @@ public enum PlantMonitorUIComposer {
             systemImage: "chart.xyaxis.line",
             style: .secondary,
             accent: \.ink,
-            action: { [weak viewModel] in viewModel?.historyTap() }
+            action: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.historyTap()
+            }
         )
         return isWaterPrimary
             ? (water(.primary), [talk(.secondary), history])
@@ -113,6 +131,7 @@ public enum PlantMonitorUIComposer {
 
     private static func makeError(
         for error: Error,
+        haptics: PlantHapticsClient,
         actionHandler: @escaping (PlantMonitorAction) -> Void
     ) -> PlantMonitorErrorView {
         let store = PlantMonitorErrorStore()
@@ -126,6 +145,13 @@ public enum PlantMonitorUIComposer {
             store?.icon = Image(systemName: "exclamationmark.triangle")
         }
 
-        return PlantMonitorErrorView(store: store, viewModel: viewModel)
+        return PlantMonitorErrorView(
+            store: store,
+            viewModel: viewModel,
+            tap: { [weak viewModel] in
+                haptics.play(.tap)
+                viewModel?.tap()
+            }
+        )
     }
 }

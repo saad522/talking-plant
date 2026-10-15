@@ -10,12 +10,13 @@ A cold-launch intro that continues the static launch screen, then hands off to h
 4. `PlantMonitorUIComposer.background(for:)`: one small public function returning the home background colour for a scene.
 5. `TalkingPlantApp`: one tracker per process, the intro as an overlay above the home view, which is built underneath from the start.
 
-## Timeline (1.6 s)
+## Timeline (2.2 s)
 
 - 0.0-0.5 s: squash-and-stretch bounce, leaf wiggle, one blink (swap to `LaunchSproutBlink` for 120 ms), soft haptic.
-- 0.2-1.0 s: glow pulses once behind Sprout, 15 particles drift up (fireflies from 18:00 to 04:59, pollen by day).
+- 0.2-1.0 s: glow pulses once behind Sprout. 15 particles drift up over 0.2-1.6 s (fireflies from 18:00 to 04:59, pollen by day).
 - 0.4-1.0 s: "Sprout" and the greeting rise and fade in. 5-11 morning, 12-17 afternoon, 18-22 evening, 23-4 "Shh... sweet dreams".
-- 1.0-1.6 s: hand-off.
+- 1.0-1.6 s: the text is held fully visible.
+- 1.6-2.2 s: hand-off.
 - Tap anywhere skips to a 0.3 s hand-off. Reduce Motion: no movement, just a 0.3 s crossfade.
 
 ## Decisions

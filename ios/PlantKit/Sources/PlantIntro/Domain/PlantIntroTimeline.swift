@@ -18,9 +18,11 @@ public enum PlantIntroTimeline {
     public static let blinkStart = 0.25
     public static let blinkDuration = 0.12
     public static let glowStart = 0.2
+    public static let glowEnd = 1.0
     public static let textStart = 0.4
-    /// The glow and the text are done; the hand-off begins.
-    public static let handoffStart = 1.0
+    public static let textEnd = 1.0
+    /// The text is held fully visible until here; the hand-off begins.
+    public static let handoffStart = 1.6
     public static let handoffDuration = 0.6
     public static let shortHandoffDuration = 0.3
     /// Where the bounce is fired from, for the haptic.
@@ -62,15 +64,15 @@ public enum PlantIntroTimeline {
         time >= blinkStart && time < blinkStart + blinkDuration
     }
 
-    /// 0 to 1 and back to 0, once, between `glowStart` and `handoffStart`.
+    /// 0 to 1 and back to 0, once, between `glowStart` and `glowEnd`.
     public static func glow(at time: Double) -> Double {
-        guard time > glowStart, time < handoffStart else { return 0 }
-        return sin(.pi * (time - glowStart) / (handoffStart - glowStart))
+        guard time > glowStart, time < glowEnd else { return 0 }
+        return sin(.pi * (time - glowStart) / (glowEnd - glowStart))
     }
 
-    /// 0 before `textStart`, 1 at `handoffStart`.
+    /// 0 before `textStart`, 1 at `textEnd`.
     public static func textProgress(at time: Double) -> Double {
-        let linear = min(max((time - textStart) / (handoffStart - textStart), 0), 1)
+        let linear = min(max((time - textStart) / (textEnd - textStart), 0), 1)
         return 1 - (1 - linear) * (1 - linear)
     }
 

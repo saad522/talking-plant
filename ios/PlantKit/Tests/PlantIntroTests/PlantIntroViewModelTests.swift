@@ -43,7 +43,7 @@ final class PlantIntroViewModelTests: PlantIntroXCTestCase {
 
         XCTAssertEqual(sut.state, .playing)
         XCTAssertTrue(sut.playsMotion)
-        XCTAssertEqual(sut.handoffDelay, 1.0)
+        XCTAssertEqual(sut.handoffDelay, 1.6)
     }
 
     func test_beginHandoff_movesFromPlayingToHandingOffWithTheFullDuration() {
@@ -56,10 +56,10 @@ final class PlantIntroViewModelTests: PlantIntroXCTestCase {
         XCTAssertEqual(sut.handoffDuration, 0.6)
     }
 
-    func test_fullIntroLastsNoMoreThanOnePointSixSeconds() {
+    func test_fullIntroLastsNoMoreThanTwoPointTwoSeconds() {
         let sut = makeSUT()
 
-        XCTAssertEqual(sut.handoffDelay + sut.handoffDuration, 1.6, accuracy: 0.0001)
+        XCTAssertEqual(sut.handoffDelay + sut.handoffDuration, 2.2, accuracy: 0.0001)
     }
 
     func test_beginHandoff_isIgnoredBeforeStart() {

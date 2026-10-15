@@ -43,7 +43,7 @@ final class PlantIntroTimelineTests: PlantIntroXCTestCase {
         XCTAssertEqual(PlantIntroTimeline.glow(at: 0.2), 0, accuracy: 0.0001)
         XCTAssertEqual(PlantIntroTimeline.glow(at: 0.6), 1, accuracy: 0.0001)
         XCTAssertEqual(PlantIntroTimeline.glow(at: 1.0), 0, accuracy: 0.0001)
-        XCTAssertEqual(PlantIntroTimeline.glow(at: 1.4), 0)
+        XCTAssertEqual(PlantIntroTimeline.glow(at: 1.3), 0)
     }
 
     func test_textProgress_risesBetweenFourTenthsAndOneSecond() {
@@ -54,5 +54,9 @@ final class PlantIntroTimelineTests: PlantIntroXCTestCase {
 
         let samples = (8...20).map { PlantIntroTimeline.textProgress(at: Double($0) / 20) }
         XCTAssertEqual(samples, samples.sorted())
+    }
+
+    func test_fullTimeline_lastsTwoPointTwoSeconds() {
+        XCTAssertEqual(PlantIntroTimeline.handoffStart + PlantIntroTimeline.handoffDuration, 2.2, accuracy: 0.0001)
     }
 }

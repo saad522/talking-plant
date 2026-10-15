@@ -121,3 +121,6 @@ One milestone per Claude Code session. Each ends with passing tests and a short 
 ## Later
 Low-power Mode B, V2 parts (pump, display, battery sense), species identification with
 the camera, widgets, multiple plants, enclosure.
+
+## P1 — Sprout feels alive
+- Plan: `docs/plans/P1-alive.md` (steps S1–S9). S1: intro lengthened to 2.2 s.

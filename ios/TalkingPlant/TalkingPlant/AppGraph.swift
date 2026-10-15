@@ -133,20 +133,13 @@ final class AppGraph {
             clock: Date.init,
             schedule: SimulatedPeripheralClient.repeatingTimer,
             actionHandler: { action in
-                switch (action, mode) {
-                case (.waterTap, .sensor):
-                    readNow.scheduleReadNow()
-                case (.waterTap, .simulated):
-                    #if DEBUG
-                    simulated?.water()
-                    #else
-                    break
-                    #endif
-                case (.talkTap, _):
-                    languageModel.prewarm()
-                default:
-                    break
-                }
+                Self.perform(
+                    action,
+                    in: mode,
+                    readNow: { readNow.scheduleReadNow() },
+                    water: { simulated?.water() },
+                    prewarm: { languageModel.prewarm() }
+                )
                 actionHandler(.monitor(action))
             }
         )
@@ -301,6 +294,26 @@ final class AppGraph {
         #endif
         let client = FoundationModelsPlantLanguageModelClient(historyLoader: historyLoader)
         return (client, { client.prewarm() })
+    }
+
+    /// What a home action does besides navigation. Simulated mode is a user-facing demo mode, so Water works in every build.
+    static func perform(
+        _ action: PlantMonitorAction,
+        in mode: PlantDeviceMode,
+        readNow: () -> Void,
+        water: () -> Void,
+        prewarm: () -> Void
+    ) {
+        switch (action, mode) {
+        case (.waterTap, .sensor):
+            readNow()
+        case (.waterTap, .simulated):
+            water()
+        case (.talkTap, _):
+            prewarm()
+        default:
+            break
+        }
     }
 
     /// Continues the simulated clock from the last saved reading, so history stays continuous

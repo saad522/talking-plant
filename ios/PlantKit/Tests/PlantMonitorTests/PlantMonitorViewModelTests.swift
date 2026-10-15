@@ -602,6 +602,221 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         XCTAssertFalse(scheduleSpy.fire())
     }
 
+    // MARK: - Watered
+
+    func test_waterTapThenRiseOfTen_deliversWateredOnce() {
+        let (sut, loader, _, _) = makeSUTWithSpeech()
+        var count = 0
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(moisture: 20))
+
+        sut.waterTap()
+        loader.completeSubscription(with: makeReading(moisture: 30))
+
+        XCTAssertEqual(count, 1)
+    }
+
+    func test_waterTapThenRiseOfNine_deliversNothing() {
+        let (sut, loader, _, _) = makeSUTWithSpeech()
+        var count = 0
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(moisture: 20))
+
+        sut.waterTap()
+        loader.completeSubscription(with: makeReading(moisture: 29))
+
+        XCTAssertEqual(count, 0)
+    }
+
+    func test_riseAfterTenMinutes_deliversNothing() {
+        let clock = ClockStub(at: noon())
+        let (sut, loader, _, _) = makeSUTWithSpeech(clock: clock.now)
+        var count = 0
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(moisture: 20))
+        sut.waterTap()
+
+        clock.advance(by: 601)
+        loader.completeSubscription(with: makeReading(moisture: 60))
+
+        XCTAssertEqual(count, 0)
+    }
+
+    func test_riseJustInsideTenMinutes_deliversWatered() {
+        let clock = ClockStub(at: noon())
+        let (sut, loader, _, _) = makeSUTWithSpeech(clock: clock.now)
+        var count = 0
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(moisture: 20))
+        sut.waterTap()
+
+        clock.advance(by: 599)
+        loader.completeSubscription(with: makeReading(moisture: 60))
+
+        XCTAssertEqual(count, 1)
+    }
+
+    func test_waterTapWithoutEarlierReading_deliversNothing() {
+        let (sut, loader, _, _) = makeSUTWithSpeech()
+        var count = 0
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+
+        sut.waterTap()
+        loader.completeSubscription(with: makeReading(moisture: 80))
+        loader.completeSubscription(with: makeReading(moisture: 95))
+
+        XCTAssertEqual(count, 0)
+    }
+
+    func test_secondRise_doesNotDeliverASecondEvent() {
+        let (sut, loader, _, _) = makeSUTWithSpeech()
+        var count = 0
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(moisture: 20))
+        sut.waterTap()
+
+        loader.completeSubscription(with: makeReading(moisture: 40))
+        loader.completeSubscription(with: makeReading(moisture: 70))
+
+        XCTAssertEqual(count, 1)
+    }
+
+    func test_riseWithoutWaterTap_deliversNothing() {
+        let (sut, loader, _, _) = makeSUTWithSpeech()
+        var count = 0
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(moisture: 20))
+
+        loader.completeSubscription(with: makeReading(moisture: 80))
+
+        XCTAssertEqual(count, 0)
+    }
+
+    func test_secondWaterTap_keepsBaselineAndExtendsWindow() {
+        let clock = ClockStub(at: noon())
+        let (sut, loader, _, _) = makeSUTWithSpeech(clock: clock.now)
+        var count = 0
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(moisture: 20))
+        sut.waterTap()
+        clock.advance(by: 500)
+        loader.completeSubscription(with: makeReading(moisture: 25))
+
+        sut.waterTap()
+        clock.advance(by: 500)
+        loader.completeSubscription(with: makeReading(moisture: 30))
+
+        XCTAssertEqual(count, 1)
+    }
+
+    func test_wetReadingEmittedSynchronouslyInsideWaterAction_deliversWateredOnce() {
+        var loader: LoaderStub?
+        var count = 0
+        let (sut, createdLoader, _, _) = makeSUTWithSpeech(actionHandler: { action in
+            if action == .waterTap { loader?.completeSubscription(with: self.makeReading(moisture: 100)) }
+        })
+        loader = createdLoader
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+        createdLoader.completeSubscription(with: makeReading(moisture: 15))
+
+        sut.waterTap()
+        createdLoader.completeSubscription(with: makeReading(moisture: 99))
+
+        XCTAssertEqual(count, 1)
+        addTeardownBlock { loader = nil }
+    }
+
+    func test_secondWateringWithinTenMinutesOfTheFirst_deliversWateredAgain() {
+        let clock = ClockStub(at: noon())
+        let (sut, loader, _, _) = makeSUTWithSpeech(clock: clock.now)
+        var count = 0
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(moisture: 20))
+        sut.waterTap()
+        loader.completeSubscription(with: makeReading(moisture: 100))
+        XCTAssertEqual(count, 1)
+
+        clock.advance(by: 120)
+        loader.completeSubscription(with: makeReading(moisture: 60))
+        loader.completeSubscription(with: makeReading(moisture: 28))
+        sut.waterTap()
+        loader.completeSubscription(with: makeReading(moisture: 100))
+
+        XCTAssertEqual(count, 2)
+    }
+
+    func test_secondWateringAfterTenMinutesOfTheFirst_deliversWateredAgain() {
+        let clock = ClockStub(at: noon())
+        let (sut, loader, _, _) = makeSUTWithSpeech(clock: clock.now)
+        var count = 0
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(moisture: 20))
+        sut.waterTap()
+        loader.completeSubscription(with: makeReading(moisture: 100))
+
+        clock.advance(by: 700)
+        loader.completeSubscription(with: makeReading(moisture: 28))
+        sut.waterTap()
+        loader.completeSubscription(with: makeReading(moisture: 100))
+
+        XCTAssertEqual(count, 2)
+    }
+
+    func test_waterTapAfterExpiredWindowWithoutRise_startsFreshWindow() {
+        let clock = ClockStub(at: noon())
+        let (sut, loader, _, _) = makeSUTWithSpeech(clock: clock.now)
+        var count = 0
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(moisture: 50))
+        sut.waterTap()
+        loader.completeSubscription(with: makeReading(moisture: 52))
+
+        clock.advance(by: 700)
+        loader.completeSubscription(with: makeReading(moisture: 20))
+        sut.waterTap()
+        loader.completeSubscription(with: makeReading(moisture: 40))
+
+        XCTAssertEqual(count, 1)
+    }
+
+    func test_waterTapAfterExpiredWindowWithNoReadingSince_startsFreshWindowWithCurrentBaseline() {
+        let clock = ClockStub(at: noon())
+        let (sut, loader, _, _) = makeSUTWithSpeech(clock: clock.now)
+        var count = 0
+        sut.loadedWatered = { count += 1 }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(moisture: 50))
+        sut.waterTap()
+        loader.completeSubscription(with: makeReading(moisture: 30))
+
+        clock.advance(by: 700)
+        sut.waterTap()
+        loader.completeSubscription(with: makeReading(moisture: 45))
+
+        XCTAssertEqual(count, 1)
+    }
+
+    func test_waterTap_stillDeliversAction() {
+        var actions: [PlantMonitorAction] = []
+        let (sut, _, _, _) = makeSUTWithSpeech(actionHandler: { actions.append($0) })
+
+        sut.waterTap()
+
+        XCTAssertEqual(actions, [.waterTap])
+    }
+
     // MARK: - Private helpers
 
     private func utcCalendar() -> Calendar {

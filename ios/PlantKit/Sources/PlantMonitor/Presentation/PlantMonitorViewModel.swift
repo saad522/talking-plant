@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import PlantShared
 
 @MainActor
@@ -20,6 +21,14 @@ public final class PlantMonitorViewModel {
     private var latestMood: PlantMood?
     private var latestConnection: PlantConnection?
     private var speechKey: SpeechKey?
+    private var watering: WateringWindow?
+    private static let logger = Logger(subsystem: "TalkingPlant", category: "watered")
+
+    /// Opened by a Water tap: the moisture to beat and when the chance ends.
+    private struct WateringWindow {
+        let baseline: Double
+        var deadline: Date
+    }
 
     /// A new line is only asked for when the mood or the scene changes.
     private struct SpeechKey: Equatable {
@@ -43,6 +52,8 @@ public final class PlantMonitorViewModel {
     /// The template line first, then the generated one when it arrives.
     public var loadedSpeech: Observer<String>?
     /// The sun or moon and where it sits on its arc, with whether the move from the last one is small.
+    /// Fires once when a reading shows the plant was watered after a Water tap.
+    public var loadedWatered: (() -> Void)?
     public var loadedSky: Observer<(sky: PlantMonitorSkyViewModel, isGradual: Bool)>?
 
     public init(
@@ -74,6 +85,7 @@ public final class PlantMonitorViewModel {
             switch result {
             case .success(let reading):
                 self?.latestReading = reading
+                self?.checkWatered(with: reading)
                 self?.loadedReading?(reading)
                 self?.loadScene()
             case .failure(let error):
@@ -104,11 +116,44 @@ public final class PlantMonitorViewModel {
     }
 
     public func waterTap() {
+        openWateringWindow()
         actionHandler(.waterTap)
     }
 
     public func settingsTap() {
         actionHandler(.settingsTap)
+    }
+
+    /// A tap while a window is open extends it and keeps its baseline. Otherwise (none, or an expired one) it starts fresh.
+    private func openWateringWindow() {
+        let now = clock()
+        let deadline = now.addingTimeInterval(PlantWateringCheck.window)
+        if var open = watering, now <= open.deadline {
+            open.deadline = deadline
+            watering = open
+            Self.logger.debug("watered: window extended (baseline \(open.baseline))")
+            return
+        }
+        watering = nil
+        guard let baseline = latestReading?.moisture else { return }
+        watering = WateringWindow(baseline: baseline, deadline: deadline)
+        Self.logger.debug("watered: window opened (baseline \(baseline))")
+    }
+
+    private func checkWatered(with reading: PlantReading) {
+        guard let open = watering else { return }
+        guard clock() <= open.deadline else {
+            watering = nil
+            Self.logger.debug("watered: window closed (expired)")
+            return
+        }
+        guard let moisture = reading.moisture else { return }
+        let fired = PlantWateringCheck.isWatered(baseline: open.baseline, current: moisture)
+        Self.logger.debug("watered: baseline \(open.baseline), reading \(moisture), \(fired ? "fired" : "not fired")")
+        guard fired else { return }
+        watering = nil
+        Self.logger.debug("watered: window closed (fired)")
+        loadedWatered?()
     }
 
     private func loadScene() {

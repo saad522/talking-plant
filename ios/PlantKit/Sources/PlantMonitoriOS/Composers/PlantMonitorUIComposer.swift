@@ -58,6 +58,10 @@ public enum PlantMonitorUIComposer {
             store?.secondaryButtons = buttons.secondary
         }
 
+        viewModel.loadedWatered = {
+            haptics.play(.success)
+        }
+
         viewModel.loadedSky = { [weak store] update in
             store?.window = PlantMonitorStore<Face>.makeWindow(sky: update.sky, isGradual: update.isGradual)
         }

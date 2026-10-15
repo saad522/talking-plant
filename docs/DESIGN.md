@@ -270,17 +270,23 @@ Rules:
 - Buttons and menu items: `tap` (light impact).
 - Toggles, segmented controls and pickers: `selection`, on a value change by the user.
 - Mic: starting to listen is `bump` (soft impact), stopping is `tap`.
-- Something finished: `success` (a valid calibration save; later, watered).
+- Something finished: `success` (a valid calibration save; watered).
 - One haptic per tap. A button that ends in `success` plays only that.
 - Never on typing, scrolling, data updates (readings, transcripts, replies, scene changes),
   system swipe-to-dismiss, the system back button, or the DEBUG-only screens (Voice check,
   test peripheral).
+
+Watered: tapping Water opens a 10-minute window (real clock) with the latest moisture as the
+baseline. The first reading in the window at least 10 points above the baseline plays `success`
+once and closes the window. A second tap extends the window and keeps the baseline. A rise without
+a Water tap, or with no earlier reading, plays nothing.
 
 | Screen | Control | Haptic |
 |---|---|---|
 | Home | Talk, Water, History | `tap` |
 | Home | Sliders (settings) button | `tap` |
 | Home | Error "Dismiss" button | `tap` |
+| Home | Watered (moment, not a control) | `success` |
 | Intro | Bounce (moment, not a control) | `bump` |
 | Intro | Tap to skip | none |
 | Talk | Back (chevron), End (x) | `tap` |

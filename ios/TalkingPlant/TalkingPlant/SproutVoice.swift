@@ -42,7 +42,7 @@ final class SproutVoice {
         self.physicalMemory = physicalMemory
         #endif
         #if canImport(PlantKokoro)
-        Self.logger.notice("SproutVoice \(self.id) created: physical memory \(physicalMemory) bytes, gate \(Self.minimumPhysicalMemory)")
+        Self.logger.debug("SproutVoice \(self.id) created: physical memory \(physicalMemory) bytes, gate \(Self.minimumPhysicalMemory)")
         if physicalMemory >= Self.minimumPhysicalMemory {
             let generator = KokoroSproutGenerator()
             let chunked = ChunkedPlantSynthesizerClient(generator: generator, player: AVAudioEnginePlantSpeechPlayerClient())
@@ -76,7 +76,7 @@ final class SproutVoice {
 
     /// Idempotent: home screen appears, scene becomes active.
     func prewarm() {
-        Self.logger.notice("prewarm requested on SproutVoice \(self.id)")
+        Self.logger.debug("prewarm requested on SproutVoice \(self.id)")
         Task {
             do {
                 try await prewarmModel()

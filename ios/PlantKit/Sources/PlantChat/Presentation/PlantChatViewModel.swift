@@ -331,7 +331,7 @@ public final class PlantChatViewModel {
 
     /// Ends the turn without sending anything. A reply still on its way is shown, not spoken.
     private func stopVoice(from source: String) {
-        Self.logger.notice("stopVoice from: \(source), activity \(String(describing: self.activity))")
+        Self.logger.debug("stopVoice from: \(source), activity \(String(describing: self.activity))")
         speaksPendingReply = false
         if activity == .listening {
             finishListening()
@@ -360,21 +360,21 @@ public final class PlantChatViewModel {
     private func speak(_ text: String, from source: String = "reply") {
         speech += 1
         let speech = speech
-        Self.logger.notice("speak from: \(source) (\(text.count) chars, turn \(speech))")
+        Self.logger.debug("speak from: \(source) (\(text.count) chars, turn \(speech))")
         setActivity(.speaking)
         synthesizer.speak(text, style: settings.load().speechStyle.adjusted(for: latestFacts?.mood)) { [weak self] in
             guard let self, self.speech == speech else {
-                Self.logger.notice("speech completion dropped: turn \(speech) is now \(self?.speech ?? -1)")
+                Self.logger.debug("speech completion dropped: turn \(speech) is now \(self?.speech ?? -1)")
                 return
             }
-            Self.logger.notice("speech completion: turn \(speech) done")
+            Self.logger.debug("speech completion: turn \(speech) done")
             self.deactivateAudioSession()
             self.setActivity(.idle)
         }
     }
 
     private func cancelSpeech(from source: String) {
-        Self.logger.notice("stop from: \(source) (turn \(self.speech))")
+        Self.logger.debug("stop from: \(source) (turn \(self.speech))")
         speech += 1
         synthesizer.stop()
     }

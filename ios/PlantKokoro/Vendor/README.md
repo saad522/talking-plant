@@ -1,7 +1,7 @@
 # Vendor
 
 Plain targets of the PlantKokoro package (docs/plans/M5c-kokoro.md, section 4). Copied from the
-patched spike code (`ios/KokoroSpike/setup.sh` and `patches/`), then trimmed.
+patched spike code (since deleted in K12), then trimmed.
 
 | Target | Upstream | Commit | License |
 |---|---|---|---|

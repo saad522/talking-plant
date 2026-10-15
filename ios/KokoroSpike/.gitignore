@@ -1,5 +1,0 @@
-# Model files are fetched with fetch-models.sh and never committed.
-Sources/KokoroSpikeEngine/Resources/Models/*.safetensors
-Sources/KokoroSpikeEngine/Resources/Models/*.npz
-# Patched third-party packages, created by setup.sh.
-Vendor/

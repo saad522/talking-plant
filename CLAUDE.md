@@ -28,7 +28,9 @@ talking-plant/
 ├── CLAUDE.md
 ├── docs/
 ├── firmware/talking_plant/talking_plant.ino   # Arduino sketch (XIAO ESP32-C3)
+├── tools/kokoro/                              # build-time Kokoro assets
 └── ios/
+    ├── PlantKokoro/                            # local package: Kokoro voice (MLX), linked only by the app
     ├── TalkingPlant/                           # created manually in Xcode
     │   ├── TalkingPlant.xcodeproj
     │   └── TalkingPlant/

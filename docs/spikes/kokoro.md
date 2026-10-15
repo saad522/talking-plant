@@ -1,8 +1,13 @@
 # Spike: Kokoro-82M as Sprout's voice
 
 Goal: a listening test and a go/no-go for an on-device neural voice, to replan M5c (paused
-after S2). Not production code. Everything lives in `ios/KokoroSpike/` plus a few `#if DEBUG`
-lines, so it is easy to delete (section 9).
+after S2). Not production code.
+
+**Outcome (M5c K12): shipped as PlantKokoro. The spike code (`ios/KokoroSpike/`, the
+`-KokoroSpike` launch argument and the spike screen) is gone.** Final device numbers are in
+[docs/plans/M5c-kokoro.md](../plans/M5c-kokoro.md) section 11: iPhone 13 Pro peak ~714 MB and
+first audio 564–699 ms; iPhone 12 Pro peak 605–1021 MB; app 160.1 MB compressed / 189.7 MB
+uncompressed. Sections 8 and 9 below are historical.
 
 **Verdict so far: conditional go.** It works end to end, sounds far better than any
 `AVSpeechSynthesizer` voice, is fast enough on an M1, and every license we ship is

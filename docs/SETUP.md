@@ -43,6 +43,20 @@ disappears (crashing sketch), hold BOOT while plugging in USB, then upload.
       Dependencies → Add Local → select `ios/PlantKit`, and link the `PlantShared`,
       `PlantMonitor`, `PlantMonitoriOS`, and `PlantDevice` products to the app target.
 
+## 3b. Kokoro voice (PlantKokoro)
+
+- [ ] Once per Xcode install: `xcodebuild -downloadComponent MetalToolchain` (MLX needs it).
+- [ ] Once per clone: `make -C tools/kokoro assets`. It downloads the pinned weights and writes
+      the Sprout voice into `ios/PlantKokoro/Sources/PlantKokoro/Resources/` (git-ignored).
+- [ ] Optional smoke test (runs the real model, needs the assets and an Xcode build):
+
+```bash
+TEST_RUNNER_PLANT_KOKORO_SMOKE=1 \
+TEST_RUNNER_PACKAGE_RESOURCE_BUNDLE_PATH=<derived data>/Build/Products/Debug \
+xcodebuild test -scheme PlantKokoro -destination 'platform=macOS' \
+  -derivedDataPath <derived data> -only-testing:PlantKokoroTests
+```
+
 ## 4. Test peripheral (a fake sensor, no board needed)
 
 The app can pretend to be the sensor, so the real Bluetooth path runs before the board

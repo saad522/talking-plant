@@ -21,7 +21,7 @@ CACHE = HERE / ".cache"
 CHECKSUMS = HERE / "assets.sha256"
 OUTPUT = HERE.parent.parent / "ios/PlantKokoro/Sources/PlantKokoro/Resources"
 
-# Same pinned files as ios/KokoroSpike/setup.sh (mlalma/KokoroTestApp).
+# Pinned files from mlalma/KokoroTestApp.
 COMMIT = "9dcd3b06468a3c1ecee6d09a33ca687c8e708566"
 WEIGHTS_URL = f"https://media.githubusercontent.com/media/mlalma/KokoroTestApp/{COMMIT}/Resources/kokoro-v1_0.safetensors"
 WEIGHTS_SHA256 = "4e9ecdf03b8b6cf906070390237feda473dc13327cb8d56a43deaa374c02acd8"

@@ -167,7 +167,7 @@ public final class KokoroSproutGenerator {
             let start = Date()
             // MLX keeps freed GPU buffers in a cache that otherwise grows with every request.
             Memory.cacheLimit = KokoroSproutGenerator.cacheLimit
-            logger.info("MLX cache limit \(Memory.cacheLimit / 1_048_576) MB (asked for \(KokoroSproutGenerator.cacheLimit / 1_048_576) MB)")
+            logger.debug("MLX cache limit \(Memory.cacheLimit / 1_048_576) MB (asked for \(KokoroSproutGenerator.cacheLimit / 1_048_576) MB)")
             guard let voice = try MLX.loadArrays(url: voiceURL)["sprout"] else {
                 throw GeneratorError.failed("sprout.safetensors has no \"sprout\" tensor")
             }
@@ -176,7 +176,7 @@ public final class KokoroSproutGenerator {
             // Warm-up: the first generation builds the G2P and the Metal kernels.
             _ = try model.generate("Hi.", speed: 1)
             let warm = Date()
-            logger.info("load \(loaded.timeIntervalSince(start), format: .fixed(precision: 2)) s, warm-up \(warm.timeIntervalSince(loaded), format: .fixed(precision: 2)) s, \(Self.memoryDescription())")
+            logger.notice("load \(loaded.timeIntervalSince(start), format: .fixed(precision: 2)) s, warm-up \(warm.timeIntervalSince(loaded), format: .fixed(precision: 2)) s, \(Self.memoryDescription())")
             return (model, LoadTimings(
                 loadSeconds: loaded.timeIntervalSince(start),
                 warmUpSeconds: warm.timeIntervalSince(loaded)
@@ -192,7 +192,7 @@ public final class KokoroSproutGenerator {
                 throw GeneratorError.failed(String(describing: error))
             }
             Memory.clearCache()
-            logger.info("chunk \(text.count) chars in \(Date().timeIntervalSince(start), format: .fixed(precision: 2)) s, \(samples.count) samples, \(Self.memoryDescription())")
+            logger.debug("chunk \(text.count) chars in \(Date().timeIntervalSince(start), format: .fixed(precision: 2)) s, \(samples.count) samples, \(Self.memoryDescription())")
             return samples
         }
 

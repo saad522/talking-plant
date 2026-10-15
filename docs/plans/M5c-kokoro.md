@@ -20,13 +20,14 @@ Scope:
 - Everything stays behind `PlantSynthesizerClient`, so `PlantChatViewModel` doesn't change.
   The Apple voice (`AVSpeechPlantSynthesizerClient`) is always the fallback.
 - We own the patched kokoro-ios / MisakiSwift, vendored in the repo. No `setup.sh`.
-- The spike screen and `ios/KokoroSpike/` are removed at the end.
+- The spike screen and `ios/KokoroSpike/` were removed in K12.
 
 Out of scope: more voices or accents, a voice picker for users, Background Assets (section
 5 recommends bundling), the S5 wobble, the full S6/S7 voice lab, lip sync, spoken
 notifications, and changes to the listening flow.
 
-Steps K0–K12, one Sonnet session each (section 9).
+Steps K0–K12, one Sonnet session each (section 9). **All done.** Final device results and the
+follow-ups are in section 11.
 
 ---
 
@@ -41,7 +42,7 @@ voices, US + GB dictionaries, sentence chunks, 32 MB MLX cache:
 | iPhone 13 Pro, Debug, debugger attached | 0.71–1.21 s | 3.1–4.1× | 487 MB / 1156 MB | 52.6 s |
 | iPhone 13 Pro, Release, debugger attached + Metal validation | not recorded | not recorded | — / ~730 MB | 37–39 s |
 | iPhone 13 Pro, Release, no debugger, Metal API Validation off, GPU Frame Capture disabled | not recorded | not recorded | 516–577 MB / 706–735 MB | 5.95 s first launch, 0.94–0.98 s next launches |
-| iPhone 12 Pro, Release, no debugger | not measured yet, check in K11 | | | |
+| iPhone 12 Pro, Release, no debugger | 0.66–1.08 s (final build, section 11) | | 605–1021 MB peak (final build) | warm-up 6.5 s |
 
 **Measurement note.** All performance checks use Release with "Debug executable" unticked,
 Metal API Validation off and GPU Frame Capture disabled. The debugger and Metal validation made
@@ -416,7 +417,7 @@ the app building. No commits. You run PlantChatiOSTests and the device checks.
   A no-go stops this plan, and M5c goes back to the Apple-voice plan.
 - Done before K7, which unlinks the spike package.
 
-### K1. Asset script
+### K1. Asset script — done
 
 - **Files:** `tools/kokoro/Makefile`, `requirements.txt`, `build_assets.py`, `assets.sha256`,
   `README.md` (one paragraph); `.gitignore` entries.
@@ -426,7 +427,7 @@ the app building. No commits. You run PlantChatiOSTests and the device checks.
 - **Done when:** `make -C tools/kokoro assets` on a clean checkout produces two files
   (`sprout.safetensors`, `kokoro-f16.safetensors`) and the report. Paste the report into the step summary. It replaces the estimates in 2.1.
 
-### K2. PlantKokoro package: vendored fork + generator (fp16)
+### K2. PlantKokoro package: vendored fork + generator (fp16) — done
 
 - **Files:**
   - `ios/PlantKokoro/Package.swift` (iOS 26 / macOS 15, Swift 6 mode for our target;
@@ -449,7 +450,7 @@ the app building. No commits. You run PlantChatiOSTests and the device checks.
 - **Done when:** the smoke test passes on the Mac, and `xcodebuild -scheme PlantKokoro
   -destination generic/platform=iOS build` builds with no `setup.sh`.
 
-### K3. Style cleanup and chunker (PlantChat, pure)
+### K3. Style cleanup and chunker (PlantChat, pure) — done
 
 - **Files:** `PlantChat/Domain/PlantSpeechStyle.swift` (remove `pitchCents`, `wobbleCents`
   and their ranges; `effectRate` → `speed`, `speedRange`); every reader;
@@ -462,7 +463,7 @@ the app building. No commits. You run PlantChatiOSTests and the device checks.
   empty input give no chunks; a single short sentence is one chunk.
 - A chunk under 20 characters (the spike's minimum) joins the next one, or the previous one if it is last, never going over either cap ("Psst... my soil is dry." is one chunk).
 
-### K4. Fallback composite (the old S3)
+### K4. Fallback composite (the old S3) — done
 
 - **Files:** `PlantChat/Client/PlantPrimarySynthesizerClient.swift`,
   `PlantChat/API/FallbackPlantSynthesizerClient.swift`, `PrimarySynthesizerSpy`,
@@ -472,7 +473,7 @@ the app building. No commits. You run PlantChatiOSTests and the device checks.
   a primary result arriving after that is dropped.
 - Not wired yet.
 
-### K5. Chunked client
+### K5. Chunked client — done
 
 - **Files:** `PlantChat/Client/PlantSpeechGeneratorClient.swift`,
   `PlantSpeechPlayerClient.swift`, `PlantChat/API/ChunkedPlantSynthesizerClient.swift`,
@@ -496,13 +497,13 @@ the app building. No commits. You run PlantChatiOSTests and the device checks.
   - empty text → `.finished`, the player never started;
   - `test_speak_doesNotCreateMemoryLeaks`.
 
-### K6. Player
+### K6. Player — done
 
 - **Files:** `PlantChat/Client/AVAudioEnginePlantSpeechPlayerClient.swift` (3.8). Interruption
   and media-reset observers inside `#if os(iOS)`.
 - **Tests:** none, it wraps system APIs. `swift test` still compiles it on macOS.
 
-### K7. Wiring and lifecycle
+### K7. Wiring and lifecycle — done
 
 - **You, in Xcode (hand-off note with exact steps):** remove the KokoroSpike package from the
   app. The `#if canImport` spike code then shows its placeholder; it is deleted in K12. Both
@@ -530,7 +531,7 @@ the app building. No commits. You run PlantChatiOSTests and the device checks.
   - the Simulator speaks with the Apple voice;
   - Release (section 7 settings): first audio, load time and peak memory logged.
 
-### K8. DEBUG voice check screen
+### K8. DEBUG voice check screen — done
 
 Replaces the spike screen, reusing its uncommitted menu plumbing (rename `voiceSpikeTap` →
 `voiceCheckTap`, `Route.voiceSpike` → `.voiceCheck`, and the test
@@ -553,7 +554,7 @@ Replaces the spike screen, reusing its uncommitted menu plumbing (rename `voiceS
 The 8-bit weights and the A/B toggle are dropped (decision 4). Float16 is the only format. The
 step number stays so K10–K12 keep their names.
 
-### K10. Memory pass (13 Pro)
+### K10. Memory pass (13 Pro) — done
 
 Measure after each lever with the voice check screen (Release, section 7 settings, 10 plays of
 each line) and keep only the ones that help. Stop once the peak is under ~700 MB, or when
@@ -578,7 +579,7 @@ it is under ~1 GB with no crashes or memory warnings (decision 3).
 - **Done when:** the section 7 targets are met, or the peak is within the ~1 GB allowance
   of decision 3 with no crashes or memory warnings.
 
-### K11. Ship size
+### K11. Ship size — done
 
 - **Files:** `assets.sha256` updated if K10 changed the assets. Nothing else to remove: there
   is no 8-bit option (decision 4).
@@ -586,7 +587,7 @@ it is under ~1 GB with no crashes or memory warnings (decision 3).
   Record download and install sizes. Measure the iPhone 12 Pro (Release, no debugger) and fill
   in its row in section 1. A last listen of every shown personality, happy and thirsty.
 
-### K12. Remove the spike, docs
+### K12. Remove the spike, docs — done
 
 - **Delete:** `ios/KokoroSpike/`, and the `#if canImport(KokoroSpikeiOS)` code, `VoiceSpikeScreen`,
   `rootContent`'s `-KokoroSpike` check and `voiceSpike` in `TalkingPlantApp.swift` (spike section 9;
@@ -602,6 +603,8 @@ it is under ~1 GB with no crashes or memory warnings (decision 3).
   - `docs/spikes/kokoro.md`: final numbers, and a line saying the spike code is gone.
   - `docs/plans/M5c-voice.md`: a note at the top that S3–S8 are replaced by this plan.
   - `CLAUDE.md` repo layout: `PlantKokoro/` and `tools/kokoro/`.
+- **Also in K12:** voice logs lowered to `.debug`. Kept at `.notice`: load / warm-up, first audio,
+  utterance peak, watchdog fired, fallback used, unload with its caller.
 
 ---
 
@@ -640,3 +643,29 @@ it is under ~1 GB with no crashes or memory warnings (decision 3).
 12. **Chips.** Listening on the 13 Pro (A15) and 17 Pro (A19) is the check. The level check
     catches loud static but not quieter garbling. Trying an A16–A18 phone once is a bonus, not
     a blocker.
+
+---
+
+## 11. Final results and follow-ups
+
+Measured in K10–K11 on the shipped configuration (fp16, folded weight norm, 12-word / 45-character
+chunks, Release unless noted):
+
+| Device | Peak memory | First audio | Warm-up | Notes |
+|---|---|---|---|---|
+| iPhone 13 Pro | ~714 MB (short replies, Release). Worst-case sample ~900 MB (Debug) | 564–699 ms | 3.6 s | Inside the ~1 GB allowance of decision 3 |
+| iPhone 12 Pro | 605–1021 MB | 661–1077 ms | 6.5 s | RAM gate passes (5.99 GB) |
+| iPhone 17 Pro | not recorded | not recorded | not recorded | Works |
+
+App size (App Thinning, iPhone 13 Pro): **160.1 MB compressed** (download), **189.7 MB
+uncompressed** (install). Under the 200 MB cellular line.
+
+### Follow-ups after M5c
+
+- Peak memory follows audio length: a 38-character chunk gave 5.1 s of audio and 1021 MB on the
+  12 Pro. Consider a cap by expected audio length, not only by words and characters.
+- The first greeting uses the Apple voice while Kokoro is still loading.
+- Devices under the RAM gate still download the ~164 MB weights. Consider Background Assets.
+- Smarter simple replies on devices without Apple Intelligence (follow yes/no questions, and
+  "don't give status").
+- Never invent water amounts; only report real sensor readings.

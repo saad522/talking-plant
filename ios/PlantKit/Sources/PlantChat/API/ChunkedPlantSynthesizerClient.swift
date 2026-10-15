@@ -44,21 +44,21 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
     }
 
     public func speak(_ text: String, style: PlantSpeechStyle, update: @escaping (PlantSpeechEvent) -> Void) {
-        Self.logger.notice("speak: stopping previous utterance first (isActive \(self.isActive))")
+        Self.logger.debug("speak: stopping previous utterance first (isActive \(self.isActive))")
         stop()
         generation += 1
         let current = generation
         let chunks = PlantSpeechChunker.chunks(text)
-        Self.logger.notice("speak start: \(chunks.count) chunks, speed \(style.speed), generation \(current)")
+        Self.logger.debug("speak start: \(chunks.count) chunks, speed \(style.speed), generation \(current)")
         guard !chunks.isEmpty else {
-            Self.logger.notice("speak: no chunks, finished")
+            Self.logger.debug("speak: no chunks, finished")
             update(.finished)
             return
         }
         do {
             try player.start()
         } catch {
-            Self.logger.notice("speak: player.start failed (\(String(describing: error))), .failed")
+            Self.logger.debug("speak: player.start failed (\(String(describing: error))), .failed")
             update(.failed)
             return
         }
@@ -107,7 +107,7 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
             do {
                 samples = try await generator.generate(utterance.chunks[index], speed: utterance.speed)
             } catch {
-                Self.logger.notice("chunk \(index) generation threw: \(String(describing: error))")
+                Self.logger.debug("chunk \(index) generation threw: \(String(describing: error))")
                 self?.fail(utterance, generation: current)
                 return
             }
@@ -117,26 +117,26 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
 
     private func generated(_ samples: [Float], index: Int, seconds: Double, of utterance: Utterance, generation current: Int) {
         guard generation == current else {
-            Self.logger.notice("chunk \(index) generated but dropped: generation \(current) is now \(self.generation)")
+            Self.logger.debug("chunk \(index) generated but dropped: generation \(current) is now \(self.generation)")
             return
         }
         let peak = samples.reduce(0) { max($0, abs($1)) }
         guard Self.isPlayable(samples) else {
-            Self.logger.notice("chunk \(index) rejected by level check: \(samples.count) samples, peak \(peak)")
+            Self.logger.debug("chunk \(index) rejected by level check: \(samples.count) samples, peak \(peak)")
             return fail(utterance, generation: current)
         }
         lastMetrics?.chunks.append(.init(characters: utterance.chunks[index].count, seconds: seconds))
-        Self.logger.notice("chunk \(index) accepted: \(samples.count) samples, peak \(peak)")
+        Self.logger.debug("chunk \(index) accepted: \(samples.count) samples, peak \(peak)")
         utterance.isGenerating = false
         utterance.nextIndex = index + 1
         utterance.enqueued += 1
-        Self.logger.notice("enqueue chunk \(index) (enqueued \(utterance.enqueued), played \(utterance.played), of \(utterance.chunks.count))")
+        Self.logger.debug("enqueue chunk \(index) (enqueued \(utterance.enqueued), played \(utterance.played), of \(utterance.chunks.count))")
         player.enqueue(samples) { [weak self] succeeded in
             self?.played(succeeded, of: utterance, generation: current)
         }
         if index == 0 {
             let firstAudio = utterance.begin.duration(to: .now).seconds
-            Self.logger.info("first audio \(Int(firstAudio * 1000)) ms")
+            Self.logger.notice("first audio \(Int(firstAudio * 1000)) ms")
             lastMetrics?.firstAudioSeconds = firstAudio
             utterance.update(.generated)
             watchPlayback(of: utterance, samples: samples.count, generation: current)
@@ -157,14 +157,14 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
 
     private func played(_ succeeded: Bool, of utterance: Utterance, generation current: Int) {
         guard generation == current else {
-            Self.logger.notice("player completion(\(succeeded)) dropped: generation \(current) is now \(self.generation)")
+            Self.logger.debug("player completion(\(succeeded)) dropped: generation \(current) is now \(self.generation)")
             return
         }
-        Self.logger.notice("player completion(\(succeeded)), played so far \(utterance.played)")
+        Self.logger.debug("player completion(\(succeeded)), played so far \(utterance.played)")
         guard succeeded else { return fail(utterance, generation: current) }
         utterance.played += 1
         if utterance.played == 1 {
-            Self.logger.notice("first buffer played back after \(Int(utterance.begin.duration(to: .now).seconds * 1000)) ms")
+            Self.logger.debug("first buffer played back after \(Int(utterance.begin.duration(to: .now).seconds * 1000)) ms")
             utterance.update(.started)
         }
         if utterance.played == utterance.chunks.count {
@@ -178,10 +178,10 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
 
     private func fail(_ utterance: Utterance, generation current: Int) {
         guard generation == current else {
-            Self.logger.notice("fail dropped: generation \(current) is now \(self.generation)")
+            Self.logger.debug("fail dropped: generation \(current) is now \(self.generation)")
             return
         }
-        Self.logger.notice("fail: stopping player, .failed (enqueued \(utterance.enqueued), played \(utterance.played))")
+        Self.logger.debug("fail: stopping player, .failed (enqueued \(utterance.enqueued), played \(utterance.played))")
         // Nothing more is sent for this utterance, not even a late played-back completion.
         generation += 1
         isActive = false
@@ -192,7 +192,7 @@ public final class ChunkedPlantSynthesizerClient: PlantPrimarySynthesizerClient 
     }
 
     public func stop() {
-        Self.logger.notice("stop: isActive \(self.isActive), generation \(self.generation) -> \(self.generation + 1)")
+        Self.logger.debug("stop: isActive \(self.isActive), generation \(self.generation) -> \(self.generation + 1)")
         generation += 1
         task?.cancel()
         task = nil

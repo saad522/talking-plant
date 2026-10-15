@@ -45,7 +45,7 @@ public final class FallbackPlantSynthesizerClient: PlantSynthesizerClient {
         stop(from: "speak (previous utterance)")
         generation += 1
         let current = generation
-        Self.logger.notice("speak start: generation \(current), primary first")
+        Self.logger.debug("speak start: generation \(current), primary first")
         self.completion = completion
         phase = .primary(started: false)
         primaryGenerated = false
@@ -54,7 +54,7 @@ public final class FallbackPlantSynthesizerClient: PlantSynthesizerClient {
         }
         schedule(Self.startTimeout) { [weak self] in
             guard let self, generation == current, case .primary(started: false) = phase, !primaryGenerated else {
-                Self.logger.notice("start timeout ignored (generation \(current), phase \(String(describing: self?.phase)))")
+                Self.logger.debug("start timeout ignored (generation \(current), phase \(String(describing: self?.phase)))")
                 return
             }
             Self.logger.notice("Primary voice did not start in time, using the fallback voice")
@@ -70,7 +70,7 @@ public final class FallbackPlantSynthesizerClient: PlantSynthesizerClient {
     private func stop(from source: String) {
         generation += 1
         let previous = phase
-        Self.logger.notice("stop from: \(source), phase \(String(describing: previous)), completion pending \(self.completion != nil)")
+        Self.logger.debug("stop from: \(source), phase \(String(describing: previous)), completion pending \(self.completion != nil)")
         phase = .idle
         switch previous {
         case .idle: break
@@ -82,10 +82,10 @@ public final class FallbackPlantSynthesizerClient: PlantSynthesizerClient {
 
     private func handle(_ event: PlantSpeechEvent, text: String, style: PlantSpeechStyle, generation current: Int) {
         guard generation == current, case .primary(let started) = phase else {
-            Self.logger.notice("primary event \(String(describing: event)) dropped: generation \(current) is now \(self.generation), phase \(String(describing: self.phase))")
+            Self.logger.debug("primary event \(String(describing: event)) dropped: generation \(current) is now \(self.generation), phase \(String(describing: self.phase))")
             return
         }
-        Self.logger.notice("primary event \(String(describing: event)), started \(started)")
+        Self.logger.debug("primary event \(String(describing: event)), started \(started)")
         switch event {
         case .generated:
             primaryGenerated = true
@@ -107,16 +107,16 @@ public final class FallbackPlantSynthesizerClient: PlantSynthesizerClient {
         Self.logger.notice("fallback voice speaking (generation \(current))")
         fallback.speak(text, style: style) { [weak self] in
             guard let self, generation == current else {
-                Self.logger.notice("fallback completion dropped: generation \(current) is now \(self?.generation ?? -1)")
+                Self.logger.debug("fallback completion dropped: generation \(current) is now \(self?.generation ?? -1)")
                 return
             }
-            Self.logger.notice("fallback voice finished")
+            Self.logger.debug("fallback voice finished")
             finish()
         }
     }
 
     private func finish() {
-        Self.logger.notice("finish: turn ends")
+        Self.logger.debug("finish: turn ends")
         phase = .idle
         complete()
     }

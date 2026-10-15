@@ -1,3 +1,5 @@
+> **Replaced:** steps S3–S8 of this plan are replaced by [M5c-kokoro.md](M5c-kokoro.md). S1 and S2 stay.
+
 # M5c plan: a cartoon voice for Sprout
 
 Scope:

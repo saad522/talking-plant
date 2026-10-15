@@ -19,9 +19,6 @@ import PlantShared
 #if DEBUG
 import PlantTestPeripheral
 #endif
-#if canImport(KokoroSpikeiOS)
-import KokoroSpikeiOS
-#endif
 import SwiftUI
 
 @main
@@ -40,16 +37,7 @@ struct TalkingPlantApp: App {
 
     var body: some Scene {
         WindowGroup {
-            #if canImport(KokoroSpikeiOS)
-            // Kokoro spike timings need an optimized build, where the DEBUG menu entry doesn't exist.
-            if ProcessInfo.processInfo.arguments.contains("-KokoroSpike") {
-                NavigationStack { VoiceSpikeScreen() }
-            } else {
-                rootContent
-            }
-            #else
             rootContent
-            #endif
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
@@ -104,15 +92,6 @@ struct TalkingPlantApp: App {
         .id(graph.id)
     }
 }
-
-#if canImport(KokoroSpikeiOS)
-/// Keeps one composed spike screen for as long as it is pushed, even when the destination is rebuilt.
-private struct VoiceSpikeScreen: View {
-    @State private var screen = KokoroSpikeUIComposer.composed()
-
-    var body: some View { screen }
-}
-#endif
 
 @MainActor
 final class AppNavigation: ObservableObject {

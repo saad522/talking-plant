@@ -19,6 +19,9 @@ on the Claude Design canvas. When this document and the code disagree, this docu
 
 ## 2. Palette
 
+The scene (day / thirsty / night) still picks the body and the palette from the readings.
+The clock only picks where the body sits on its arc.
+
 ### Day (default)
 
 | Token | Hex | Use |
@@ -114,8 +117,13 @@ From top to bottom:
 2. **Scene card**: 16 pt side margins, 440 pt high, corner radius 32, `scene` background.
    - **Window**: 170 × 180 pt, 26 pt radius, 10 pt `windowFrame` border, `sky` fill, a
      cross of 8 pt panes, positioned top-right (x 150, y 24 inside the scene). Day: a
-     44 pt `sun` circle in the top-right of the glass. Night: a crescent moon (40 pt
-     circle with a 36 pt `sky` circle offset over it) and 4 small stars.
+     44 pt `sun` circle. Night: a crescent moon (40 pt circle with a 36 pt `sky` circle
+     offset over it) and 4 fixed small stars. The body travels along an arc inside the
+     glass by the phone's local time: x runs from the left to the right inset, y rises
+     and falls with a sine (horizon 120 pt, rise 80 pt). The sun's arc runs 06:00 to
+     18:00, the moon's 18:00 to 06:00. Outside its hours a body waits at the nearest end.
+     The panes draw over the body. A one-minute step slides over 60 s (linear); a jump
+     (new scene, back from background) and Reduce Motion do not animate.
    - **Sill**: full width, 26 pt high, bottom edge 76 pt above the scene bottom.
      Below it, `floor` color.
    - **Sprout**: 270 × 315 pt, horizontally centered, bottom edge 84 pt above the scene

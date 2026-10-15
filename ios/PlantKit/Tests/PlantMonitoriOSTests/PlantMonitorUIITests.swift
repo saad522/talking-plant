@@ -354,6 +354,49 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
         XCTAssertEqual(sut.celestial, .moon)
     }
 
+    func test_sky_rendersSunHalfwayAtNoon() {
+        let (sut, loader, _, _) = makeSUT(clock: ClockStub(at: time(hour: 12)))
+
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading(lux: 1_000))
+
+        XCTAssertEqual(sut.celestial, .sun)
+        XCTAssertEqual(sut.skyProgress ?? -1, 0.5, accuracy: 0.0001)
+    }
+
+    func test_sky_rendersMoonForNightReadingAtItsClockPosition() {
+        let (sut, loader, _, _) = makeSUT(clock: ClockStub(at: time(hour: 0)))
+
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading(lux: 3))
+
+        XCTAssertEqual(sut.celestial, .moon)
+        XCTAssertEqual(sut.skyProgress ?? -1, 0.5, accuracy: 0.0001)
+    }
+
+    func test_init_rendersRememberedSceneAtCurrentTimeBeforeAnyUpdate() {
+        let (sut, _, _, _) = makeSUT(lastScene: .day, clock: ClockStub(at: time(hour: 9)))
+
+        XCTAssertEqual(sut.celestial, .sun)
+        XCTAssertEqual(sut.skyProgress ?? -1, 0.25, accuracy: 0.0001)
+        XCTAssertEqual(sut.skyIsGradual, false)
+    }
+
+    func test_sky_tickUpdatesProgressGradually() {
+        let scheduleSpy = ScheduleSpy()
+        let clock = ClockStub(at: time(hour: 12))
+        let (sut, loader, _, _) = makeSUT(clock: clock, scheduleSpy: scheduleSpy)
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading(lux: 1_000))
+        XCTAssertEqual(sut.skyProgress ?? -1, 0.5, accuracy: 0.0001)
+
+        clock.advance(by: 60)
+        scheduleSpy.fire()
+
+        XCTAssertEqual(sut.skyProgress ?? -1, 0.5 + 1.0 / 720, accuracy: 0.0001)
+        XCTAssertEqual(sut.skyIsGradual, true)
+    }
+
     func test_scene_rendersTalkAsPrimaryButtonByDay() {
         let (sut, loader, healthLoader, _) = makeSUT()
 

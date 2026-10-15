@@ -16,9 +16,17 @@ final class PlantMonitorStore<Face: View>: ObservableObject {
     @Published var error: PlantMonitorErrorView?
 
     /// Starts on `scene`, so the first frame already has the final palette and sky.
-    init(scene: PlantMonitorScene) {
+    init(scene: PlantMonitorScene, sky: PlantMonitorSkyViewModel) {
         palette = Self.makePalette(for: scene)
-        window = PlantMonitorWindowView(celestial: scene == .night ? .moon : .sun)
+        window = Self.makeWindow(sky: sky, isGradual: false)
+    }
+
+    static func makeWindow(sky: PlantMonitorSkyViewModel, isGradual: Bool) -> PlantMonitorWindowView {
+        PlantMonitorWindowView(
+            celestial: sky.body == .moon ? .moon : .sun,
+            progress: sky.progress,
+            isGradual: isGradual
+        )
     }
 
     static func makePalette(for scene: PlantMonitorScene) -> PlantMonitorPalette {

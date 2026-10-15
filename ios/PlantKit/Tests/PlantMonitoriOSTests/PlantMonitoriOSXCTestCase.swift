@@ -10,6 +10,8 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         speechLoader: SpeechLoaderStub = SpeechLoaderStub(),
         lastScene: PlantMonitorScene = .day,
         haptics: HapticsSpy = HapticsSpy(),
+        clock: ClockStub = ClockStub(at: Date(timeIntervalSince1970: 1_000)),
+        scheduleSpy: ScheduleSpy = ScheduleSpy(),
         actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -27,6 +29,8 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
             lastScene: makeLastSceneStore(saved: lastScene),
             face: { FaceStub(mood: $0) },
             haptics: haptics,
+            clock: clock.now,
+            schedule: scheduleSpy.schedule,
             actionHandler: actionHandler
         )
         trackMemoryLeak(loader, file: file, line: line)
@@ -87,6 +91,34 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         func complete(with line: String, at index: Int = 0) {
             completions[index](.success(line))
         }
+    }
+
+    @MainActor
+    final class ScheduleSpy {
+        private(set) var intervals: [TimeInterval] = []
+        private var ticks: [@MainActor @Sendable () -> Bool] = []
+
+        func schedule(interval: TimeInterval, tick: @escaping @MainActor @Sendable () -> Bool) {
+            intervals.append(interval)
+            ticks.append(tick)
+        }
+
+        @discardableResult
+        func fire(at index: Int = 0) -> Bool {
+            ticks[index]()
+        }
+    }
+
+    final class ClockStub {
+        private var date: Date
+        init(at date: Date) { self.date = date }
+        var now: () -> Date { { self.date } }
+        func advance(by seconds: TimeInterval) { date = date.addingTimeInterval(seconds) }
+    }
+
+    /// Today at `hour`:00 in the current calendar, which the composer reads the sky with.
+    func time(hour: Int, minute: Int = 0) -> Date {
+        Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: Date(timeIntervalSince1970: 1_000_000))!
     }
 
     @MainActor

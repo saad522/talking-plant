@@ -31,6 +31,14 @@ extension PlantMonitorView where Face == FaceStub {
         try? inspect().find(PlantMonitorWindowView.self).actualView().celestial
     }
 
+    var skyProgress: Double? {
+        try? inspect().find(PlantMonitorWindowView.self).actualView().progress
+    }
+
+    var skyIsGradual: Bool? {
+        try? inspect().find(PlantMonitorWindowView.self).actualView().isGradual
+    }
+
     func simulateAppear() {
         try? inspect().scrollView().callOnAppear()
     }

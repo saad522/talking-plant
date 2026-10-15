@@ -1,3 +1,4 @@
+import Foundation
 import PlantMonitor
 import PlantShared
 import SwiftUI
@@ -14,15 +15,24 @@ public enum PlantMonitorUIComposer {
         lastScene: PlantLastSceneStore,
         face: @escaping (PlantMood) -> Face,
         haptics: PlantHapticsClient,
+        clock: @escaping () -> Date,
+        schedule: @escaping SimulatedPeripheralClient.Schedule,
         actionHandler: @escaping (PlantMonitorAction) -> Void
     ) -> PlantMonitorView<Face> {
-        let store = PlantMonitorStore<Face>(scene: lastScene.scene)
+        let calendar = Calendar.current
+        let store = PlantMonitorStore<Face>(
+            scene: lastScene.scene,
+            sky: PlantMonitorSkyViewModel(scene: lastScene.scene, date: clock(), calendar: calendar)
+        )
         let viewModel = PlantMonitorViewModel(
             loader: loader,
             healthLoader: healthLoader,
             connectionLoader: connectionLoader,
             speechLoader: speechLoader,
             plantName: plantName,
+            clock: clock,
+            calendar: calendar,
+            schedule: schedule,
             actionHandler: actionHandler
         )
 
@@ -42,11 +52,14 @@ public enum PlantMonitorUIComposer {
             if let faceMood = scene.faceMood {
                 store?.face = face(faceMood)
             }
-            store?.window = PlantMonitorWindowView(celestial: scene.scene == .night ? .moon : .sun)
             store?.chips = makeChips(for: scene)
             let buttons = makeButtons(isWaterPrimary: scene.isWaterPrimary, viewModel: viewModel, haptics: haptics)
             store?.primaryButton = buttons.primary
             store?.secondaryButtons = buttons.secondary
+        }
+
+        viewModel.loadedSky = { [weak store] update in
+            store?.window = PlantMonitorStore<Face>.makeWindow(sky: update.sky, isGradual: update.isGradual)
         }
 
         viewModel.loadedSpeech = { [weak store] speech in

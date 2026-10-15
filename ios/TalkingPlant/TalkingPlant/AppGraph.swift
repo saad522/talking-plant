@@ -130,6 +130,8 @@ final class AppGraph {
             lastScene: PlantLastSceneStore(defaults: defaults),
             face: PlantFaceUIComposer.composed,
             haptics: haptics,
+            clock: Date.init,
+            schedule: SimulatedPeripheralClient.repeatingTimer,
             actionHandler: { action in
                 switch (action, mode) {
                 case (.waterTap, .sensor):

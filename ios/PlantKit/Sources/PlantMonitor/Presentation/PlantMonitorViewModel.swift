@@ -9,7 +9,12 @@ public final class PlantMonitorViewModel {
     private let healthLoader: PlantHealthLoader
     private let connectionLoader: PlantConnectionLoader
     private let speechLoader: PlantSpeechLoader
+    private let clock: () -> Date
+    private let calendar: Calendar
+    private let schedule: SimulatedPeripheralClient.Schedule
     private let actionHandler: (PlantMonitorAction) -> Void
+    private var latestSky: PlantMonitorSkyViewModel?
+    private var latestScene: PlantMonitorScene?
     private var appeared: Bool = false
     private var latestReading: PlantReading?
     private var latestMood: PlantMood?
@@ -22,6 +27,10 @@ public final class PlantMonitorViewModel {
         let scene: PlantMonitorScene
     }
 
+    /// The sky moves a little each tick. A bigger step than this is a jump.
+    private static let gradualProgress = 0.01
+    private static let skyInterval: TimeInterval = 60
+
     public let historyLabel: String = String.localised(key: "plant.monitor.history.label")
     public let waterLabel: String = String.localised(key: "plant.monitor.water.label")
     public let settingsLabel: String = String.localised(key: "plant.monitor.settings.label")
@@ -33,6 +42,8 @@ public final class PlantMonitorViewModel {
     public var loadedScene: Observer<PlantMonitorSceneViewModel>?
     /// The template line first, then the generated one when it arrives.
     public var loadedSpeech: Observer<String>?
+    /// The sun or moon and where it sits on its arc, with whether the move from the last one is small.
+    public var loadedSky: Observer<(sky: PlantMonitorSkyViewModel, isGradual: Bool)>?
 
     public init(
         loader: PlantReadingLoader,
@@ -40,6 +51,9 @@ public final class PlantMonitorViewModel {
         connectionLoader: PlantConnectionLoader,
         speechLoader: PlantSpeechLoader,
         plantName: String,
+        clock: @escaping () -> Date,
+        calendar: Calendar,
+        schedule: @escaping SimulatedPeripheralClient.Schedule,
         actionHandler: @escaping (PlantMonitorAction) -> Void
     ) {
         self.talkLabel = String(format: String.localised(key: "plant.monitor.talk.label"), plantName)
@@ -47,6 +61,9 @@ public final class PlantMonitorViewModel {
         self.healthLoader = healthLoader
         self.connectionLoader = connectionLoader
         self.speechLoader = speechLoader
+        self.clock = clock
+        self.calendar = calendar
+        self.schedule = schedule
         self.actionHandler = actionHandler
     }
 
@@ -62,6 +79,11 @@ public final class PlantMonitorViewModel {
             case .failure(let error):
                 self?.loadedError?(error)
             }
+        }
+        schedule(Self.skyInterval) { [weak self] in
+            guard let self else { return false }
+            self.loadSky()
+            return true
         }
         loadHealth()
         healthLoader.subscribe { [weak self] in
@@ -92,7 +114,18 @@ public final class PlantMonitorViewModel {
     private func loadScene() {
         let scene = PlantMonitorSceneViewModel(reading: latestReading, mood: latestMood, connection: latestConnection)
         loadedScene?(scene)
+        latestScene = scene.scene
+        loadSky()
         loadSpeech(for: scene)
+    }
+
+    /// Nothing until a scene is known, so the remembered sky stays until then.
+    private func loadSky() {
+        guard let scene = latestScene else { return }
+        let sky = PlantMonitorSkyViewModel(scene: scene, date: clock(), calendar: calendar)
+        let isGradual = latestSky.map { $0.body == sky.body && abs(sky.progress - $0.progress) <= Self.gradualProgress } ?? false
+        latestSky = sky
+        loadedSky?((sky, isGradual))
     }
 
     /// A failed load keeps the template line. A result for an old key is dropped.

@@ -116,6 +116,9 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
             connectionLoader: connectionLoader,
             speechLoader: SpeechLoaderStub(),
             plantName: "Sprout",
+            clock: { self.anyDate() },
+            calendar: .current,
+            schedule: ScheduleSpy().schedule,
             actionHandler: { _ in }
         )
         var received: [PlantConnection?] = []
@@ -203,6 +206,9 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
             connectionLoader: ConnectionLoaderStub(),
             speechLoader: SpeechLoaderStub(),
             plantName: "Sprout",
+            clock: { self.anyDate() },
+            calendar: .current,
+            schedule: ScheduleSpy().schedule,
             actionHandler: { _ in }
         )
         var received: [PlantMood] = []
@@ -320,7 +326,7 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
 
     func test_appear_doesNotDeliverAfterSUTIsReleased() {
         let loader = LoaderStub()
-        var sut: PlantMonitorViewModel? = PlantMonitorViewModel(loader: loader, healthLoader: HealthLoaderStub(), connectionLoader: ConnectionLoaderStub(), speechLoader: SpeechLoaderStub(), plantName: "Sprout", actionHandler: { _ in })
+        var sut: PlantMonitorViewModel? = PlantMonitorViewModel(loader: loader, healthLoader: HealthLoaderStub(), connectionLoader: ConnectionLoaderStub(), speechLoader: SpeechLoaderStub(), plantName: "Sprout", clock: { self.anyDate() }, calendar: .current, schedule: ScheduleSpy().schedule, actionHandler: { _ in })
         var received: [PlantReading] = []
         sut?.loadedReading = { received.append($0) }
 
@@ -455,6 +461,9 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
             connectionLoader: ConnectionLoaderStub(),
             speechLoader: speechLoader,
             plantName: "Sprout",
+            clock: { self.anyDate() },
+            calendar: .current,
+            schedule: ScheduleSpy().schedule,
             actionHandler: { _ in }
         )
         var lines: [String] = []
@@ -468,7 +477,149 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         XCTAssertEqual(lines, [PlantMoodViewModel(mood: .happy).speech])
     }
 
+    // MARK: - Sky
+
+    func test_init_doesNotScheduleOrDeliverSky() {
+        let scheduleSpy = ScheduleSpy()
+        let (sut, _, _, _) = makeSUTWithSpeech(scheduleSpy: scheduleSpy)
+        var skies = 0
+        sut.loadedSky = { _ in skies += 1 }
+
+        XCTAssertEqual(scheduleSpy.intervals, [])
+        XCTAssertEqual(skies, 0)
+    }
+
+    func test_appear_schedulesSkyTickEverySixtySecondsOnce() {
+        let scheduleSpy = ScheduleSpy()
+        let (sut, _, _, _) = makeSUTWithSpeech(scheduleSpy: scheduleSpy)
+
+        sut.appear()
+        sut.appear()
+
+        XCTAssertEqual(scheduleSpy.intervals, [60])
+    }
+
+    func test_scene_deliversSkyForSceneAndClock() {
+        let clock = ClockStub(at: noon())
+        let (sut, loader, _, _) = makeSUTWithSpeech(clock: clock.now)
+        var skies: [(PlantMonitorSkyViewModel.Body, Double, Bool)] = []
+        sut.loadedSky = { skies.append(($0.sky.body, $0.sky.progress, $0.isGradual)) }
+
+        sut.appear()
+        loader.completeSubscription(with: makeReading(lux: 1_000))
+
+        XCTAssertEqual(skies.count, 1)
+        XCTAssertEqual(skies.first?.0, .sun)
+        XCTAssertEqual(skies.first?.1 ?? -1, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(skies.first?.2, false)
+    }
+
+    func test_tick_beforeAnySceneDeliversNoSky() {
+        let scheduleSpy = ScheduleSpy()
+        let (sut, _, _, _) = makeSUTWithSpeech(scheduleSpy: scheduleSpy)
+        var skies = 0
+        sut.loadedSky = { _ in skies += 1 }
+
+        sut.appear()
+        scheduleSpy.fire()
+
+        XCTAssertEqual(skies, 0)
+    }
+
+    func test_tick_aMinuteLaterDeliversGradualSky() {
+        let clock = ClockStub(at: noon())
+        let scheduleSpy = ScheduleSpy()
+        let (sut, loader, _, _) = makeSUTWithSpeech(clock: clock.now, scheduleSpy: scheduleSpy)
+        var skies: [(Double, Bool)] = []
+        sut.loadedSky = { skies.append(($0.sky.progress, $0.isGradual)) }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(lux: 1_000))
+
+        clock.advance(by: 60)
+        scheduleSpy.fire()
+
+        XCTAssertEqual(skies.count, 2)
+        XCTAssertEqual(skies.last?.0 ?? -1, 0.5 + 1.0 / 720, accuracy: 0.0001)
+        XCTAssertEqual(skies.last?.1, true)
+    }
+
+    func test_tick_keepsTickingWhileSUTLives() {
+        let scheduleSpy = ScheduleSpy()
+        let (sut, _, _, _) = makeSUTWithSpeech(scheduleSpy: scheduleSpy)
+        sut.appear()
+
+        XCTAssertTrue(scheduleSpy.fire())
+    }
+
+    func test_sceneChangeFromSunToMoon_isNotGradual() {
+        let clock = ClockStub(at: noon())
+        let (sut, loader, _, _) = makeSUTWithSpeech(clock: clock.now)
+        var skies: [(PlantMonitorSkyViewModel.Body, Bool)] = []
+        sut.loadedSky = { skies.append(($0.sky.body, $0.isGradual)) }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(lux: 1_000))
+
+        loader.completeSubscription(with: makeReading(lux: 3))
+
+        XCTAssertEqual(skies.last?.0, .moon)
+        XCTAssertEqual(skies.last?.1, false)
+    }
+
+    func test_tick_afterThreeHourJumpIsNotGradual() {
+        let clock = ClockStub(at: noon())
+        let scheduleSpy = ScheduleSpy()
+        let (sut, loader, _, _) = makeSUTWithSpeech(clock: clock.now, scheduleSpy: scheduleSpy)
+        var skies: [Bool] = []
+        sut.loadedSky = { skies.append($0.isGradual) }
+        sut.appear()
+        loader.completeSubscription(with: makeReading(lux: 1_000))
+
+        clock.advance(by: 3 * 3_600)
+        scheduleSpy.fire()
+
+        XCTAssertEqual(skies.last, false)
+    }
+
+    func test_tick_stopsOnceSUTIsReleased() {
+        let scheduleSpy = ScheduleSpy()
+        let loader = LoaderStub()
+        var sut: PlantMonitorViewModel? = PlantMonitorViewModel(
+            loader: loader,
+            healthLoader: HealthLoaderStub(),
+            connectionLoader: ConnectionLoaderStub(),
+            speechLoader: SpeechLoaderStub(),
+            plantName: "Sprout",
+            clock: { self.anyDate() },
+            calendar: utcCalendar(),
+            schedule: scheduleSpy.schedule,
+            actionHandler: { _ in }
+        )
+        sut?.appear()
+        trackMemoryLeak(loader)
+
+        sut = nil
+
+        XCTAssertFalse(scheduleSpy.fire())
+    }
+
     // MARK: - Private helpers
+
+    private func utcCalendar() -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }
+
+    private func noon() -> Date {
+        Date(timeIntervalSince1970: 12 * 3_600)
+    }
+
+    private final class ClockStub {
+        private var date: Date
+        init(at date: Date) { self.date = date }
+        var now: () -> Date { { self.date } }
+        func advance(by seconds: TimeInterval) { date = date.addingTimeInterval(seconds) }
+    }
 
     private func makeSUT(
         actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
@@ -481,6 +632,8 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
 
     private func makeSUTWithSpeech(
         connectionLoader: ConnectionLoaderStub = ConnectionLoaderStub(),
+        clock: @escaping () -> Date = { Date(timeIntervalSince1970: 1_000) },
+        scheduleSpy: ScheduleSpy = ScheduleSpy(),
         actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -494,6 +647,9 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
             connectionLoader: connectionLoader,
             speechLoader: speechLoader,
             plantName: "Sprout",
+            clock: clock,
+            calendar: utcCalendar(),
+            schedule: scheduleSpy.schedule,
             actionHandler: actionHandler
         )
         trackMemoryLeak(connectionLoader, file: file, line: line)

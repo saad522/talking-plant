@@ -29,6 +29,12 @@ enum PlantMonitorSize {
     static let moonCutDiameter: CGFloat = 36
     static let moonCutOffset = CGSize(width: 10, height: -6)
     static let celestialInset: CGFloat = 14
+    /// The sun and moon centres sit on an arc: y of the centre at both ends of the arc (inside the glass).
+    static let skyHorizon: CGFloat = 120
+    /// How far above the horizon the centre climbs at the top of the arc.
+    static let skyRise: CGFloat = 80
+    /// A one-minute step slides over this long, so the body moves continuously.
+    static let skySlideDuration: Double = 60
     static let starDiameters: [CGFloat] = [5, 4, 4, 5]
     static let starOffsets: [CGPoint] = [CGPoint(x: 28, y: 26), CGPoint(x: 50, y: 56), CGPoint(x: 24, y: 104), CGPoint(x: 112, y: 112)]
 

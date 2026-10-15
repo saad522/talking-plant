@@ -6,6 +6,8 @@ public final class FallbackPlantSynthesizerClient: PlantSynthesizerClient {
     public typealias Schedule = @MainActor (TimeInterval, @escaping @MainActor () -> Void) -> Void
 
     public static let startTimeout: TimeInterval = 3
+    /// Used instead when the primary model is still loading at `speak`.
+    public static let loadingStartTimeout: TimeInterval = 8
 
     private enum Phase {
         case idle
@@ -15,6 +17,7 @@ public final class FallbackPlantSynthesizerClient: PlantSynthesizerClient {
 
     private let primary: PlantPrimarySynthesizerClient
     private let fallback: PlantSynthesizerClient
+    private let isPrimaryLoading: () -> Bool
     private let schedule: Schedule
     private var phase = Phase.idle
     private var completion: (() -> Void)?
@@ -27,10 +30,12 @@ public final class FallbackPlantSynthesizerClient: PlantSynthesizerClient {
     public init(
         primary: PlantPrimarySynthesizerClient,
         fallback: PlantSynthesizerClient,
+        isPrimaryLoading: @escaping () -> Bool = { false },
         schedule: @escaping Schedule = FallbackPlantSynthesizerClient.sleep
     ) {
         self.primary = primary
         self.fallback = fallback
+        self.isPrimaryLoading = isPrimaryLoading
         self.schedule = schedule
     }
 
@@ -52,7 +57,7 @@ public final class FallbackPlantSynthesizerClient: PlantSynthesizerClient {
         primary.speak(text, style: style) { [weak self] event in
             self?.handle(event, text: text, style: style, generation: current)
         }
-        schedule(Self.startTimeout) { [weak self] in
+        schedule(isPrimaryLoading() ? Self.loadingStartTimeout : Self.startTimeout) { [weak self] in
             guard let self, generation == current, case .primary(started: false) = phase, !primaryGenerated else {
                 Self.logger.debug("start timeout ignored (generation \(current), phase \(String(describing: self?.phase)))")
                 return

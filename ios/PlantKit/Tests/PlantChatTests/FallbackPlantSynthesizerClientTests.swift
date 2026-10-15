@@ -199,6 +199,45 @@ final class FallbackPlantSynthesizerClientTests: PlantChatXCTestCase {
         fallback.finish()
     }
 
+    func test_speakWhileLoading_schedulesTheLongerLoadingTimeout() {
+        let (sut, _, _, schedule) = makeSUT(isPrimaryLoading: { true })
+
+        sut.speak("hello", style: style) {}
+
+        XCTAssertEqual(schedule.intervals, [FallbackPlantSynthesizerClient.loadingStartTimeout])
+        XCTAssertEqual(FallbackPlantSynthesizerClient.loadingStartTimeout, 8)
+    }
+
+    func test_speakWhileNotLoading_schedulesTheNormalStartTimeout() {
+        let (sut, _, _, schedule) = makeSUT(isPrimaryLoading: { false })
+
+        sut.speak("hello", style: style) {}
+
+        XCTAssertEqual(schedule.intervals, [3])
+    }
+
+    func test_loadingTimeoutWithoutAudio_speaksWithFallbackOnce() {
+        let (sut, primary, fallback, schedule) = makeSUT(isPrimaryLoading: { true })
+        sut.speak("hello", style: style) {}
+
+        schedule.fire(at: 0)
+        schedule.fire(at: 0)
+
+        XCTAssertEqual(primary.stopCount, 1)
+        XCTAssertEqual(fallback.speeches, [.init(text: "hello", style: style)])
+    }
+
+    func test_generatedBeforeLoadingTimeout_doesNotUseFallback() {
+        let (sut, primary, fallback, schedule) = makeSUT(isPrimaryLoading: { true })
+        sut.speak("hello", style: style) {}
+
+        primary.send(.generated)
+        schedule.fire(at: 0)
+
+        XCTAssertTrue(fallback.speeches.isEmpty)
+        XCTAssertEqual(primary.stopCount, 0)
+    }
+
     // MARK: - Helpers
 
     private var style: PlantSpeechStyle {
@@ -206,13 +245,14 @@ final class FallbackPlantSynthesizerClientTests: PlantChatXCTestCase {
     }
 
     private func makeSUT(
+        isPrimaryLoading: @escaping () -> Bool = { false },
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (FallbackPlantSynthesizerClient, PrimarySynthesizerSpy, SynthesizerSpy, ScheduleSpy) {
         let primary = PrimarySynthesizerSpy()
         let fallback = SynthesizerSpy()
         let schedule = ScheduleSpy()
-        let sut = FallbackPlantSynthesizerClient(primary: primary, fallback: fallback, schedule: schedule.schedule)
+        let sut = FallbackPlantSynthesizerClient(primary: primary, fallback: fallback, isPrimaryLoading: isPrimaryLoading, schedule: schedule.schedule)
         trackMemoryLeak(sut, file: file, line: line)
         trackMemoryLeak(primary, file: file, line: line)
         trackMemoryLeak(fallback, file: file, line: line)

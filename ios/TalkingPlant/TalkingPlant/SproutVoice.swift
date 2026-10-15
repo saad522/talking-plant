@@ -20,6 +20,9 @@ final class SproutVoice {
     static let minimumPhysicalMemory: UInt64 = 5_500_000_000
 
     let synthesizer: PlantSynthesizerClient
+    private let tracking: TrackingPlantSynthesizerClient
+    /// True while a line is being spoken, for the sound-effect gate (docs/plans/P1-alive.md S7).
+    var isSpeaking: Bool { tracking.isSpeaking }
     private let prewarmModel: () async throws -> Void
     private let unloadModel: () -> Void
     #if DEBUG
@@ -46,13 +49,21 @@ final class SproutVoice {
         if physicalMemory >= Self.minimumPhysicalMemory {
             let generator = KokoroSproutGenerator()
             let chunked = ChunkedPlantSynthesizerClient(generator: generator, player: AVAudioEnginePlantSpeechPlayerClient())
+            let isPrimaryLoading: () -> Bool = { generator.state == .loading }
             #if DEBUG
             self.generator = generator
             self.chunked = chunked
-            synthesizer = FallbackPlantSynthesizerClient(primary: chunked, fallback: apple)
+            let fallback = FallbackPlantSynthesizerClient(primary: chunked, fallback: apple, isPrimaryLoading: isPrimaryLoading)
             #else
-            synthesizer = FallbackPlantSynthesizerClient(primary: chunked, fallback: AVSpeechPlantSynthesizerClient())
+            let fallback = FallbackPlantSynthesizerClient(
+                primary: chunked,
+                fallback: AVSpeechPlantSynthesizerClient(),
+                isPrimaryLoading: isPrimaryLoading
+            )
             #endif
+            let tracking = TrackingPlantSynthesizerClient(decoratee: fallback)
+            self.tracking = tracking
+            synthesizer = tracking
             prewarmModel = { try await generator.prewarm() }
             unloadModel = { generator.unload() }
             memoryWarnings = Task { [weak self] in
@@ -64,10 +75,12 @@ final class SproutVoice {
         }
         #endif
         #if DEBUG
-        synthesizer = apple
+        let tracking = TrackingPlantSynthesizerClient(decoratee: apple)
         #else
-        synthesizer = AVSpeechPlantSynthesizerClient()
+        let tracking = TrackingPlantSynthesizerClient(decoratee: AVSpeechPlantSynthesizerClient())
         #endif
+        self.tracking = tracking
+        synthesizer = tracking
         prewarmModel = {}
         unloadModel = {}
     }

@@ -664,7 +664,8 @@ uncompressed** (install). Under the 200 MB cellular line.
 
 - Peak memory follows audio length: a 38-character chunk gave 5.1 s of audio and 1021 MB on the
   12 Pro. Consider a cap by expected audio length, not only by words and characters.
-- The first greeting uses the Apple voice while Kokoro is still loading.
+- ~~The first greeting uses the Apple voice while Kokoro is still loading.~~ Done in
+  [P1 S6](P1-alive.md): the voice waits up to 8 s while the model loads.
 - Devices under the RAM gate still download the ~164 MB weights. Consider Background Assets.
 - Smarter simple replies on devices without Apple Intelligence (follow yes/no questions, and
   "don't give status").

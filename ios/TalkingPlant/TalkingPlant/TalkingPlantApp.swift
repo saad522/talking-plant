@@ -88,6 +88,8 @@ struct TalkingPlantApp: App {
                     }
                 }
         }
+        // Dark backdrop from the first frame, so nothing white shows behind the content.
+        .background { Color("LaunchBackground").ignoresSafeArea() }
         // A new graph means new view models, so the screen starts over; the navigation path stays.
         .id(graph.id)
     }

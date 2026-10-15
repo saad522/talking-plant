@@ -340,6 +340,11 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
         XCTAssertEqual(sut.celestial, .moon)
     }
 
+    func test_init_rendersLastSceneBeforeAnyUpdate() {
+        XCTAssertEqual(makeSUT(lastScene: .night).sut.celestial, .moon)
+        XCTAssertEqual(makeSUT(lastScene: .day).sut.celestial, .sun)
+    }
+
     func test_scene_rendersMoonWhenOffline() {
         let (sut, _, healthLoader, _) = makeSUT()
 

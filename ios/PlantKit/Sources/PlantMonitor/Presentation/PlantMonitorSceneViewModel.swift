@@ -1,7 +1,7 @@
 import Foundation
 import PlantShared
 
-public enum PlantMonitorScene: Equatable, Sendable {
+public enum PlantMonitorScene: String, Equatable, Sendable {
     case day
     case thirsty
     case night

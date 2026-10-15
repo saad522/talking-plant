@@ -8,6 +8,7 @@ import XCTest
 class PlantMonitoriOSXCTestCase: XCTestCase {
     func makeSUT(
         speechLoader: SpeechLoaderStub = SpeechLoaderStub(),
+        lastScene: PlantMonitorScene = .day,
         actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
         file: StaticString = #filePath,
         line: UInt = #line
@@ -22,6 +23,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
             speechLoader: speechLoader,
             plantName: "Sprout",
             room: "Living room",
+            lastScene: makeLastSceneStore(saved: lastScene),
             face: { FaceStub(mood: $0) },
             actionHandler: actionHandler
         )
@@ -30,6 +32,12 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         trackMemoryLeak(connectionLoader, file: file, line: line)
         trackMemoryLeak(speechLoader, file: file, line: line)
         return (sut, loader, healthLoader, connectionLoader)
+    }
+
+    func makeLastSceneStore(saved scene: PlantMonitorScene) -> PlantLastSceneStore {
+        let store = PlantLastSceneStore(defaults: DefaultsSpy())
+        store.save(scene)
+        return store
     }
 
     func anyNSError() -> NSError {
@@ -159,6 +167,17 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         func completeSubscription(with error: Error, at index: Int = 0) {
             subscriptions[index](.failure(error))
         }
+    }
+
+    final class DefaultsSpy: DefaultsClient {
+        private var strings: [String: String] = [:]
+
+        func set(_ value: Double, forKey key: String) {}
+        func retrieve(forKey key: String) -> Double? { nil }
+        func set(_ value: String, forKey key: String) { strings[key] = value }
+        func retrieveString(forKey key: String) -> String? { strings[key] }
+        func set(_ value: Bool, forKey key: String) {}
+        func retrieveBool(forKey key: String) -> Bool? { nil }
     }
 }
 

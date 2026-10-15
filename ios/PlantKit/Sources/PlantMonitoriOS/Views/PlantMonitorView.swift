@@ -24,6 +24,9 @@ public struct PlantMonitorView<Face: View>: View {
                 actions
             }
             .padding(.bottom, PlantMonitorSize.screenSpacing)
+            .frame(maxWidth: .infinity)
+            // Inside the fade: content arriving or changing shape (first load) is never animated.
+            .transaction(value: store.layoutKey) { $0.animation = nil }
             .animation(sceneFade, value: store.palette)
         }
         .background { store.palette.background.ignoresSafeArea().animation(sceneFade, value: store.palette) }

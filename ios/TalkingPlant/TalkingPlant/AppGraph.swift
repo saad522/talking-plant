@@ -126,6 +126,7 @@ final class AppGraph {
             speechLoader: PlantVoiceSpeechLoaderAdapter(lineLoader: lineLoader),
             plantName: plantName,
             room: "Living room",
+            lastScene: PlantLastSceneStore(defaults: defaults),
             face: PlantFaceUIComposer.composed,
             actionHandler: { action in
                 switch (action, mode) {

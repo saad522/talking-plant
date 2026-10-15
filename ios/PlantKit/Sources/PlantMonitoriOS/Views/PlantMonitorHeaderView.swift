@@ -25,6 +25,7 @@ public struct PlantMonitorHeaderView: View {
                     .font(PlantMonitorFont.subtitle)
                     .foregroundStyle(palette.inkSecondary)
             }
+            .transaction { $0.animation = nil }
             .frame(maxWidth: .infinity, alignment: .leading)
             Button(action: settingsAction) {
                 Image(systemName: "slider.horizontal.3")

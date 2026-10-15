@@ -11,10 +11,11 @@ public enum PlantMonitorUIComposer {
         speechLoader: PlantSpeechLoader,
         plantName: String,
         room: String,
+        lastScene: PlantLastSceneStore,
         face: @escaping (PlantMood) -> Face,
         actionHandler: @escaping (PlantMonitorAction) -> Void
     ) -> PlantMonitorView<Face> {
-        let store = PlantMonitorStore<Face>()
+        let store = PlantMonitorStore<Face>(scene: lastScene.scene)
         let viewModel = PlantMonitorViewModel(
             loader: loader,
             healthLoader: healthLoader,
@@ -34,7 +35,8 @@ public enum PlantMonitorUIComposer {
         }
 
         viewModel.loadedScene = { [weak store, weak viewModel] scene in
-            store?.palette = palette(for: scene.scene)
+            lastScene.save(scene.scene)
+            store?.palette = PlantMonitorStore<Face>.makePalette(for: scene.scene)
             store?.subtitle = scene.header(name: plantName, room: room).subtitle
             if let faceMood = scene.faceMood {
                 store?.face = face(faceMood)
@@ -56,14 +58,6 @@ public enum PlantMonitorUIComposer {
         }
 
         return PlantMonitorView(store: store, viewModel: viewModel)
-    }
-
-    private static func palette(for scene: PlantMonitorScene) -> PlantMonitorPalette {
-        switch scene {
-        case .day: .day
-        case .thirsty: .thirsty
-        case .night: .night
-        }
     }
 
     private static func makeChips(for scene: PlantMonitorSceneViewModel) -> [PlantSensorChipView] {

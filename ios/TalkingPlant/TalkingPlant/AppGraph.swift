@@ -44,6 +44,7 @@ final class AppGraph {
         mode: PlantDeviceMode,
         store: PlantReadingStore,
         defaults: DefaultsClient,
+        voice: SproutVoice,
         actionHandler: @escaping (AppAction) -> Void
     ) {
         self.mode = mode
@@ -151,7 +152,7 @@ final class AppGraph {
             settings: settings,
             transcriptLoader: TranscriberPlantTranscriptLoader(client: Self.makeTranscriberClient(plantName: plantName)),
             audioSession: AVAudioSessionPlantAudioSessionClient(),
-            synthesizer: AVSpeechPlantSynthesizerClient(),
+            synthesizer: voice.synthesizer,
             spokenReplies: PlantSpokenReplySettings(defaults: defaults),
             plantName: plantName,
             face: PlantFaceUIComposer.composed,
@@ -323,17 +324,19 @@ final class AppGraphStore: ObservableObject {
     private let navigation: AppNavigation
     private let defaults: DefaultsClient
     private let relay: ActionRelay
+    let voice: SproutVoice
     private var stores: [PlantDeviceMode: PlantReadingStore] = [:]
 
-    init(navigation: AppNavigation, defaults: DefaultsClient = UserDefaultsClient()) {
+    init(navigation: AppNavigation, voice: SproutVoice, defaults: DefaultsClient = UserDefaultsClient()) {
         let relay = ActionRelay()
         let mode = PlantDeviceSettings(defaults: defaults).loadMode()
         let store = Self.makeStore(fileName: Self.fileName(for: mode))
         self.navigation = navigation
         self.defaults = defaults
         self.relay = relay
+        self.voice = voice
         stores[mode] = store
-        graph = AppGraph(mode: mode, store: store, defaults: defaults, actionHandler: { relay.handle($0) })
+        graph = AppGraph(mode: mode, store: store, defaults: defaults, voice: voice, actionHandler: { relay.handle($0) })
         relay.handle = { [weak self] in self?.handle($0) }
     }
 
@@ -359,7 +362,7 @@ final class AppGraphStore: ObservableObject {
     }
 
     private func makeGraph(mode: PlantDeviceMode) -> AppGraph {
-        AppGraph(mode: mode, store: store(for: mode), defaults: defaults, actionHandler: { [relay] in relay.handle($0) })
+        AppGraph(mode: mode, store: store(for: mode), defaults: defaults, voice: voice, actionHandler: { [relay] in relay.handle($0) })
     }
 
     /// One store per mode, kept for the life of the app, so switching back never opens a second container on the same file.

@@ -41,7 +41,7 @@
 "plant.chat.personality.label" = "Personality";
 "plant.chat.input.placeholder" = "Say something…";
 "plant.chat.send.label" = "Send";
-"plant.chat.unavailable.notice" = "%@'s voice needs Apple Intelligence. Replies are simple for now.";
+"plant.chat.unavailable.notice" = "Smart replies need Apple Intelligence. %@ will keep it simple for now.";
 
 "plant.chat.listening.label" = "Listening…";
 "plant.chat.mic.talk.label" = "Talk to %@";

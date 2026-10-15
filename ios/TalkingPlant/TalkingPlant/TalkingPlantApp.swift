@@ -25,31 +25,47 @@ import SwiftUI
 struct TalkingPlantApp: App {
     @StateObject private var navigation: AppNavigation
     @StateObject private var graphStore: AppGraphStore
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let navigation = AppNavigation()
         _navigation = StateObject(wrappedValue: navigation)
-        _graphStore = StateObject(wrappedValue: AppGraphStore(navigation: navigation))
+        // The voice is created inside the autoclosure, so it exists once, in the store that SwiftUI keeps.
+        // A second `App.init` must not create a voice that prewarms a model the chat never uses.
+        _graphStore = StateObject(wrappedValue: AppGraphStore(navigation: navigation, voice: SproutVoice()))
     }
 
     var body: some Scene {
         WindowGroup {
-            #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-PlantTestPeripheral") {
-                TestPeripheralView()
-            } else {
-                appContent
-            }
-            #else
-            appContent
-            #endif
+            rootContent
         }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active: graphStore.voice.prewarm()
+            case .background: graphStore.voice.unload(from: "scenePhase background")
+            default: break
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var rootContent: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-PlantTestPeripheral") {
+            TestPeripheralView()
+        } else {
+            appContent
+        }
+        #else
+        appContent
+        #endif
     }
 
     private var appContent: some View {
         let graph = graphStore.graph
         return NavigationStack(path: $navigation.path) {
             graph.monitor
+                .onAppear { graphStore.voice.prewarm() }
                 #if DEBUG
                 .toolbar {
                     if let simulatedPlant = graph.simulatedPlant {
@@ -66,6 +82,9 @@ struct TalkingPlantApp: App {
                     case .device: graph.device
                     case .devicePicker: graph.devicePicker
                     case .calibration: graph.makeCalibration()
+                    #if DEBUG
+                    case .voiceCheck: VoiceCheckView(voice: graphStore.voice)
+                    #endif
                     }
                 }
         }
@@ -82,6 +101,9 @@ final class AppNavigation: ObservableObject {
         case device
         case devicePicker
         case calibration
+        #if DEBUG
+        case voiceCheck
+        #endif
     }
 
     @Published var path: [Route] = []
@@ -108,6 +130,9 @@ final class AppNavigation: ObservableObject {
         switch action {
         case .backTap: _ = path.popLast()
         case .openSettings: break
+        #if DEBUG
+        case .voiceCheckTap: path.append(.voiceCheck)
+        #endif
         }
     }
 }

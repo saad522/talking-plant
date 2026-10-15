@@ -1,5 +1,6 @@
 import Foundation
 import PlantShared
+import os
 
 @MainActor
 public final class PlantChatViewModel {
@@ -15,6 +16,7 @@ public final class PlantChatViewModel {
     private let transcriptLoader: PlantTranscriptLoader
     private let audioSession: PlantAudioSessionClient
     private let synthesizer: PlantSynthesizerClient
+    private static let logger = Logger(subsystem: "TalkingPlant", category: "voice")
     private let spokenReplies: PlantSpokenReplySettings
     private let plantName: String
     private let currentDate: () -> Date
@@ -194,7 +196,7 @@ public final class PlantChatViewModel {
         case .listening:
             transcriptLoader.stop()
         case .speaking:
-            cancelSpeech()
+            cancelSpeech(from: "micTap while speaking")
             startListening()
         case .thinking:
             break
@@ -207,12 +209,12 @@ public final class PlantChatViewModel {
         guard isEnabled == false else { return }
         speaksPendingReply = false
         if activity == .speaking {
-            stopVoice()
+            stopVoice(from: "setSpokenReplies(off)")
         }
     }
 
     public func keyboardTap() {
-        stopVoice()
+        stopVoice(from: "keyboardTap")
         loadedInputMode?(.keyboard)
     }
 
@@ -227,13 +229,13 @@ public final class PlantChatViewModel {
     }
 
     public func endTap() {
-        stopVoice()
+        stopVoice(from: "endTap")
         actionHandler(.backTap)
     }
 
     /// Called when the screen goes away or the scene leaves `.active`.
-    public func disappear() {
-        stopVoice()
+    public func disappear(from source: String = "disappear") {
+        stopVoice(from: source)
     }
 
     // MARK: - Private helpers
@@ -318,7 +320,7 @@ public final class PlantChatViewModel {
         switch (event, activity) {
         case (.interruptionBegan, .listening), (.outputDeviceLost, .listening),
              (.interruptionBegan, .speaking), (.outputDeviceLost, .speaking):
-            stopVoice()
+            stopVoice(from: "audio session \(event)")
         case (.interruptionBegan, .thinking):
             speaksPendingReply = false
             deactivateAudioSession()
@@ -328,7 +330,8 @@ public final class PlantChatViewModel {
     }
 
     /// Ends the turn without sending anything. A reply still on its way is shown, not spoken.
-    private func stopVoice() {
+    private func stopVoice(from source: String) {
+        Self.logger.debug("stopVoice from: \(source), activity \(String(describing: self.activity))")
         speaksPendingReply = false
         if activity == .listening {
             finishListening()
@@ -336,24 +339,42 @@ public final class PlantChatViewModel {
             setActivity(.idle)
         }
         if activity == .speaking {
-            cancelSpeech()
+            cancelSpeech(from: source)
             setActivity(.idle)
         }
         deactivateAudioSession()
     }
 
-    private func speak(_ text: String) {
+    /// A plant line that is not a reply, spoken when spoken replies are on.
+    private func appendSpokenGreeting(_ text: String) {
+        append(text, from: .plant)
+        let spoken = PlantSpeechText.clean(text)
+        guard spokenReplies.isEnabled, spoken.isEmpty == false, activity == .idle else { return }
+        if isAudioSessionActive == false {
+            guard audioSession.activate() else { return }
+            isAudioSessionActive = true
+        }
+        speak(spoken, from: "greeting")
+    }
+
+    private func speak(_ text: String, from source: String = "reply") {
         speech += 1
         let speech = speech
+        Self.logger.debug("speak from: \(source) (\(text.count) chars, turn \(speech))")
         setActivity(.speaking)
-        synthesizer.speak(text, style: settings.load().speechStyle) { [weak self] in
-            guard let self, self.speech == speech else { return }
+        synthesizer.speak(text, style: settings.load().speechStyle.adjusted(for: latestFacts?.mood)) { [weak self] in
+            guard let self, self.speech == speech else {
+                Self.logger.debug("speech completion dropped: turn \(speech) is now \(self?.speech ?? -1)")
+                return
+            }
+            Self.logger.debug("speech completion: turn \(speech) done")
             self.deactivateAudioSession()
             self.setActivity(.idle)
         }
     }
 
-    private func cancelSpeech() {
+    private func cancelSpeech(from source: String) {
+        Self.logger.debug("stop from: \(source) (turn \(self.speech))")
         speech += 1
         synthesizer.stop()
     }
@@ -386,7 +407,7 @@ public final class PlantChatViewModel {
 
     /// Drops the messages and any reply still on its way.
     private func restartConversation() {
-        stopVoice()
+        stopVoice(from: "restartConversation")
         if activity == .thinking {
             setActivity(.idle)
         }
@@ -408,16 +429,16 @@ public final class PlantChatViewModel {
         loadFacts { [weak self] in
             guard let self, self.conversation == conversation else { return }
             guard let facts = self.latestFacts else {
-                self.append(PlantChatTemplate.greeting, from: .plant)
+                self.appendSpokenGreeting(PlantChatTemplate.greeting)
                 return
             }
             self.lineLoader.load(PlantVoiceLineRequest(facts: facts, purpose: .greeting)) { [weak self] result in
                 guard let self, self.conversation == conversation else { return }
                 switch result {
                 case .success(let line) where self.latestFacts?.mood == facts.mood:
-                    self.append(line, from: .plant)
+                    self.appendSpokenGreeting(line)
                 default:
-                    self.append(PlantChatTemplate.greeting, from: .plant)
+                    self.appendSpokenGreeting(PlantChatTemplate.greeting)
                 }
             }
         }

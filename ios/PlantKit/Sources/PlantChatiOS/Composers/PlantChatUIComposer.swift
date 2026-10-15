@@ -74,12 +74,12 @@ public enum PlantChatUIComposer {
 
         viewModel.loadedPersonality = { [weak store, weak viewModel] personality in
             store?.personality = personality
-            refreshMenu(store: store, viewModel: viewModel)
+            refreshMenu(store: store, viewModel: viewModel, actionHandler: actionHandler)
         }
 
         viewModel.loadedSpokenReplies = { [weak store, weak viewModel] isEnabled in
             store?.isSpeakingReplies = isEnabled
-            refreshMenu(store: store, viewModel: viewModel)
+            refreshMenu(store: store, viewModel: viewModel, actionHandler: actionHandler)
         }
 
         return PlantChatView(store: store, viewModel: viewModel)
@@ -93,12 +93,26 @@ public enum PlantChatUIComposer {
         )
     }
 
-    private static func refreshMenu<Face: View>(store: PlantChatStore<Face>?, viewModel: PlantChatViewModel?) {
+    private static func refreshMenu<Face: View>(
+        store: PlantChatStore<Face>?,
+        viewModel: PlantChatViewModel?,
+        actionHandler: @escaping (PlantChatAction) -> Void
+    ) {
         guard let store, let current = store.personality else { return }
-        store.personalityMenu = makeMenu(current: current, isSpeakingReplies: store.isSpeakingReplies, viewModel: viewModel)
+        store.personalityMenu = makeMenu(
+            current: current,
+            isSpeakingReplies: store.isSpeakingReplies,
+            viewModel: viewModel,
+            actionHandler: actionHandler
+        )
     }
 
-    private static func makeMenu(current: PlantPersonality, isSpeakingReplies: Bool, viewModel: PlantChatViewModel?) -> PlantChatPersonalityMenuView {
+    private static func makeMenu(
+        current: PlantPersonality,
+        isSpeakingReplies: Bool,
+        viewModel: PlantChatViewModel?,
+        actionHandler: @escaping (PlantChatAction) -> Void
+    ) -> PlantChatPersonalityMenuView {
         PlantChatPersonalityMenuView(
             accessibilityLabel: viewModel?.personalityLabel ?? "",
             options: (viewModel?.personalities ?? []).map { option in
@@ -113,7 +127,17 @@ public enum PlantChatUIComposer {
                 label: viewModel?.speakRepliesLabel ?? "",
                 isOn: isSpeakingReplies,
                 set: { [weak viewModel] in viewModel?.setSpokenReplies($0) }
-            )
+            ),
+            voiceCheck: voiceCheck(actionHandler: actionHandler)
         )
+    }
+
+    /// The voice check entry, DEBUG builds only.
+    private static func voiceCheck(actionHandler: @escaping (PlantChatAction) -> Void) -> (() -> Void)? {
+        #if DEBUG
+        return { actionHandler(.voiceCheckTap) }
+        #else
+        return nil
+        #endif
     }
 }

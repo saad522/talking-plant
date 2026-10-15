@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4A94DEE6307FD24B00E9F97E /* PlantKokoro in Frameworks */ = {isa = PBXBuildFile; productRef = 4A94DEE5307FD24B00E9F97E /* PlantKokoro */; };
 		4AC4892001799203005E9A99 /* PlantShared in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892000799203005E9A99 /* PlantShared */; };
 		4AC4892003799203005E9A99 /* PlantMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892002799203005E9A99 /* PlantMonitor */; };
 		4AC4892005799203005E9A99 /* PlantMonitoriOS in Frameworks */ = {isa = PBXBuildFile; productRef = 4AC4892004799203005E9A99 /* PlantMonitoriOS */; };
@@ -89,6 +90,7 @@
 				4AC489200D799203005E9A99 /* PlantFaceiOS in Frameworks */,
 				4AC489200F799203005E9A99 /* PlantChat in Frameworks */,
 				4AC4892011799203005E9A99 /* PlantChatiOS in Frameworks */,
+				4A94DEE6307FD24B00E9F97E /* PlantKokoro in Frameworks */,
 				4AF3EAA5307E92D50065519D /* PlantDeviceiOS in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -145,6 +147,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 4A69B581307973B100235D0E /* Build configuration list for PBXNativeTarget "TalkingPlant" */;
 			buildPhases = (
+				4A9250E0307EE4AC007CD17B /* Check Kokoro assets */,
 				4A69B55C307973AF00235D0E /* Sources */,
 				4A69B55D307973AF00235D0E /* Frameworks */,
 				4A69B55E307973AF00235D0E /* Resources */,
@@ -169,6 +172,7 @@
 				4AC4892010799203005E9A99 /* PlantChatiOS */,
 				4AEE8E23307E7EDA00DE30FA /* PlantTestPeripheral */,
 				4AF3EAA4307E92D50065519D /* PlantDeviceiOS */,
+				4A94DEE5307FD24B00E9F97E /* PlantKokoro */,
 			);
 			productName = TalkingPlant;
 			productReference = 4A69B560307973AF00235D0E /* TalkingPlant.app */;
@@ -254,6 +258,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				4AC4891B30799203005E9A99 /* XCLocalSwiftPackageReference "../PlantKit" */,
+				4A94DEE4307FD24B00E9F97E /* XCLocalSwiftPackageReference "../PlantKokoro" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4A69B561307973AF00235D0E /* Products */;
@@ -290,6 +295,30 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		4A9250E0307EE4AC007CD17B /* Check Kokoro assets */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../PlantKokoro/Sources/PlantKokoro/Resources/kokoro-f16.safetensors",
+				"$(SRCROOT)/../PlantKokoro/Sources/PlantKokoro/Resources/sprout.safetensors",
+			);
+			name = "Check Kokoro assets";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "RESOURCES=\"$SRCROOT/../PlantKokoro/Sources/PlantKokoro/Resources\"\nfor file in kokoro-f16.safetensors sprout.safetensors; do\n  if [ ! -f \"$RESOURCES/$file\" ]; then\n    echo \"error: $file is missing. Run: make -C tools/kokoro assets\"\n    exit 1\n  fi\ndone\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		4A69B55C307973AF00235D0E /* Sources */ = {
@@ -654,6 +683,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		4A94DEE4307FD24B00E9F97E /* XCLocalSwiftPackageReference "../PlantKokoro" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../PlantKokoro;
+		};
 		4AC4891B30799203005E9A99 /* XCLocalSwiftPackageReference "../PlantKit" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../PlantKit;
@@ -661,6 +694,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		4A94DEE5307FD24B00E9F97E /* PlantKokoro */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlantKokoro;
+		};
 		4AC4892000799203005E9A99 /* PlantShared */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PlantShared;

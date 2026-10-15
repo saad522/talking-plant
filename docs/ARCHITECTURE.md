@@ -38,6 +38,7 @@ ios/
 │   ├── TalkingPlant.xcodeproj
 │   └── TalkingPlant/
 │       └── TalkingPlantApp.swift      # creates clients/loaders, composes features, handles Actions
+├── PlantKokoro/                       # local Swift package: Kokoro voice (MLX), vendored fork. Linked only by the app
 └── PlantKit/                          # local Swift package
     ├── Package.swift
     ├── Sources/
@@ -102,6 +103,7 @@ Later features follow the same pattern: `PlantChat` / `PlantChatiOS`, `PlantChec
 | `PlantXTests` | XCTest, `PlantX`, `PlantShared` |
 | `PlantXiOSTests` | XCTest, ViewInspector, `PlantXiOS`, `PlantX`, `PlantShared` |
 | App target | everything; it is the composition root |
+| `PlantKokoro` (separate package) | MLX, its vendored KokoroSwift / MisakiSwift. Linked only by the app; never imported by PlantKit |
 
 A Feature target never imports another Feature target. When one feature needs another
 feature's view, it receives it as a generic view through a factory closure (section 5.4).
@@ -170,6 +172,9 @@ stays the same; these are the only deliberate differences from a Swift 5 codebas
    if one is needed); all CoreBluetooth code lives in PlantKit, never in the app target
    (its default isolation is `MainActor`); the client is created only in sensor mode,
    because creating it shows the Bluetooth permission prompt.
+   Audio-thread callbacks (`write`, `scheduleBuffer`, taps) follow the same rule: the closures
+   are created in `nonisolated static` functions and hop to the main actor with
+   `DispatchQueue.main.async` + `assumeIsolated`.
 3. **Domain models are `Sendable`** in addition to `Equatable`. Structs of value types get
    this for free.
 4. **Completion handlers stay.** Loaders keep the `completion: @escaping (Result) -> Void`

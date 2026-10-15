@@ -50,6 +50,15 @@ class PlantChatXCTestCase: XCTestCase {
         )
     }
 
+    func makeVoice(
+        identifier: String = "voice",
+        name: String = "Voice",
+        language: String = "en-US",
+        quality: PlantSynthesisVoice.Quality = .standard
+    ) -> PlantSynthesisVoice {
+        PlantSynthesisVoice(identifier: identifier, name: name, language: language, quality: quality)
+    }
+
     func trackMemoryLeak(_ instance: AnyObject, file: StaticString = #filePath, line: UInt = #line) {
         addTeardownBlock { [weak instance] in
             XCTAssertNil(instance, "Instance should be deallocated. Potential memory leak", file: file, line: line)
@@ -501,6 +510,93 @@ class PlantChatXCTestCase: XCTestCase {
 
         func finish(at index: Int = 0) {
             completions[index]()
+        }
+    }
+
+    @MainActor
+    final class PrimarySynthesizerSpy: PlantPrimarySynthesizerClient {
+        struct Speech: Equatable {
+            let text: String
+            let style: PlantSpeechStyle
+        }
+
+        private(set) var speeches: [Speech] = []
+        private(set) var stopCount = 0
+
+        private var updates: [(PlantSpeechEvent) -> Void] = []
+
+        func speak(_ text: String, style: PlantSpeechStyle, update: @escaping (PlantSpeechEvent) -> Void) {
+            speeches.append(Speech(text: text, style: style))
+            updates.append(update)
+        }
+
+        func stop() {
+            stopCount += 1
+        }
+
+        func send(_ event: PlantSpeechEvent, at index: Int = 0) {
+            updates[index](event)
+        }
+    }
+
+    @MainActor
+    final class GeneratorSpy: PlantSpeechGeneratorClient {
+        struct Request: Equatable {
+            let text: String
+            let speed: Float
+        }
+
+        private(set) var requests: [Request] = []
+        private(set) var utterancesStarted = 0
+        private(set) var utterancesFinished = 0
+
+        func utteranceStarted() { utterancesStarted += 1 }
+        func utteranceFinished() { utterancesFinished += 1 }
+
+        private var continuations: [CheckedContinuation<[Float], Error>] = []
+        func generate(_ text: String, speed: Float) async throws -> [Float] {
+            requests.append(Request(text: text, speed: speed))
+            return try await withCheckedThrowingContinuation { continuations.append($0) }
+        }
+
+        func complete(with samples: [Float], at index: Int = 0) {
+            continuations[index].resume(returning: samples)
+        }
+
+        func complete(with error: Error, at index: Int = 0) {
+            continuations[index].resume(throwing: error)
+        }
+    }
+
+    @MainActor
+    final class PlayerSpy: PlantSpeechPlayerClient {
+        enum Message: Equatable {
+            case start
+            case enqueue([Float])
+            case stop
+        }
+
+        var startError: Error?
+        var enqueuedCount: Int { completions.count }
+        private(set) var messages: [Message] = []
+
+        func start() throws {
+            messages.append(.start)
+            if let startError { throw startError }
+        }
+
+        private var completions: [(Bool) -> Void] = []
+        func enqueue(_ samples: [Float], completion: @escaping (Bool) -> Void) {
+            messages.append(.enqueue(samples))
+            completions.append(completion)
+        }
+
+        func stop() {
+            messages.append(.stop)
+        }
+
+        func complete(with succeeded: Bool, at index: Int = 0) {
+            completions[index](succeeded)
         }
     }
 }

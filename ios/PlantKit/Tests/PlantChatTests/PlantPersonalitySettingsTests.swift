@@ -32,8 +32,8 @@ final class PlantPersonalitySettingsTests: PlantChatXCTestCase {
         XCTAssertEqual(sut.load(), .cheerful)
     }
 
-    func test_load_deliversCheerfulForHiddenPersonalities() {
-        [PlantPersonality.grumpyGrandma, .dramatic].forEach { personality in
+    func test_load_deliversCheerfulForStoredNonCheerfulPersonalities() {
+        [PlantPersonality.chillSurfer, .politeButler, .grumpyGrandma, .dramatic].forEach { personality in
             let (sut, defaults) = makeSUT()
             defaults.stub(personality.rawValue, forKey: "plant.chat.personality")
 
@@ -41,8 +41,8 @@ final class PlantPersonalitySettingsTests: PlantChatXCTestCase {
         }
     }
 
-    func test_available_hidesGrumpyGrandmaAndDramatic() {
-        XCTAssertEqual(PlantPersonality.available, [.cheerful, .chillSurfer, .politeButler])
+    func test_available_isCheerfulOnlyInV1() {
+        XCTAssertEqual(PlantPersonality.available, [.cheerful])
     }
 
     func test_save_storesRawValueUnderKey() {
@@ -57,9 +57,9 @@ final class PlantPersonalitySettingsTests: PlantChatXCTestCase {
         let (sut, _) = makeSUT()
 
         sut.save(.politeButler)
-        sut.save(.chillSurfer)
+        sut.save(.cheerful)
 
-        XCTAssertEqual(sut.load(), .chillSurfer)
+        XCTAssertEqual(sut.load(), .cheerful)
     }
 
     // MARK: - Private helpers

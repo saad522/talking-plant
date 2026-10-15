@@ -6,3 +6,8 @@ DerivedData/
 *.xcuserstate
 .claude/settings.local.json
 firmware/build/
+
+# Kokoro assets (tools/kokoro)
+tools/kokoro/.venv/
+tools/kokoro/.cache/
+ios/PlantKokoro/Sources/PlantKokoro/Resources/*.safetensors

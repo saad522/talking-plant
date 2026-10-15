@@ -36,26 +36,35 @@ public struct PlantChatPersonalityMenuView: View {
     public let accessibilityLabel: String
     public let options: [Option]
     public let speakReplies: SpeakReplies
+    /// DEBUG only: opens the voice check screen.
+    public let voiceCheck: (() -> Void)?
 
-    init(accessibilityLabel: String, options: [Option], speakReplies: SpeakReplies) {
+    init(accessibilityLabel: String, options: [Option], speakReplies: SpeakReplies, voiceCheck: (() -> Void)? = nil) {
         self.accessibilityLabel = accessibilityLabel
         self.options = options
         self.speakReplies = speakReplies
+        self.voiceCheck = voiceCheck
     }
 
     public var body: some View {
         Menu {
-            ForEach(options) { option in
-                Button(action: option.select) {
-                    if option.isSelected {
-                        Label(option.label, systemImage: "checkmark")
-                    } else {
-                        Text(option.label)
+            // The picker only shows when there is a choice (v1 ships cheerful only).
+            if options.count > 1 {
+                ForEach(options) { option in
+                    Button(action: option.select) {
+                        if option.isSelected {
+                            Label(option.label, systemImage: "checkmark")
+                        } else {
+                            Text(option.label)
+                        }
                     }
                 }
+                Divider()
             }
-            Divider()
             Toggle(speakReplies.label, isOn: Binding(get: { speakReplies.isOn }, set: speakReplies.set))
+            if let voiceCheck {
+                Button("Voice check", action: voiceCheck)
+            }
         } label: {
             Image(systemName: "slider.horizontal.3")
                 .font(PlantChatFont.headerIcon)

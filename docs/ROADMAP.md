@@ -64,6 +64,13 @@ One milestone per Claude Code session. Each ends with passing tests and a short 
 - Keyboard mode, microphone notices, and the template fallback still work.
 - **Done when:** talking and spoken replies work on a real iPhone.
 
+## M5c — Sprout's own voice (Kokoro)
+- Plan: `docs/plans/M5c-kokoro.md` (spike: `docs/spikes/kokoro.md`).
+- One on-device Kokoro voice ("sprout") in the `PlantKokoro` package, behind
+  `PlantSynthesizerClient`; the Apple voice is always the fallback. Cheerful only, picker hidden.
+- Kokoro runs on devices with at least 6 GB of RAM.
+- **Done when:** Sprout speaks with Kokoro on a real iPhone, with the fallback working. Done (K0–K12).
+
 ## M6 — Real Bluetooth client
 - `CoreBluetoothPeripheralClient` in PlantShared: scan by service UUID, connect,
   subscribe, reconnect, read, write.

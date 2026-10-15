@@ -14,6 +14,9 @@ final class PlantMonitorStore<Face: View>: ObservableObject {
     @Published var secondaryButtons: [PlantMonitorButtonView] = []
     @Published var loading: LoadingSkeletonView? = LoadingSkeletonView()
     @Published var error: PlantMonitorErrorView?
+    /// Set once by the composer. Tapping the character makes Sprout say its line.
+    var sproutLabel: String = ""
+    var sproutTap: () -> Void = {}
 
     /// Starts on `scene`, so the first frame already has the final palette and sky.
     init(scene: PlantMonitorScene, sky: PlantMonitorSkyViewModel) {

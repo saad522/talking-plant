@@ -39,6 +39,14 @@ extension PlantMonitorView where Face == FaceStub {
         try? inspect().find(PlantMonitorWindowView.self).actualView().isGradual
     }
 
+    var sproutLabel: String? {
+        try? inspect().find(ViewType.Button.self, where: { (try? $0.find(FaceStub.self)) != nil }).accessibilityLabel().string()
+    }
+
+    func simulateTapOnSprout() {
+        try? inspect().find(ViewType.Button.self, where: { (try? $0.find(FaceStub.self)) != nil }).tap()
+    }
+
     func simulateAppear() {
         try? inspect().scrollView().callOnAppear()
     }

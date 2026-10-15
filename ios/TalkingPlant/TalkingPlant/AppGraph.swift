@@ -132,6 +132,9 @@ final class AppGraph {
             face: PlantFaceUIComposer.composed,
             haptics: haptics,
             sounds: sounds,
+            voice: PlantMonitorVoiceAdapter(synthesizer: voice.synthesizer, settings: settings),
+            spokenLines: PlantSpokenLineStore(defaults: defaults),
+            speaksLines: { PlantSpokenReplySettings(defaults: defaults).isEnabled },
             clock: Date.init,
             schedule: SimulatedPeripheralClient.repeatingTimer,
             actionHandler: { action in

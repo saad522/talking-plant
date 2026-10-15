@@ -143,6 +143,20 @@ From top to bottom:
 
 Icons are SF Symbols equivalents of: drop, sun, thermometer, mic, chart, flame, sliders.
 
+**Sprout speaks on home.** The character is a button ("Hear <name>" for VoiceOver). Tapping it
+says the bubble's final line (the generated line, or the template when generating failed), and
+a tap plays no haptic. Sprout also speaks on its own, only while home is on screen and the app is
+active:
+- about 2.5 s after home opens (so the intro and the first mood have passed), when the mood differs
+  from the last one spoken, or on the first open of a new local day. The last mood and day are
+  saved, so a relaunch with the same mood stays quiet.
+- never the `offline` mood (a tap still speaks it), at most one line every 60 s (a mood change
+  inside that window waits for it to end), and nothing while "Speak replies" is off, taps included.
+- leaving home (Talk, History, Settings, background) stops a home line at once. Home only stops
+  speech it started.
+- a tap while an automatic line plays restarts it as a tapped line. A tap while a tapped line plays
+  does nothing.
+
 ---
 
 ## 5. The Sprout character
@@ -299,6 +313,12 @@ only, never a sound.
 | `chime` | Watered, and a valid calibration save, together with the `success` haptic |
 | `greet` | Cold-launch intro, as the greeting starts to rise (0.4 s). Not with Reduce Motion, and not if a tap skips the intro first |
 | `pop` | The shake reaction (S9) |
+
+Sprout's voice on home follows the same rule for sounds, with one exception. Automatic lines use
+the `.ambient` session: the silent switch mutes them and music keeps playing, mixed. A line the
+user asked for by tapping Sprout uses `.playback` with ducking: it is audible with the silent
+switch on, music gets quieter under it, and returns to full volume when the line ends or home is
+left. The next sound or automatic line switches back to `.ambient`.
 
 | Screen | Control | Haptic |
 |---|---|---|

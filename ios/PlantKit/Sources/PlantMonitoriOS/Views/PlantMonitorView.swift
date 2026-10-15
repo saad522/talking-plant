@@ -4,12 +4,20 @@ import SwiftUI
 public struct PlantMonitorView<Face: View>: View {
     @ObservedObject private var store: PlantMonitorStore<Face>
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     private let viewModel: PlantMonitorViewModel
+    private let sprout: PlantMonitorSproutViewModel
     private let settingsAction: () -> Void
 
-    init(store: PlantMonitorStore<Face>, viewModel: PlantMonitorViewModel, settingsAction: @escaping () -> Void) {
+    init(
+        store: PlantMonitorStore<Face>,
+        viewModel: PlantMonitorViewModel,
+        sprout: PlantMonitorSproutViewModel,
+        settingsAction: @escaping () -> Void
+    ) {
         self.store = store
         self.viewModel = viewModel
+        self.sprout = sprout
         self.settingsAction = settingsAction
     }
 
@@ -36,7 +44,15 @@ public struct PlantMonitorView<Face: View>: View {
         // Only the home screen follows the scene, so History keeps following the system.
         .toolbarColorScheme(store.palette.colorScheme)
         .overlay { store.error }
-        .onAppear(perform: viewModel.appear)
+        .onAppear {
+            viewModel.appear()
+            sprout.appear()
+        }
+        .onDisappear(perform: sprout.disappear)
+        // Coming back from the background fires no `onAppear`, so the morning line needs the scene phase.
+        .onChange(of: scenePhase) { _, phase in
+            sprout.setActive(phase == .active)
+        }
     }
 
     /// On the content and the background only, so a scene change never animates the scroll view or the toolbar.

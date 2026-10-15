@@ -45,3 +45,4 @@
 "plant.monitor.mood.dryAir.speech" = "The air feels so dry.";
 "plant.monitor.mood.offline.speech" = "Zzz… I can't feel my sensor.";
 "plant.monitor.sleeping.speech" = "Zzz… see you at sunrise.";
+"plant.monitor.sprout.hear.label" = "Hear %@";

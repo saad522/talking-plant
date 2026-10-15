@@ -37,6 +37,13 @@ struct TalkingPlantApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        #if DEBUG
+        // For the on-device checks: the first launch after this speaks the home line again.
+        if ProcessInfo.processInfo.arguments.contains("-PlantSpokenLineReset") {
+            UserDefaults.standard.removeObject(forKey: "plant.monitor.spoken.mood")
+            UserDefaults.standard.removeObject(forKey: "plant.monitor.spoken.day")
+        }
+        #endif
         let navigation = AppNavigation()
         _navigation = StateObject(wrappedValue: navigation)
         // The voice is created inside the autoclosure, so it exists once, in the store that SwiftUI keeps.

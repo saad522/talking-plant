@@ -22,9 +22,13 @@ public struct PlantMonitorSceneView<Face: View>: View {
                 .padding(.trailing, PlantMonitorSize.windowTrailing)
 
             if let face = store.face {
-                face
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .padding(.bottom, PlantMonitorSize.faceBottom)
+                Button(action: store.sproutTap) {
+                    face
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(store.sproutLabel)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, PlantMonitorSize.faceBottom)
             }
 
             if let bubble = store.bubble {

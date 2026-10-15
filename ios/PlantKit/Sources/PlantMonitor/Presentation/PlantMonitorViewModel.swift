@@ -55,6 +55,10 @@ public final class PlantMonitorViewModel {
     /// Fires once when a reading shows the plant was watered after a Water tap.
     public var loadedWatered: (() -> Void)?
     public var loadedSky: Observer<(sky: PlantMonitorSkyViewModel, isGradual: Bool)>?
+    /// The bubble's final line, once per speech key: the generated line, or the template when generating fails.
+    public var loadedSpokenLine: Observer<PlantMonitorSpokenLine>?
+    /// The Sprout button's accessibility label.
+    public let hearLabel: String
 
     public init(
         loader: PlantReadingLoader,
@@ -68,6 +72,7 @@ public final class PlantMonitorViewModel {
         actionHandler: @escaping (PlantMonitorAction) -> Void
     ) {
         self.talkLabel = String(format: String.localised(key: "plant.monitor.talk.label"), plantName)
+        self.hearLabel = String(format: String.localised(key: "plant.monitor.sprout.hear.label"), plantName)
         self.loader = loader
         self.healthLoader = healthLoader
         self.connectionLoader = connectionLoader
@@ -180,10 +185,15 @@ public final class PlantMonitorViewModel {
         guard key != speechKey else { return }
         speechKey = key
         loadedSpeech?(speech)
-        speechLoader.load(mood: mood, isSleeping: scene.isSleeping, reading: scene.reading) { [weak self] result in
-            if case .success(let line) = result, self?.speechKey == key {
-                self?.loadedSpeech?(line)
+        let isSleeping = scene.isSleeping
+        speechLoader.load(mood: mood, isSleeping: isSleeping, reading: scene.reading) { [weak self] result in
+            guard let self, self.speechKey == key else { return }
+            var final = speech
+            if case .success(let line) = result {
+                final = line
+                self.loadedSpeech?(line)
             }
+            self.loadedSpokenLine?(PlantMonitorSpokenLine(text: final, mood: mood, isSleeping: isSleeping))
         }
     }
 

@@ -298,4 +298,37 @@ class PlantMonitorXCTestCase: XCTestCase {
             completions[index](.failure(error))
         }
     }
+
+    @MainActor
+    final class VoiceSpy: PlantMonitorVoice {
+        struct Spoken: Equatable {
+            let text: String
+            let mood: PlantMood
+            let trigger: PlantMonitorSpeechTrigger
+        }
+
+        private(set) var spoken: [Spoken] = []
+        private(set) var stopCount = 0
+        private var completions: [() -> Void] = []
+
+        func speak(_ text: String, mood: PlantMood, trigger: PlantMonitorSpeechTrigger, completion: @escaping () -> Void) {
+            spoken.append(Spoken(text: text, mood: mood, trigger: trigger))
+            completions.append(completion)
+        }
+
+        func stop() { stopCount += 1 }
+
+        func finish(at index: Int = 0) { completions[index]() }
+    }
+
+    final class DefaultsSpy: DefaultsClient {
+        private var strings: [String: String] = [:]
+
+        func set(_ value: Double, forKey key: String) {}
+        func retrieve(forKey key: String) -> Double? { nil }
+        func set(_ value: String, forKey key: String) { strings[key] = value }
+        func retrieveString(forKey key: String) -> String? { strings[key] }
+        func set(_ value: Bool, forKey key: String) {}
+        func retrieveBool(forKey key: String) -> Bool? { nil }
+    }
 }

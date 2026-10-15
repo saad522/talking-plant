@@ -11,6 +11,8 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         lastScene: PlantMonitorScene = .day,
         haptics: HapticsSpy = HapticsSpy(),
         sounds: SoundEffectsSpy = SoundEffectsSpy(),
+        voice: VoiceSpy = VoiceSpy(),
+        speaksLines: Bool = true,
         clock: ClockStub = ClockStub(at: Date(timeIntervalSince1970: 1_000)),
         scheduleSpy: ScheduleSpy = ScheduleSpy(),
         actionHandler: @escaping (PlantMonitorAction) -> Void = { _ in },
@@ -31,6 +33,9 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
             face: { FaceStub(mood: $0) },
             haptics: haptics,
             sounds: sounds,
+            voice: voice,
+            spokenLines: PlantSpokenLineStore(defaults: DefaultsSpy()),
+            speaksLines: { speaksLines },
             clock: clock.now,
             schedule: scheduleSpy.schedule,
             actionHandler: actionHandler
@@ -41,6 +46,7 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
         trackMemoryLeak(speechLoader, file: file, line: line)
         trackMemoryLeak(haptics, file: file, line: line)
         trackMemoryLeak(sounds, file: file, line: line)
+        trackMemoryLeak(voice, file: file, line: line)
         return (sut, loader, healthLoader, connectionLoader)
     }
 
@@ -128,6 +134,24 @@ class PlantMonitoriOSXCTestCase: XCTestCase {
     final class SoundEffectsSpy: PlantSoundEffectsClient {
         private(set) var played: [PlantSoundEffect] = []
         func play(_ effect: PlantSoundEffect) { played.append(effect) }
+    }
+
+    @MainActor
+    final class VoiceSpy: PlantMonitorVoice {
+        struct Spoken: Equatable {
+            let text: String
+            let mood: PlantMood
+            let trigger: PlantMonitorSpeechTrigger
+        }
+
+        private(set) var spoken: [Spoken] = []
+        private(set) var stopCount = 0
+
+        func speak(_ text: String, mood: PlantMood, trigger: PlantMonitorSpeechTrigger, completion: @escaping () -> Void) {
+            spoken.append(Spoken(text: text, mood: mood, trigger: trigger))
+        }
+
+        func stop() { stopCount += 1 }
     }
 
     @MainActor

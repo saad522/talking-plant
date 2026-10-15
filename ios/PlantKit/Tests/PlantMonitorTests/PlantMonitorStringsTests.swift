@@ -6,6 +6,7 @@ final class PlantMonitorStringsTests: PlantMonitorXCTestCase {
     func test_strings_haveValueForEveryKey() {
         let keys = [
             "plant.monitor.history.label",
+            "plant.monitor.sprout.hear.label",
             "plant.monitor.talk.label",
             "plant.monitor.water.label",
             "plant.monitor.header.subtitle",

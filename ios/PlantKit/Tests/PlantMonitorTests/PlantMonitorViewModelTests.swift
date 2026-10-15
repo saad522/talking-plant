@@ -829,6 +829,66 @@ final class PlantMonitorViewModelTests: PlantMonitorXCTestCase {
         Date(timeIntervalSince1970: 12 * 3_600)
     }
 
+    func test_speechLoad_deliversSpokenLineWithGeneratedTextOnce() {
+        let (sut, _, healthLoader, speechLoader) = makeSUTWithSpeech()
+        var lines: [PlantMonitorSpokenLine] = []
+        sut.loadedSpokenLine = { lines.append($0) }
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        XCTAssertEqual(lines, [])
+        speechLoader.completeLoad(with: "Got any water?")
+
+        XCTAssertEqual(lines, [PlantMonitorSpokenLine(text: "Got any water?", mood: .thirsty, isSleeping: false)])
+    }
+
+    func test_speechLoadFailure_deliversSpokenLineWithTemplateText() {
+        let (sut, _, healthLoader, speechLoader) = makeSUTWithSpeech()
+        var lines: [PlantMonitorSpokenLine] = []
+        sut.loadedSpokenLine = { lines.append($0) }
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        speechLoader.completeLoad(with: anyNSError())
+
+        XCTAssertEqual(lines, [PlantMonitorSpokenLine(text: PlantMoodViewModel(mood: .thirsty).speech, mood: .thirsty, isSleeping: false)])
+    }
+
+    func test_speechLoad_doesNotDeliverSpokenLineForStaleKey() {
+        let (sut, _, healthLoader, speechLoader) = makeSUTWithSpeech()
+        var lines: [PlantMonitorSpokenLine] = []
+        sut.loadedSpokenLine = { lines.append($0) }
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        healthLoader.simulateUpdate()
+        healthLoader.completeLoad(with: PlantHealth(score: 100, issues: []), at: 1)
+        speechLoader.completeLoad(with: "Stale thirsty line", at: 0)
+        speechLoader.completeLoad(with: anyNSError(), at: 1)
+
+        XCTAssertEqual(lines.map(\.mood), [.happy])
+    }
+
+    func test_connectionUpdate_doesNotDeliverSpokenLineAgain() {
+        let connectionLoader = ConnectionLoaderStub()
+        let (sut, _, healthLoader, speechLoader) = makeSUTWithSpeech(connectionLoader: connectionLoader)
+        var lines: [PlantMonitorSpokenLine] = []
+        sut.loadedSpokenLine = { lines.append($0) }
+
+        sut.appear()
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        speechLoader.completeLoad(with: "Got any water?")
+        connectionLoader.complete(with: .connected)
+
+        XCTAssertEqual(lines.count, 1)
+    }
+
+    func test_init_hasLocalisedHearLabel() {
+        let (sut, _, _) = makeSUT()
+
+        XCTAssertEqual(sut.hearLabel, "Hear Sprout")
+    }
+
     private final class ClockStub {
         private var date: Date
         init(at date: Date) { self.date = date }

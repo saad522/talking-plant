@@ -16,6 +16,9 @@ public enum PlantMonitorUIComposer {
         face: @escaping (PlantMood) -> Face,
         haptics: PlantHapticsClient,
         sounds: PlantSoundEffectsClient,
+        voice: PlantMonitorVoice,
+        spokenLines: PlantSpokenLineStore,
+        speaksLines: @escaping () -> Bool,
         clock: @escaping () -> Date,
         schedule: @escaping SimulatedPeripheralClient.Schedule,
         actionHandler: @escaping (PlantMonitorAction) -> Void
@@ -36,6 +39,17 @@ public enum PlantMonitorUIComposer {
             schedule: schedule,
             actionHandler: actionHandler
         )
+
+        let sprout = PlantMonitorSproutViewModel(
+            voice: voice,
+            spokenLines: spokenLines,
+            isEnabled: speaksLines,
+            clock: clock,
+            calendar: calendar,
+            schedule: schedule
+        )
+        store.sproutLabel = viewModel.hearLabel
+        store.sproutTap = { [weak sprout] in sprout?.sproutTap() }
 
         let header = PlantMonitorHeaderViewModel(name: plantName, room: room, mood: nil)
         store.title = header.title
@@ -64,6 +78,10 @@ public enum PlantMonitorUIComposer {
             sounds.play(.chime)
         }
 
+        viewModel.loadedSpokenLine = { [weak sprout] line in
+            sprout?.lineSettled(line)
+        }
+
         viewModel.loadedSky = { [weak store] update in
             store?.window = PlantMonitorStore<Face>.makeWindow(sky: update.sky, isGradual: update.isGradual)
         }
@@ -80,6 +98,7 @@ public enum PlantMonitorUIComposer {
         return PlantMonitorView(
             store: store,
             viewModel: viewModel,
+            sprout: sprout,
             settingsAction: { [weak viewModel] in
                 haptics.play(.tap)
                 viewModel?.settingsTap()

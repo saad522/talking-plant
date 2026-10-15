@@ -545,4 +545,82 @@ final class PlantMonitorUIITests: PlantMonitoriOSXCTestCase {
 
         XCTAssertEqual(haptics.played, [])
     }
+
+    func test_sproutTap_speaksBubbleTextWithTapTrigger() {
+        let voice = VoiceSpy()
+        let speechLoader = SpeechLoaderStub()
+        let (sut, loader, healthLoader, _) = makeSUT(speechLoader: speechLoader, voice: voice)
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading())
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        speechLoader.complete(with: "Got any water?")
+
+        sut.simulateTapOnSprout()
+
+        XCTAssertEqual(sut.bubbleText, "Got any water?")
+        XCTAssertEqual(voice.spoken, [.init(text: "Got any water?", mood: .thirsty, trigger: .tap)])
+    }
+
+    func test_sproutTap_beforeTheLineIsFinalSpeaksNothing() {
+        let voice = VoiceSpy()
+        let (sut, loader, healthLoader, _) = makeSUT(voice: voice)
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading())
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+
+        sut.simulateTapOnSprout()
+
+        XCTAssertEqual(voice.spoken, [])
+    }
+
+    func test_sproutTap_speaksNothingWhenSpeakRepliesIsOff() {
+        let voice = VoiceSpy()
+        let speechLoader = SpeechLoaderStub()
+        let (sut, loader, healthLoader, _) = makeSUT(speechLoader: speechLoader, voice: voice, speaksLines: false)
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading())
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        speechLoader.complete(with: "Got any water?")
+
+        sut.simulateTapOnSprout()
+
+        XCTAssertEqual(voice.spoken, [])
+    }
+
+    func test_appear_speaksFinalLineAfterSettleTimerWithAutomaticTrigger() {
+        let voice = VoiceSpy()
+        let speechLoader = SpeechLoaderStub()
+        let scheduleSpy = ScheduleSpy()
+        let (sut, loader, healthLoader, _) = makeSUT(speechLoader: speechLoader, voice: voice, scheduleSpy: scheduleSpy)
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading())
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+        speechLoader.complete(with: "Got any water?")
+        XCTAssertEqual(voice.spoken, [])
+
+        scheduleSpy.fire(at: scheduleSpy.intervals.firstIndex(of: PlantMonitorSproutViewModel.settleDelay)!)
+
+        XCTAssertEqual(voice.spoken, [.init(text: "Got any water?", mood: .thirsty, trigger: .automatic)])
+    }
+
+    func test_sprout_hasHearLabelAsButton() {
+        let (sut, loader, healthLoader, _) = makeSUT()
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading())
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+
+        XCTAssertEqual(sut.sproutLabel, String.localised(key: "plant.monitor.sprout.hear.label").replacingOccurrences(of: "%@", with: "Sprout"))
+    }
+
+    func test_sproutTap_playsNoHaptic() {
+        let haptics = HapticsSpy()
+        let (sut, loader, healthLoader, _) = makeSUT(haptics: haptics)
+        sut.simulateAppear()
+        loader.completeSubscription(with: makeReading())
+        healthLoader.completeLoad(with: PlantHealth(score: 70, issues: [.thirsty]))
+
+        sut.simulateTapOnSprout()
+
+        XCTAssertEqual(haptics.played, [])
+    }
 }
